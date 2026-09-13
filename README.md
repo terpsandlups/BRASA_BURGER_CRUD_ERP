@@ -10,7 +10,7 @@ Projeto acadêmico e de portfólio de um sistema web para uma rede fictícia de 
 - **Docente:** Prof. Gilberto Falco Netto.
 - **Gabriel Rodrigues do Prado:** 3º semestre.
 - **Rafaela Rodrigues Oliveira:** 1º semestre.
-- **Modalidade:** continuidade de um protótipo existente.
+- **Modalidade:** Projeto Integrado Novo
 
 A linha de base deve ser identificada no primeiro registro do repositório. Os incrementos de 2026/2 devem ser associados aos commits e às contribuições efetivas dos integrantes.
 
