@@ -182,3 +182,20 @@ select
 from lojas l
 left join pedidos p on p.loja_id = l.id and p.status <> 'cancelado'
 group by l.id, l.nome, l.tipo_operacao;
+-- ============================================================
+-- 9. HISTÓRICO DE MOVIMENTAÇÃO DE ESTOQUE (Auditoria)
+-- ============================================================
+create table historico_estoque (
+    id              uuid primary key default uuid_generate_v4(),
+    loja_id         uuid not null references lojas(id),
+    ingrediente_id  uuid not null references ingredientes(id),
+    quantidade      numeric(12,3) not null,                  -- positivo para entrada, negativo para saída
+    tipo_movimento  text not null check (tipo_movimento in ('entrada_fornecedor', 'venda_pedido', 'perda_avaria', 'ajuste_inventario')),
+    criado_em       timestamptz default now()
+);
+
+create index idx_historico_estoque_loja on historico_estoque(loja_id);
+create index idx_historico_estoque_ingrediente on historico_estoque(ingrediente_id);
+
+comment on table historico_estoque is 'Registra toda entrada e saída de insumos por unidade para fins de auditoria e cálculo de quebras.';
+
