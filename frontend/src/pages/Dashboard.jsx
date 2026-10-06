@@ -5,8 +5,10 @@ import PageHeader from '../components/layout/PageHeader.jsx'
 import KPICard from '../components/data-display/KPICard.jsx'
 import { SkeletonLinhas } from '../components/ui/Skeleton.jsx'
 import EmptyState from '../components/ui/EmptyState.jsx'
+import Button from '../components/ui/Button.jsx'
+import { calcularDashboard, carregarTodasPaginas, intervaloDashboard } from '../lib/dashboard.js'
 
-const CORES_CANAL = ['#C98A3A', '#211E1A']
+const CORES_CANAL = ['#C98A3A', '#211E1A', '#2E7D5B', '#766F66']
 
 export default function Dashboard() {
   const [lojas, setLojas] = useState([])
@@ -15,96 +17,57 @@ export default function Dashboard() {
   const [pedidos, setPedidos] = useState([])
   const [custos, setCustos] = useState([])
   const [loading, setLoading] = useState(true)
+  const [erro, setErro] = useState('')
+  const [tentativa, setTentativa] = useState(0)
 
   useEffect(() => {
     supabase.from('lojas').select('*').eq('ativo', true).then(({ data }) => data && setLojas(data))
   }, [])
 
   useEffect(() => {
+    let ativo = true
     async function carregar() {
       setLoading(true)
-      const desde = new Date()
-      desde.setDate(desde.getDate() - periodo)
-
-      let query = supabase
-        .from('pedidos')
-        .select('id, valor_total, criado_em, tipo_atendimento, status, loja_id, lojas(nome), itens_pedido(produto_sku, variacao_id, quantidade, preco_unitario, produtos(nome))')
-        .gte('criado_em', desde.toISOString())
-        .neq('status', 'cancelado')
-
-      if (lojaFiltro !== 'todas') query = query.eq('loja_id', lojaFiltro)
-
-      const [{ data: ped }, { data: cust }] = await Promise.all([
-        query,
-        supabase.from('vw_custo_variacao').select('variacao_id, custo_ficha_tecnica'),
-      ])
-
-      setPedidos(ped || [])
-      setCustos(cust || [])
-      setLoading(false)
-    }
-    carregar()
-  }, [lojaFiltro, periodo])
-
-  const metrica = useMemo(() => {
-    const faturamentoTotal = pedidos.reduce((acc, p) => acc + Number(p.valor_total), 0)
-    const pedidosTotal = pedidos.length
-    const ticketMedio = pedidosTotal > 0 ? faturamentoTotal / pedidosTotal : 0
-
-    const custoPorVariacao = new Map(custos.map((c) => [c.variacao_id, Number(c.custo_ficha_tecnica)]))
-    let custoTotal = 0
-    let receitaComFicha = 0
-    const produtoAgregado = new Map()
-
-    for (const p of pedidos) {
-      for (const item of p.itens_pedido || []) {
-        const receitaItem = Number(item.preco_unitario) * item.quantidade
-        const custoUnit = custoPorVariacao.get(item.variacao_id)
-        if (custoUnit !== undefined) {
-          custoTotal += custoUnit * item.quantidade
-          receitaComFicha += receitaItem
-        }
-        const nome = item.produtos?.nome || item.produto_sku
-        const atual = produtoAgregado.get(nome) || { nome, quantidade: 0, receita: 0 }
-        atual.quantidade += item.quantidade
-        atual.receita += receitaItem
-        produtoAgregado.set(nome, atual)
+      setErro('')
+      const intervalo = intervaloDashboard(periodo)
+      try {
+        const [ped, cust] = await Promise.all([
+          carregarTodasPaginas(() => {
+            let query = supabase
+              .from('pedidos')
+              .select('id, valor_total, criado_em, canal_venda, status, loja_id, lojas(nome), itens_pedido(produto_sku, variacao_id, quantidade, preco_unitario, produtos(nome))')
+              .gte('criado_em', intervalo.inicio)
+              .lte('criado_em', intervalo.fim)
+              .neq('status', 'cancelado')
+              .order('criado_em', { ascending: true })
+            if (lojaFiltro !== 'todas') query = query.eq('loja_id', lojaFiltro)
+            return query
+          }),
+          carregarTodasPaginas(() => supabase
+            .from('vw_custo_variacao')
+            .select('variacao_id, custo_ficha_tecnica')
+            .order('variacao_id')),
+        ])
+        if (!ativo) return
+        setPedidos(ped)
+        setCustos(cust)
+      } catch (e) {
+        if (!ativo) return
+        setPedidos([])
+        setCustos([])
+        setErro(e?.message || 'Não foi possível carregar os indicadores.')
+      } finally {
+        if (ativo) setLoading(false)
       }
     }
+    carregar()
+    return () => { ativo = false }
+  }, [lojaFiltro, periodo, tentativa])
 
-    const cmvPercentual = receitaComFicha > 0 ? (custoTotal / receitaComFicha) * 100 : null
-    const margemPercentual = cmvPercentual !== null ? 100 - cmvPercentual : null
-
-    // evolução por dia
-    const porDia = new Map()
-    for (const p of pedidos) {
-      const dia = p.criado_em.slice(0, 10)
-      porDia.set(dia, (porDia.get(dia) || 0) + Number(p.valor_total))
-    }
-    const evolucao = Array.from(porDia.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([dia, valor]) => ({ dia: dia.slice(5).split('-').reverse().join('/'), valor }))
-
-    // faturamento por loja
-    const porLoja = new Map()
-    for (const p of pedidos) {
-      const nome = p.lojas?.nome || 'Sem unidade'
-      porLoja.set(nome, (porLoja.get(nome) || 0) + Number(p.valor_total))
-    }
-    const faturamentoPorLoja = Array.from(porLoja.entries()).map(([loja, faturamento]) => ({ loja, faturamento }))
-
-    // canais
-    const canais = [
-      { nome: 'Presencial', valor: pedidos.filter((p) => p.tipo_atendimento === 'presencial').length },
-      { nome: 'Delivery', valor: pedidos.filter((p) => p.tipo_atendimento === 'delivery').length },
-    ].filter((c) => c.valor > 0)
-
-    const topProdutos = Array.from(produtoAgregado.values())
-      .sort((a, b) => b.quantidade - a.quantidade)
-      .slice(0, 6)
-
-    return { faturamentoTotal, pedidosTotal, ticketMedio, cmvPercentual, margemPercentual, evolucao, faturamentoPorLoja, canais, topProdutos }
-  }, [pedidos, custos])
+  const metrica = useMemo(() => {
+    const { dias } = intervaloDashboard(periodo)
+    return calcularDashboard(pedidos, custos, dias)
+  }, [pedidos, custos, periodo])
 
   return (
     <div>
@@ -113,9 +76,11 @@ export default function Dashboard() {
         descricao="Visão consolidada da rede"
         acaoPrincipal={
           <div className="flex items-center gap-2">
-            <select value={periodo} onChange={(e) => setPeriodo(Number(e.target.value))}
+            <select aria-label="Período" value={periodo} onChange={(e) => setPeriodo(Number(e.target.value))}
               className="px-3 py-2 border border-borda text-sm bg-branco">
+              <option value={1}>Hoje</option>
               <option value={7}>Últimos 7 dias</option>
+              <option value={15}>Últimos 15 dias</option>
               <option value={30}>Últimos 30 dias</option>
               <option value={90}>Últimos 90 dias</option>
             </select>
@@ -130,6 +95,12 @@ export default function Dashboard() {
 
       {loading ? (
         <SkeletonLinhas linhas={6} />
+      ) : erro ? (
+        <EmptyState
+          titulo="Não foi possível carregar o painel"
+          descricao={erro}
+          acao={<Button variant="secondary" onClick={() => setTentativa((v) => v + 1)}>Tentar novamente</Button>}
+        />
       ) : pedidos.length === 0 ? (
         <EmptyState titulo="Nenhum pedido no período" descricao="Ajuste o período ou a unidade selecionada." />
       ) : (
@@ -137,9 +108,9 @@ export default function Dashboard() {
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
             <KPICard titulo="Faturamento" valor={`R$ ${metrica.faturamentoTotal.toFixed(2)}`} />
             <KPICard titulo="Pedidos" valor={metrica.pedidosTotal} />
-            <KPICard titulo="Ticket médio" valor={`R$ ${metrica.ticketMedio.toFixed(2)}`} />
-            <KPICard titulo="CMV" valor={metrica.cmvPercentual !== null ? `${metrica.cmvPercentual.toFixed(1)}%` : '—'} />
-            <KPICard titulo="Margem" valor={metrica.margemPercentual !== null ? `${metrica.margemPercentual.toFixed(1)}%` : '—'} />
+            <KPICard titulo="Ticket médio" valor={metrica.ticketMedio !== null ? `R$ ${metrica.ticketMedio.toFixed(2)}` : '—'} />
+            <KPICard titulo="CMV estimado" valor={metrica.cmvPercentual !== null ? `${metrica.cmvPercentual.toFixed(1)}%` : '—'} contexto={metrica.coberturaCusto !== null ? `Cobertura: ${metrica.coberturaCusto.toFixed(0)}% da receita dos itens` : 'Sem itens com custo cadastrado'} />
+            <KPICard titulo="Margem bruta estimada" valor={metrica.margemPercentual !== null ? `${metrica.margemPercentual.toFixed(1)}%` : '—'} contexto={metrica.itensSemFicha > 0 ? `${metrica.itensSemFicha} item(ns) sem ficha técnica` : 'Todos os itens têm ficha técnica'} />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -151,7 +122,7 @@ export default function Dashboard() {
                   <XAxis dataKey="dia" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} />
                   <Tooltip formatter={(v) => [`R$ ${Number(v).toFixed(2)}`, 'Faturamento']} />
-                  <Line type="monotone" dataKey="valor" stroke="#C98A3A" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="valor" stroke="#C98A3A" strokeWidth={2} dot={periodo === 1} />
                 </LineChart>
               </ResponsiveContainer>
             </div>

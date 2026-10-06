@@ -88,5 +88,6 @@ export function calcularDashboard(pedidos, custos, dias = []) {
     faturamentoPorLoja: [...porLoja.values()],
     canais: [...porCanal].map(([nome, valor]) => ({ nome, valor })),
     topProdutos: [...produtos.values()].sort((a, b) => b.quantidade - a.quantidade).slice(0, 6),
+    produtos: [...produtos.values()].sort((a, b) => b.receita - a.receita),
   }
 }

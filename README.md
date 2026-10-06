@@ -10,7 +10,7 @@ Projeto acadêmico e de portfólio de um sistema web para uma rede fictícia de 
 - **Docente:** Prof. Gilberto Falco Netto.
 - **Gabriel Rodrigues do Prado:** 3º semestre.
 - **Rafaela Rodrigues Oliveira:** 1º semestre.
-- **Modalidade:** Projeto Integrado Novo
+- **Modalidade:** continuidade de um protótipo existente.
 
 A linha de base deve ser identificada no primeiro registro do repositório. Os incrementos de 2026/2 devem ser associados aos commits e às contribuições efetivas dos integrantes.
 
@@ -133,9 +133,11 @@ Não versionar senhas, `.env` real, chaves privilegiadas ou dados pessoais reais
 Registrar nos testes: versão/commit, ambiente, entrada, resultado esperado e resultado observado. Casos mínimos: cálculos acima, conversão de unidades, pedido inválido, acesso a outra loja, cancelamento e reenvio sem baixa duplicada.
 
 ## Documentação e entrega acadêmica
+
+- [Guia de instalação e validação](GUIA_PASSO_A_PASSO.md).
 - [Status e plano do Design System](DESIGN_SYSTEM_STATUS.md).
 - Entrega 1: ZIP com `trabalho-escrito.pdf`, `apresentacao.pdf` e `anexos/`, até 100 MB, pelo formulário oficial.
 - O formulário também recebe título e URL completa do repositório, público ou compartilhado com o docente.
-- Prazo informado no enunciado: **10/02/2026**, conforme horário institucional.
+- Prazo informado no enunciado: **02/10/2026**, conforme horário institucional.
 
 Este pacote de Markdown atualiza a documentação do repositório. O código, os PDFs acadêmicos e os anexos são entregáveis separados. A URL do GitHub e a síntese de commits serão vinculadas ao trabalho após a publicação real.

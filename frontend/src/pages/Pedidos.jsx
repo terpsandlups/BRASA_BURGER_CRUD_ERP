@@ -5,7 +5,13 @@ import { formatarCPF, apenasDigitos, validarCPF, formatarTelefone } from '../lib
 import PageHeader from '../components/layout/PageHeader.jsx'
 import KPICard from '../components/data-display/KPICard.jsx'
 import Button from '../components/ui/Button.jsx'
+import SidePanel from '../components/layout/SidePanel.jsx'
 import StatusBadge from '../components/ui/StatusBadge.jsx'
+import { criarEnvioTransacional, montarPedidoTransacional } from '../lib/pedidoTransacional.js'
+import { carregarTodasPaginas, intervaloDashboard } from '../lib/dashboard.js'
+import { filtrarPedidosOperacao, indicadoresOperacao, criarAtualizadorStatus } from '../lib/operacaoPedidos.js'
+
+const PEDIDO_TRANSACIONAL = import.meta.env.VITE_PEDIDO_TRANSACIONAL === 'true'
 
 const COLUNAS = [
   { status: 'recebido', titulo: 'Novos Pedidos' },
@@ -42,7 +48,7 @@ function corTempo(min) {
 
 const CANAL_LABEL = { proprio: 'Próprio', ifood: 'iFood', rappi: 'Rappi' }
 
-function CardPedido({ pedido, agora, onAvancar, onCancelar, expandido, onToggle }) {
+function CardPedido({ pedido, agora, onAvancar, onCancelar, onAbrirDetalhe, atualizando }) {
   const min = minutosDecorridos(pedido.criado_em, agora)
   const cor = corTempo(min)
   const acao = rotuloAcao(pedido)
@@ -65,35 +71,9 @@ function CardPedido({ pedido, agora, onAvancar, onCancelar, expandido, onToggle 
         </span>
       </div>
 
-      <button onClick={onToggle} className="text-xs text-ambar mt-2">
-        {expandido ? 'Ocultar itens' : `${pedido.itens_pedido?.length || 0} item(ns) — ver detalhes`}
+      <button onClick={() => onAbrirDetalhe(pedido)} className="text-xs text-ambar mt-2">
+        {pedido.itens_pedido?.length || 0} item(ns) — ver detalhes
       </button>
-
-      {expandido && (
-        <>
-          <ul className="mt-2 text-sm space-y-1">
-            {pedido.itens_pedido?.map((item) => (
-              <li key={item.id} className="flex items-center gap-2">
-                <span>{item.quantidade}x {item.produtos?.nome}</span>
-                {item.produtos?.categorias?.nome && (
-                  <span className="text-[10px] uppercase text-fumaca border border-fumaca/30 px-1.5">
-                    {item.produtos.categorias.nome}
-                  </span>
-                )}
-              </li>
-            ))}
-          </ul>
-          {pedido.observacoes && (
-            <p className="text-xs text-ambar mt-2 italic">Obs: {pedido.observacoes}</p>
-          )}
-          {pedido.forma_pagamento === 'dinheiro' && pedido.troco_para && (
-            <p className="text-xs text-fumaca mt-1">
-              Troco para R$ {Number(pedido.troco_para).toFixed(2)}
-              {' '}(troco: R$ {(Number(pedido.troco_para) - Number(pedido.valor_total)).toFixed(2)})
-            </p>
-          )}
-        </>
-      )}
 
       <div className="flex items-center justify-between mt-3 pt-3 border-t border-superficie2/20">
         <span className="font-medium text-sm">R$ {Number(pedido.valor_total).toFixed(2)}</span>
@@ -102,18 +82,97 @@ function CardPedido({ pedido, agora, onAvancar, onCancelar, expandido, onToggle 
 
       {acao && (
         <button
-          onClick={() => onAvancar(pedido)}
+          disabled={atualizando} onClick={() => onAvancar(pedido)}
           className="w-full mt-3 bg-ambar text-carvao text-sm font-medium py-2 hover:bg-carvao hover:text-osso transition-colors"
         >
           {acao}
         </button>
       )}
       <button
-        onClick={() => onCancelar(pedido)}
+        disabled={atualizando} onClick={() => onCancelar(pedido)}
         className="w-full mt-1.5 text-xs text-brasa/70 hover:text-brasa py-1"
       >
         Cancelar pedido
       </button>
+    </div>
+  )
+}
+
+function DetalhePedido({ pedido, onAvancar, onCancelar, atualizando }) {
+  const acao = rotuloAcao(pedido)
+  return (
+    <div className="space-y-5">
+      <div>
+        <p className="text-xs uppercase text-fumaca">Cliente</p>
+        <p className="font-medium text-lg">{pedido.clientes?.nome || formatarCPF(pedido.cliente_cpf)}</p>
+        <p className="text-sm text-fumaca">{formatarCPF(pedido.cliente_cpf)}</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 text-sm">
+        <div>
+          <p className="text-xs uppercase text-fumaca">Unidade</p>
+          <p>{pedido.lojas?.nome}</p>
+        </div>
+        <div>
+          <p className="text-xs uppercase text-fumaca">Canal</p>
+          <p>{CANAL_LABEL[pedido.canal_venda] || 'Próprio'} · {pedido.tipo_atendimento}</p>
+        </div>
+        <div>
+          <p className="text-xs uppercase text-fumaca">Pagamento</p>
+          <p className="capitalize">{pedido.forma_pagamento || '—'}</p>
+        </div>
+        <div>
+          <p className="text-xs uppercase text-fumaca">Status</p>
+          <p className="capitalize">{pedido.status?.replace('_', ' ')}</p>
+        </div>
+      </div>
+
+      {pedido.forma_pagamento === 'dinheiro' && pedido.troco_para && (
+        <div className="bg-osso p-3 text-sm">
+          Troco para R$ {Number(pedido.troco_para).toFixed(2)}
+          {' '}— troco: <strong>R$ {(Number(pedido.troco_para) - Number(pedido.valor_total)).toFixed(2)}</strong>
+        </div>
+      )}
+
+      <div>
+        <p className="text-xs uppercase text-fumaca mb-2">Itens do pedido</p>
+        <ul className="space-y-2">
+          {pedido.itens_pedido?.map((item) => (
+            <li key={item.id} className="flex items-center justify-between text-sm border-b border-borda pb-2">
+              <span>
+                {item.quantidade}x {item.produtos?.nome}
+                {item.produtos?.categorias?.nome && (
+                  <span className="text-[10px] uppercase text-fumaca border border-fumaca/30 px-1.5 ml-1.5">
+                    {item.produtos.categorias.nome}
+                  </span>
+                )}
+              </span>
+              <span>R$ {Number(item.preco_unitario * item.quantidade).toFixed(2)}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {pedido.observacoes && (
+        <div>
+          <p className="text-xs uppercase text-fumaca">Observações</p>
+          <p className="text-sm italic">{pedido.observacoes}</p>
+        </div>
+      )}
+
+      <div className="flex justify-between font-medium pt-3 border-t border-borda">
+        <span>Total</span>
+        <span>R$ {Number(pedido.valor_total).toFixed(2)}</span>
+      </div>
+
+      {acao && (
+        <Button variant="primary" className="w-full" disabled={atualizando} onClick={() => onAvancar(pedido)}>
+          {acao}
+        </Button>
+      )}
+      <Button variant="danger" className="w-full" disabled={atualizando} onClick={() => onCancelar(pedido)}>
+        Cancelar pedido
+      </Button>
     </div>
   )
 }
@@ -127,11 +186,17 @@ export default function Pedidos() {
   const [adicionais, setAdicionais] = useState([])
   const [pedidosAtivos, setPedidosAtivos] = useState([])
   const [pedidosHoje, setPedidosHoje] = useState([])
+  const [erroPedidos, setErroPedidos] = useState('')
+  const consultaPedidosRef = useRef(0)
+  const statusEmCursoRef = useRef(new Set())
+  const atualizarStatusRef = useRef(null)
+  if (!atualizarStatusRef.current) atualizarStatusRef.current = criarAtualizadorStatus(supabase)
 
   const [filtroLoja, setFiltroLoja] = useState('todas')
   const [busca, setBusca] = useState('')
   const [agora, setAgora] = useState(new Date())
   const [expandidoId, setExpandidoId] = useState(null)
+  const pedidoDetalhe = pedidosAtivos.find(p => p.id === expandidoId) || null
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
   const [categoriaSelecionada, setCategoriaSelecionada] = useState('todas')
 
@@ -164,11 +229,28 @@ export default function Pedidos() {
   const [tipoAtendimento, setTipoAtendimento] = useState('delivery')
   const [itens, setItens] = useState([])
   const [enviando, setEnviando] = useState(false)
+  const envioEmCursoRef = useRef(false)
+  const transacaoRef = useRef(null)
+  if (!transacaoRef.current) transacaoRef.current = criarEnvioTransacional(supabase)
+  const [confirmacaoPendente, setConfirmacaoPendente] = useState(false)
+  const [pedidosEmAtualizacao, setPedidosEmAtualizacao] = useState(() => new Set())
   const [canalVenda, setCanalVenda] = useState('proprio')
   const [configCanais, setConfigCanais] = useState([])
   const [observacoes, setObservacoes] = useState('')
   const [trocoPara, setTrocoPara] = useState('')
   const [selecionandoAdicionaisPara, setSelecionandoAdicionaisPara] = useState(null)
+
+  useEffect(() => {
+    if (!PEDIDO_TRANSACIONAL || confirmacaoPendente || enviando) return
+    const config = configCanais.find((c) => c.canal_venda === canalVenda)
+    if (!config) return
+    setItens((atuais) => atuais.map((item) => {
+      const variacao = variacoes.find((v) => v.id === item.variacao_id)
+      if (!variacao) return item
+      const preco = Math.round((Number(variacao.preco_venda) * (1 + Number(config.markup_preco_percentual) / 100) + Number.EPSILON) * 100) / 100
+      return { ...item, preco_unitario: preco }
+    }))
+  }, [canalVenda, configCanais, variacoes, confirmacaoPendente, enviando])
 
   async function carregarCatalogo() {
     const [{ data: l }, { data: p }, { data: v }, { data: cat }, { data: pad }, { data: ad }, { data: canais }] = await Promise.all([
@@ -190,80 +272,88 @@ export default function Pedidos() {
   }
 
   async function carregarPedidos() {
-    const inicioHoje = new Date()
-    inicioHoje.setHours(0, 0, 0, 0)
-
-    const { data: ativos } = await supabase
-      .from('pedidos')
-      .select('*, lojas(nome), clientes(nome), itens_pedido(*, produtos(nome, categorias(nome)))')
-      .in('status', ['recebido', 'em_preparo', 'pronto', 'saiu_entrega'])
-      .order('criado_em', { ascending: true })
-
-    const { data: hoje } = await supabase
-      .from('pedidos')
-      .select('id, valor_total, status')
-      .gte('criado_em', inicioHoje.toISOString())
-
-    if (ativos) setPedidosAtivos(ativos)
-    if (hoje) setPedidosHoje(hoje)
+    const consulta = ++consultaPedidosRef.current
+    const { inicio, fim } = intervaloDashboard(1)
+    try {
+      const [ativos, hoje] = await Promise.all([
+        carregarTodasPaginas(() => supabase.from('pedidos')
+          .select('*, lojas(nome), clientes(nome), itens_pedido(*, produtos(nome, categorias(nome)))')
+          .in('status', ['recebido', 'em_preparo', 'pronto', 'saiu_entrega'])
+          .order('criado_em', { ascending: true }).order('id', { ascending: true })),
+        carregarTodasPaginas(() => supabase.from('pedidos').select('id, loja_id, valor_total, status')
+          .gte('criado_em', inicio).lte('criado_em', fim).order('id', { ascending: true })),
+      ])
+      if (consulta !== consultaPedidosRef.current) return
+      setPedidosAtivos(ativos)
+      setPedidosHoje(hoje)
+      setErroPedidos('')
+    } catch (error) {
+      if (consulta === consultaPedidosRef.current) setErroPedidos('Não foi possível atualizar os pedidos. Os dados exibidos podem estar desatualizados. ' + error.message)
+    }
   }
 
   useEffect(() => {
     carregarCatalogo()
     carregarPedidos()
     const intervaloTempo = setInterval(() => setAgora(new Date()), 30000)
-    const intervaloDados = setInterval(carregarPedidos, 20000)
-    return () => { clearInterval(intervaloTempo); clearInterval(intervaloDados) }
+    const intervaloDados = setInterval(carregarPedidos, 60000)
+    const canalRealtime = supabase
+      .channel('pedidos-operacao')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos' }, carregarPedidos)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'itens_pedido' }, carregarPedidos)
+      .subscribe()
+    return () => {
+      consultaPedidosRef.current += 1
+      clearInterval(intervaloTempo)
+      clearInterval(intervaloDados)
+      supabase.removeChannel(canalRealtime)
+    }
   }, [])
 
-  const pedidosFiltrados = pedidosAtivos.filter((p) => {
-    const passaLoja = filtroLoja === 'todas' || p.loja_id === filtroLoja
-    const termo = busca.trim().toLowerCase()
-    const passaBusca = !termo ||
-      String(p.id).includes(termo) ||
-      p.cliente_cpf.includes(termo.replace(/\D/g, '')) ||
-      (p.clientes?.nome || '').toLowerCase().includes(termo)
-    return passaLoja && passaBusca
-  })
+  function marcarPedidoEmAtualizacao(id, marcado) {
+    setPedidosEmAtualizacao((atuais) => {
+      const proximos = new Set(atuais)
+      if (marcado) proximos.add(id)
+      else proximos.delete(id)
+      return proximos
+    })
+  }
 
-  const kpis = useMemo(() => {
-    const validos = pedidosHoje.filter((p) => p.status !== 'cancelado')
-    return {
-      pedidosHoje: validos.length,
-      emPreparo: pedidosAtivos.filter((p) => p.status === 'em_preparo').length,
-      emEntrega: pedidosAtivos.filter((p) => p.status === 'saiu_entrega').length,
-      atrasados: pedidosAtivos.filter((p) => minutosDecorridos(p.criado_em, agora) >= 30).length,
-      faturamentoHoje: validos.reduce((acc, p) => acc + Number(p.valor_total), 0),
+  const pedidosFiltrados = filtrarPedidosOperacao(pedidosAtivos, filtroLoja, busca)
+  const kpis = useMemo(() => indicadoresOperacao(pedidosHoje, pedidosAtivos, filtroLoja, agora),
+    [pedidosHoje, pedidosAtivos, filtroLoja, agora])
+
+  async function alterarStatus(pedido, alteracoes) {
+    if (statusEmCursoRef.current.has(pedido.id)) return
+    statusEmCursoRef.current.add(pedido.id)
+    marcarPedidoEmAtualizacao(pedido.id, true)
+    try {
+      await atualizarStatusRef.current(pedido, alteracoes)
+    } catch (error) {
+      alert('Não foi possível atualizar o pedido: ' + error.message)
+    } finally {
+      statusEmCursoRef.current.delete(pedido.id)
+      marcarPedidoEmAtualizacao(pedido.id, false)
+      await carregarPedidos()
     }
-  }, [pedidosHoje, pedidosAtivos, agora])
+  }
 
   async function avancarStatus(pedido) {
+    if (pedidosEmAtualizacao.has(pedido.id)) return
     const novoStatus = proximoStatus(pedido)
     if (!novoStatus) return
-    const { error } = await supabase.from('pedidos').update({ status: novoStatus }).eq('id', pedido.id)
-    if (error) {
-      alert('Não foi possível atualizar o pedido: ' + error.message)
-      return
-    }
-    carregarPedidos()
+    await alterarStatus(pedido, { status: novoStatus })
   }
 
   async function cancelarPedido(pedido) {
+    if (pedidosEmAtualizacao.has(pedido.id)) return
     const motivo = prompt(`Cancelar pedido #${pedido.id} — motivo:`)
     if (motivo === null) return // usuário desistiu
     if (!motivo.trim()) {
       alert('Informe um motivo para o cancelamento.')
       return
     }
-    const { error } = await supabase
-      .from('pedidos')
-      .update({ status: 'cancelado', motivo_cancelamento: motivo.trim() })
-      .eq('id', pedido.id)
-    if (error) {
-      alert('Não foi possível cancelar: ' + error.message)
-      return
-    }
-    carregarPedidos()
+    await alterarStatus(pedido, { status: 'cancelado', motivo_cancelamento: motivo.trim() })
   }
 
   // ----- lógica do formulário de novo pedido -----
@@ -337,7 +427,7 @@ export default function Pedidos() {
     const produto = produtos.find((p) => p.sku === variacao.produto_sku)
     const config = configCanais.find((c) => c.canal_venda === canalVenda)
     const markup = config ? Number(config.markup_preco_percentual) / 100 : 0
-    const precoComMarkup = variacao.preco_venda * (1 + markup)
+    const precoComMarkup = Math.round((variacao.preco_venda * (1 + markup) + Number.EPSILON) * 100) / 100
     setItens([...itens, {
       produto_sku: variacao.produto_sku,
       nome: `${produto.nome} — ${variacao.nome_variacao}`,
@@ -372,69 +462,95 @@ export default function Pedidos() {
   const valorTotal = itens.reduce((acc, i) => acc + valorItem(i), 0)
 
   async function finalizarPedido() {
+    if (envioEmCursoRef.current) return
     if (!lojaId || !clienteEncontrado || itens.length === 0 || !formaPagamento) {
       alert('Selecione a loja, confirme o cliente, adicione ao menos um item e escolha a forma de pagamento.')
       return
     }
+    envioEmCursoRef.current = true
     setEnviando(true)
-    const { data: pedido, error } = await supabase
-      .from('pedidos')
-      .insert({
-        loja_id: lojaId,
-        cliente_cpf: clienteEncontrado.cpf,
-        tipo_atendimento: tipoAtendimento,
-        valor_total: valorTotal,
-        forma_pagamento: formaPagamento,
-        canal_venda: canalVenda,
-        observacoes: observacoes.trim() || null,
-        troco_para: formaPagamento === 'dinheiro' ? Number(trocoPara) : null,
-        status: 'recebido',
-      })
-      .select()
-      .single()
-
-    if (error) {
-      alert('Erro ao criar pedido: ' + error.message)
-      setEnviando(false)
-      return
-    }
-
-    for (const i of itens) {
-      const { data: itemPedido } = await supabase
-        .from('itens_pedido')
+    let pedidoCriado = null
+    try {
+      if (PEDIDO_TRANSACIONAL) {
+        await transacaoRef.current.enviar(montarPedidoTransacional({
+          lojaId, clienteCpf: clienteEncontrado.cpf, tipoAtendimento, formaPagamento,
+          canalVenda, observacoes, trocoPara, itens,
+        }))
+        setConfirmacaoPendente(false)
+      } else {
+      const { data: pedido, error } = await supabase
+        .from('pedidos')
         .insert({
-          pedido_id: pedido.id,
-          produto_sku: i.produto_sku,
-          variacao_id: i.variacao_id,
-          quantidade: i.quantidade,
-          preco_unitario: i.preco_unitario,
+          loja_id: lojaId,
+          cliente_cpf: clienteEncontrado.cpf,
+          tipo_atendimento: tipoAtendimento,
+          valor_total: valorTotal,
+          forma_pagamento: formaPagamento,
+          canal_venda: canalVenda,
+          observacoes: observacoes.trim() || null,
+          troco_para: formaPagamento === 'dinheiro' ? Number(trocoPara) : null,
+          status: 'recebido',
         })
         .select()
         .single()
+      if (error) throw error
+      pedidoCriado = pedido
 
-      if (i.adicionaisSelecionados.length > 0) {
-        await supabase.from('itens_pedido_adicionais').insert(
-          i.adicionaisSelecionados.map((a) => ({
-            item_pedido_id: itemPedido.id,
-            adicional_id: a.id,
-            quantidade: 1,
-            preco_unitario: a.preco_adicional,
-          }))
-        )
+      for (const i of itens) {
+        const { data: itemPedido, error: erroItem } = await supabase
+          .from('itens_pedido')
+          .insert({
+            pedido_id: pedido.id,
+            produto_sku: i.produto_sku,
+            variacao_id: i.variacao_id,
+            quantidade: i.quantidade,
+            preco_unitario: i.preco_unitario,
+          })
+          .select()
+          .single()
+        if (erroItem) throw erroItem
+
+        if (i.adicionaisSelecionados.length > 0) {
+          const { error: erroAdicionais } = await supabase.from('itens_pedido_adicionais').insert(
+            i.adicionaisSelecionados.map((a) => ({
+              item_pedido_id: itemPedido.id,
+              adicional_id: a.id,
+              quantidade: 1,
+              preco_unitario: a.preco_adicional,
+            }))
+          )
+          if (erroAdicionais) throw erroAdicionais
+        }
       }
-    }
+      }
 
-    setItens([])
-    setCpfCliente('')
-    setClienteEncontrado(null)
-    setStatusCliente('ocioso')
-    setFormaPagamento('')
-    setObservacoes('')
-    setTrocoPara('')
-    setCanalVenda('proprio')
-    setEnviando(false)
-    setMostrarFormulario(false)
-    carregarPedidos()
+      setItens([])
+      setCpfCliente('')
+      setClienteEncontrado(null)
+      setStatusCliente('ocioso')
+      setFormaPagamento('')
+      setObservacoes('')
+      setTrocoPara('')
+      setCanalVenda('proprio')
+      setMostrarFormulario(false)
+    } catch (erro) {
+      if (PEDIDO_TRANSACIONAL) {
+        const pendente = transacaoRef.current.temPendente()
+        setConfirmacaoPendente(pendente)
+        alert(pendente
+          ? 'Não foi possível confirmar a resposta. Use Confirmar envio anterior sem fechar esta página; o mesmo pedido será recuperado sem duplicação.'
+          : 'Pedido não gravado: ' + (erro?.code === 'PGRST202' ? 'A função de pedidos ainda precisa ser instalada no Supabase.' : erro?.message || 'Confira os dados.'))
+      } else {
+      const prefixo = pedidoCriado
+        ? `O pedido #${pedidoCriado.id} foi iniciado, mas não foi gravado por completo. Confira-o antes de tentar novamente. `
+        : 'Não foi possível criar o pedido. '
+      alert(prefixo + (erro?.message || 'Erro inesperado.'))
+      }
+    } finally {
+      setEnviando(false)
+      envioEmCursoRef.current = false
+      carregarPedidos()
+    }
   }
 
   return (
@@ -443,14 +559,16 @@ export default function Pedidos() {
         titulo="Pedidos"
         descricao="Gerencie e acompanhe os pedidos da sua rede em tempo real."
         acaoPrincipal={
-          <Button variant="primary" onClick={() => setMostrarFormulario(!mostrarFormulario)}>
+          <Button variant="primary" disabled={enviando || confirmacaoPendente} onClick={() => setMostrarFormulario(!mostrarFormulario)}>
             + Novo Pedido
           </Button>
         }
       />
 
       {/* KPIs */}
-      <div className="grid grid-cols-5 gap-3 mb-6">
+      {erroPedidos && <p role="alert" className="text-brasa text-sm mb-3">{erroPedidos} <button onClick={carregarPedidos} className="underline">Tentar novamente</button></p>}
+      <p className="text-xs text-fumaca mb-3">Indicadores da unidade selecionada. A busca por cliente ou pedido filtra somente os cartões. Hoje considera o horário de São Paulo.</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3 mb-6">
         <KPICard titulo="Pedidos hoje" valor={kpis.pedidosHoje} />
         <KPICard titulo="Em preparo" valor={kpis.emPreparo} />
         <KPICard titulo="Em entrega" valor={kpis.emEntrega} />
@@ -461,6 +579,11 @@ export default function Pedidos() {
       {/* Formulário de novo pedido (colapsável) */}
       {mostrarFormulario && (
         <div className="bg-superficie text-osso p-6 mb-8 space-y-4">
+          {confirmacaoPendente && <div role="alert">
+            <p>Envio aguardando confirmação. Confirme antes de fechar esta página ou iniciar outro pedido.</p>
+            <Button onClick={finalizarPedido} disabled={enviando}>Confirmar envio anterior</Button>
+          </div>}
+          <fieldset disabled={enviando || confirmacaoPendente} className="space-y-4">
           <div>
             <label className="text-xs uppercase tracking-wide text-fumaca">Canal de venda</label>
             <div className="flex gap-2 mt-1">
@@ -721,6 +844,7 @@ export default function Pedidos() {
             className="bg-ambar text-carvao font-medium px-5 py-2.5 hover:bg-osso transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
             {enviando ? 'Enviando...' : 'Finalizar pedido'}
           </button>
+          </fieldset>
         </div>
       )}
 
@@ -740,7 +864,7 @@ export default function Pedidos() {
       </div>
 
       {/* Kanban */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         {COLUNAS.map((coluna) => {
           const pedidosColuna = pedidosFiltrados.filter((p) => p.status === coluna.status)
           return (
@@ -760,8 +884,8 @@ export default function Pedidos() {
                     agora={agora}
                     onAvancar={avancarStatus}
                     onCancelar={cancelarPedido}
-                    expandido={expandidoId === pedido.id}
-                    onToggle={() => setExpandidoId(expandidoId === pedido.id ? null : pedido.id)}
+                    atualizando={pedidosEmAtualizacao.has(pedido.id)}
+                    onAbrirDetalhe={pedido => setExpandidoId(pedido.id)}
                   />
                 ))}
               </div>
@@ -769,6 +893,15 @@ export default function Pedidos() {
           )
         })}
       </div>
+      <SidePanel
+        aberto={!!pedidoDetalhe}
+        onFechar={() => setExpandidoId(null)}
+        titulo={pedidoDetalhe ? `Pedido #${pedidoDetalhe.id}` : ''}
+      >
+        {pedidoDetalhe && (
+          <DetalhePedido pedido={pedidoDetalhe} onAvancar={avancarStatus} onCancelar={cancelarPedido} atualizando={pedidosEmAtualizacao.has(pedidoDetalhe.id)} />
+        )}
+      </SidePanel>
     </div>
   )
 }

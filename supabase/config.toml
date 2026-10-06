@@ -1,0 +1,4 @@
+[functions.calcular-entrega]
+# A função valida o token do usuário com auth.getUser, antes de consultar o banco.
+# Não confundir desativação da validação do gateway com acesso público ao handler.
+verify_jwt = false

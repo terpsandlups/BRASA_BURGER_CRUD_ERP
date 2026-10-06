@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabaseClient.js'
 import PageHeader from '../components/layout/PageHeader.jsx'
+import Button from '../components/ui/Button.jsx'
+import CadastroInsumo from '../components/CadastroInsumo.jsx'
 
 export default function Estoque() {
   const [lojas, setLojas] = useState([])
@@ -10,6 +12,44 @@ export default function Estoque() {
   const [somenteAlerta, setSomenteAlerta] = useState(false)
   const [reposicao, setReposicao] = useState({}) // { "lojaId-ingredienteId": valor digitado }
   const [salvandoChave, setSalvandoChave] = useState(null)
+  const [mostrarCadastro, setMostrarCadastro] = useState(false)
+  const [ingredientes, setIngredientes] = useState([])
+  const [novoSaldo, setNovoSaldo] = useState({ ingrediente_id: '', quantidade_disponivel: '0', quantidade_minima: '0' })
+  const [vinculando, setVinculando] = useState(false)
+  const [erro, setErro] = useState('')
+  const travaVinculo = useRef(false)
+  const consultaRef = useRef(0)
+
+  async function carregarIngredientes() {
+    const { data, error } = await supabase.from('ingredientes').select('id, nome, unidade_medida').eq('ativo', true).order('nome')
+    if (error) setErro(error.message)
+    else setIngredientes(data || [])
+  }
+
+  async function vincular(e) {
+    e.preventDefault()
+    if (travaVinculo.current || !filtroLoja || !novoSaldo.ingrediente_id) return
+    const quantidade = Number(novoSaldo.quantidade_disponivel)
+    const minimo = Number(novoSaldo.quantidade_minima)
+    if (![quantidade, minimo].every((n) => Number.isFinite(n) && n >= 0)) return
+    travaVinculo.current = true
+    setVinculando(true)
+    setErro('')
+    try {
+      const { error } = await supabase.from('estoque_lojas').insert({
+        loja_id: filtroLoja, ingrediente_id: novoSaldo.ingrediente_id,
+        quantidade_disponivel: quantidade, quantidade_minima: minimo,
+      })
+      if (error) throw error
+      setNovoSaldo({ ingrediente_id: '', quantidade_disponivel: '0', quantidade_minima: '0' })
+      await carregarEstoque(filtroLoja)
+    } catch (error) {
+      setErro('Não foi possível vincular o insumo à unidade: ' + error.message)
+    } finally {
+      travaVinculo.current = false
+      setVinculando(false)
+    }
+  }
 
   async function carregar() {
     const { data: l } = await supabase.from('lojas').select('*').eq('ativo', true)
@@ -21,15 +61,19 @@ export default function Estoque() {
 
   async function carregarEstoque(lojaId) {
     if (!lojaId) return
-    const { data } = await supabase
+    const consulta = ++consultaRef.current
+    setEstoque([])
+    const { data, error } = await supabase
       .from('estoque_lojas')
       .select('*, ingredientes(nome, unidade_medida, categoria)')
       .eq('loja_id', lojaId)
       .order('quantidade_disponivel', { ascending: true })
-    if (data) setEstoque(data)
+    if (consulta !== consultaRef.current) return
+    if (error) setErro(error.message)
+    else setEstoque(data || [])
   }
 
-  useEffect(() => { carregar() }, [])
+  useEffect(() => { carregar(); carregarIngredientes() }, [])
   useEffect(() => { carregarEstoque(filtroLoja) }, [filtroLoja])
 
   const chave = (item) => `${item.loja_id}-${item.ingrediente_id}`
@@ -40,7 +84,7 @@ export default function Estoque() {
     setSalvandoChave(chave(item))
     const { error } = await supabase
       .from('estoque_lojas')
-      .update({ quantidade_disponivel: item.quantidade_disponivel + valor })
+      .update({ quantidade_disponivel: Number(item.quantidade_disponivel) + valor })
       .eq('loja_id', item.loja_id)
       .eq('ingrediente_id', item.ingrediente_id)
     setSalvandoChave(null)
@@ -64,10 +108,13 @@ export default function Estoque() {
 
   return (
     <div>
-      <PageHeader titulo="Estoque" descricao="A baixa acontece automaticamente a cada venda, com base na ficha técnica." />
+      <PageHeader titulo="Estoque" descricao="Insumos e saldos por unidade, ligados às fichas técnicas." acaoPrincipal={<Button onClick={() => setMostrarCadastro(!mostrarCadastro)}>{mostrarCadastro ? 'Fechar cadastro' : '+ Cadastrar insumo'}</Button>} />
+
+      {mostrarCadastro && <CadastroInsumo onSalvo={carregarIngredientes} />}
+      {erro && <p role="alert" className="text-brasa mb-4">{erro}</p>}
 
       <div className="flex flex-wrap gap-3 mb-6 items-center">
-        <select value={filtroLoja} onChange={(e) => setFiltroLoja(e.target.value)}
+        <select aria-label="Unidade do estoque" disabled={vinculando} value={filtroLoja} onChange={(e) => { setFiltroLoja(e.target.value); setNovoSaldo({ ingrediente_id: '', quantidade_disponivel: '0', quantidade_minima: '0' }) }}
           className="px-3 py-2 border border-superficie2/40 text-sm">
           {lojas.map((l) => <option key={l.id} value={l.id}>{l.nome}</option>)}
         </select>
@@ -85,7 +132,26 @@ export default function Estoque() {
         </button>
       </div>
 
-      <table className="w-full text-sm bg-white">
+      {mostrarCadastro && <form onSubmit={vincular} className="bg-branco border border-borda p-5 mb-5">
+        <h2 className="text-xl mb-3">Vincular insumo à unidade selecionada</h2>
+        <fieldset disabled={vinculando} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <label className="text-sm">Insumo
+            <select required value={novoSaldo.ingrediente_id} onChange={(e) => setNovoSaldo({ ...novoSaldo, ingrediente_id: e.target.value })} className="block border border-borda p-2 w-full">
+              <option value="">Selecione...</option>
+              {ingredientes.filter((i) => !estoque.some((s) => s.ingrediente_id === i.id)).map((i) => <option key={i.id} value={i.id}>{i.nome} ({i.unidade_medida})</option>)}
+            </select>
+          </label>
+          <label className="text-sm">Saldo inicial (g/ml/un)
+            <input required type="number" min="0" step="0.001" value={novoSaldo.quantidade_disponivel} onChange={(e) => setNovoSaldo({ ...novoSaldo, quantidade_disponivel: e.target.value })} className="block border border-borda p-2 w-full" />
+          </label>
+          <label className="text-sm">Estoque mínimo (g/ml/un)
+            <input required type="number" min="0" step="0.001" value={novoSaldo.quantidade_minima} onChange={(e) => setNovoSaldo({ ...novoSaldo, quantidade_minima: e.target.value })} className="block border border-borda p-2 w-full" />
+          </label>
+          <Button disabled={!filtroLoja}>{vinculando ? 'Salvando...' : 'Vincular à unidade'}</Button>
+        </fieldset>
+      </form>}
+
+      <div className="overflow-x-auto"><table className="w-full text-sm bg-white">
         <thead>
           <tr className="text-left text-xs uppercase tracking-wide text-fumaca">
             <th className="py-2">Ingrediente</th>
@@ -137,7 +203,7 @@ export default function Estoque() {
             )
           })}
         </tbody>
-      </table>
+      </table></div>
     </div>
   )
 }

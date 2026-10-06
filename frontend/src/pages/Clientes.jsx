@@ -1,9 +1,12 @@
-import { Fragment, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabaseClient.js'
 import { formatarCPF, apenasDigitos, validarCPF, formatarTelefone } from '../lib/format.js'
 import CamposEndereco from '../components/CamposEndereco.jsx'
 import PageHeader from '../components/layout/PageHeader.jsx'
 import Button from '../components/ui/Button.jsx'
+import SidePanel from '../components/layout/SidePanel.jsx'
+import { carregarTodasPaginas } from '../lib/dashboard.js'
+import { filtrarClientes } from '../lib/clientes.js'
 
 const vazio = {
   cpf: '', nome: '', telefone: '', email: '',
@@ -34,32 +37,46 @@ export default function Clientes() {
   const [expandidoCpf, setExpandidoCpf] = useState(null)
   const [perfis, setPerfis] = useState({}) // cpf -> estatísticas calculadas
   const [carregandoPerfil, setCarregandoPerfil] = useState(false)
+  const [erroLista, setErroLista] = useState('')
+  const [erroPerfil, setErroPerfil] = useState('')
+  const consultaPerfilRef = useRef(0)
+  const consultaListaRef = useRef(0)
+  const cadastroRef = useRef(false)
 
   async function carregar() {
-    const { data } = await supabase
-      .from('clientes')
-      .select('*')
-      .order('data_cadastro', { ascending: false })
-    if (data) setClientes(data)
+    const consulta = ++consultaListaRef.current
+    try {
+      const data = await carregarTodasPaginas(() => supabase.from('clientes').select('*')
+        .order('data_cadastro', { ascending: false }).order('cpf'))
+      if (consulta !== consultaListaRef.current) return
+      setClientes(data)
+      setErroLista('')
+    } catch (error) {
+      if (consulta === consultaListaRef.current) setErroLista('Não foi possível atualizar a lista de clientes: ' + error.message)
+    }
   }
 
-  useEffect(() => { carregar() }, [])
+  useEffect(() => {
+    carregar()
+    return () => { consultaListaRef.current += 1; consultaPerfilRef.current += 1 }
+  }, [])
 
   async function abrirPerfil(cpf) {
+    const consulta = ++consultaPerfilRef.current
     if (expandidoCpf === cpf) {
       setExpandidoCpf(null)
       return
     }
     setExpandidoCpf(cpf)
-    if (perfis[cpf]) return // já calculado
-
+    setErroPerfil('')
     setCarregandoPerfil(true)
-    const { data: pedidos } = await supabase
+    try {
+    const pedidos = await carregarTodasPaginas(() => supabase
       .from('pedidos')
       .select('id, valor_total, criado_em, status, tipo_atendimento, lojas(nome), itens_pedido(quantidade, produtos(nome))')
       .eq('cliente_cpf', cpf)
-      .order('criado_em', { ascending: true })
-    setCarregandoPerfil(false)
+      .order('criado_em', { ascending: true }).order('id'))
+    if (consulta !== consultaPerfilRef.current) return
 
     const validos = (pedidos || []).filter((p) => p.status !== 'cancelado')
     const faturamentoTotal = validos.reduce((acc, p) => acc + Number(p.valor_total), 0)
@@ -81,8 +98,8 @@ export default function Clientes() {
     }
     const produtosFavoritos = [...produtoContagem.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3)
 
-    setPerfis({
-      ...perfis,
+    setPerfis(atuais => ({
+      ...atuais,
       [cpf]: {
         totalPedidos: validos.length,
         totalCancelados: (pedidos || []).length - validos.length,
@@ -94,11 +111,17 @@ export default function Clientes() {
         canalPreferido: contagem(validos.map((p) => p.tipo_atendimento)),
         produtosFavoritos,
       },
-    })
+    }))
+    } catch (error) {
+      if (consulta === consultaPerfilRef.current) setErroPerfil('Não foi possível atualizar o perfil: ' + error.message)
+    } finally {
+      if (consulta === consultaPerfilRef.current) setCarregandoPerfil(false)
+    }
   }
 
   async function salvar(e) {
     e.preventDefault()
+    if (cadastroRef.current) return
     const cpfLimpo = apenasDigitos(form.cpf)
     if (!validarCPF(cpfLimpo)) {
       alert('CPF inválido — confira os números digitados.')
@@ -108,26 +131,26 @@ export default function Clientes() {
       alert('Telefone inválido — informe DDD + número.')
       return
     }
+    cadastroRef.current = true
     setSalvando(true)
+    try {
     const { error } = await supabase.from('clientes').insert({
       ...form, cpf: cpfLimpo, telefone: apenasDigitos(form.telefone),
     })
-    setSalvando(false)
-    if (error) {
-      alert('Erro ao cadastrar: ' + error.message)
-      return
-    }
+    if (error) throw error
     setForm(vazio)
-    carregar()
+    await carregar()
+    } catch (error) {
+      alert('Erro ao cadastrar: ' + error.message)
+    } finally { cadastroRef.current = false; setSalvando(false) }
   }
 
-  const clientesFiltrados = clientes.filter((c) =>
-    (c.nome + c.cpf).toLowerCase().includes(busca.toLowerCase())
-  )
+  const clientesFiltrados = filtrarClientes(clientes, busca)
 
   return (
     <div>
       <PageHeader titulo="Clientes" descricao="Cadastro robusto com busca de CEP, validação de CPF e perfil CRM." />
+      {erroLista && <p role="alert" className="text-sm text-brasa mb-3">{erroLista} <button onClick={carregar} className="underline">Tentar novamente</button></p>}
 
       <form onSubmit={salvar} className="bg-superficie text-osso p-6 mb-8 grid grid-cols-2 gap-4">
         <div className="col-span-2">
@@ -202,73 +225,75 @@ export default function Clientes() {
         </thead>
         <tbody>
           {clientesFiltrados.map((c) => (
-            <Fragment key={c.cpf}>
-              <tr onClick={() => abrirPerfil(c.cpf)} className="cursor-pointer hover:bg-osso/60">
-                <td className="py-2">{formatarCPF(c.cpf)}</td>
-                <td className="py-2">{c.nome}</td>
-                <td className="py-2">{formatarTelefone(c.telefone)}</td>
-                <td className="py-2">{new Date(c.data_cadastro).toLocaleDateString('pt-BR')}</td>
-              </tr>
-              {expandidoCpf === c.cpf && (
-                <tr className="bg-osso/40">
-                  <td colSpan={4} className="p-4">
-                    {carregandoPerfil && !perfis[c.cpf] ? (
-                      <p className="text-sm text-fumaca">Calculando perfil...</p>
-                    ) : perfis[c.cpf] ? (
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div>
-                          <p className="text-[11px] uppercase text-fumaca">Total de pedidos</p>
-                          <p className="font-display text-xl">{perfis[c.cpf].totalPedidos}</p>
-                          {perfis[c.cpf].totalCancelados > 0 && (
-                            <p className="text-[11px] text-brasa">{perfis[c.cpf].totalCancelados} cancelado(s)</p>
-                          )}
-                        </div>
-                        <div>
-                          <p className="text-[11px] uppercase text-fumaca">Faturamento total</p>
-                          <p className="font-display text-xl">R$ {perfis[c.cpf].faturamentoTotal.toFixed(2)}</p>
-                        </div>
-                        <div>
-                          <p className="text-[11px] uppercase text-fumaca">Ticket médio</p>
-                          <p className="font-display text-xl">R$ {perfis[c.cpf].ticketMedio.toFixed(2)}</p>
-                        </div>
-                        <div>
-                          <p className="text-[11px] uppercase text-fumaca">Unidade / canal preferido</p>
-                          <p className="text-sm mt-1">{perfis[c.cpf].unidadePreferida || '—'}</p>
-                          <p className="text-xs text-fumaca capitalize">{perfis[c.cpf].canalPreferido || '—'}</p>
-                        </div>
-                        <div>
-                          <p className="text-[11px] uppercase text-fumaca">Primeiro pedido</p>
-                          <p className="text-sm mt-1">
-                            {perfis[c.cpf].primeiroPedido ? new Date(perfis[c.cpf].primeiroPedido).toLocaleDateString('pt-BR') : '—'}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-[11px] uppercase text-fumaca">Último pedido</p>
-                          <p className="text-sm mt-1">
-                            {perfis[c.cpf].ultimoPedido ? new Date(perfis[c.cpf].ultimoPedido).toLocaleDateString('pt-BR') : '—'}
-                          </p>
-                        </div>
-                        <div className="col-span-2">
-                          <p className="text-[11px] uppercase text-fumaca">Produtos favoritos</p>
-                          {perfis[c.cpf].produtosFavoritos.length > 0 ? (
-                            <ul className="text-sm mt-1">
-                              {perfis[c.cpf].produtosFavoritos.map(([nome, qtd]) => (
-                                <li key={nome}>{nome} <span className="text-fumaca">({qtd}x)</span></li>
-                              ))}
-                            </ul>
-                          ) : <p className="text-sm text-fumaca mt-1">Sem pedidos ainda</p>}
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="text-sm text-fumaca">Sem pedidos registrados ainda.</p>
-                    )}
-                  </td>
-                </tr>
-              )}
-            </Fragment>
+            <tr key={c.cpf} onClick={() => abrirPerfil(c.cpf)} className="cursor-pointer hover:bg-osso/60">
+              <td className="py-2">{formatarCPF(c.cpf)}</td>
+              <td className="py-2">{c.nome}</td>
+              <td className="py-2">{formatarTelefone(c.telefone)}</td>
+              <td className="py-2">{new Date(c.data_cadastro).toLocaleDateString('pt-BR')}</td>
+            </tr>
           ))}
         </tbody>
       </table>
+
+      <SidePanel
+        aberto={!!expandidoCpf}
+        onFechar={() => { consultaPerfilRef.current += 1; setExpandidoCpf(null) }}
+        titulo={clientes.find((c) => c.cpf === expandidoCpf)?.nome || 'Perfil do cliente'}
+      >
+        {erroPerfil && <p role="alert" className="text-sm text-brasa mb-3">{erroPerfil}</p>}
+        {carregandoPerfil ? (
+          <p className="text-sm text-fumaca">Calculando perfil...</p>
+        ) : !erroPerfil && expandidoCpf && perfis[expandidoCpf] ? (
+          <div className="space-y-5">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-[11px] uppercase text-fumaca">Total de pedidos</p>
+                <p className="font-display text-xl">{perfis[expandidoCpf].totalPedidos}</p>
+                {perfis[expandidoCpf].totalCancelados > 0 && (
+                  <p className="text-[11px] text-brasa">{perfis[expandidoCpf].totalCancelados} cancelado(s)</p>
+                )}
+              </div>
+              <div>
+                <p className="text-[11px] uppercase text-fumaca">Faturamento total</p>
+                <p className="font-display text-xl">R$ {perfis[expandidoCpf].faturamentoTotal.toFixed(2)}</p>
+              </div>
+              <div>
+                <p className="text-[11px] uppercase text-fumaca">Ticket médio</p>
+                <p className="font-display text-xl">R$ {perfis[expandidoCpf].ticketMedio.toFixed(2)}</p>
+              </div>
+              <div>
+                <p className="text-[11px] uppercase text-fumaca">Unidade / canal preferido</p>
+                <p className="text-sm mt-1">{perfis[expandidoCpf].unidadePreferida || '—'}</p>
+                <p className="text-xs text-fumaca capitalize">{perfis[expandidoCpf].canalPreferido || '—'}</p>
+              </div>
+              <div>
+                <p className="text-[11px] uppercase text-fumaca">Primeiro pedido</p>
+                <p className="text-sm mt-1">
+                  {perfis[expandidoCpf].primeiroPedido ? new Date(perfis[expandidoCpf].primeiroPedido).toLocaleDateString('pt-BR') : '—'}
+                </p>
+              </div>
+              <div>
+                <p className="text-[11px] uppercase text-fumaca">Último pedido</p>
+                <p className="text-sm mt-1">
+                  {perfis[expandidoCpf].ultimoPedido ? new Date(perfis[expandidoCpf].ultimoPedido).toLocaleDateString('pt-BR') : '—'}
+                </p>
+              </div>
+            </div>
+            <div>
+              <p className="text-[11px] uppercase text-fumaca">Produtos favoritos</p>
+              {perfis[expandidoCpf].produtosFavoritos.length > 0 ? (
+                <ul className="text-sm mt-1 space-y-1">
+                  {perfis[expandidoCpf].produtosFavoritos.map(([nome, qtd]) => (
+                    <li key={nome}>{nome} <span className="text-fumaca">({qtd}x)</span></li>
+                  ))}
+                </ul>
+              ) : <p className="text-sm text-fumaca mt-1">Sem pedidos ainda</p>}
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-fumaca">{erroPerfil ? 'Feche e reabra o perfil para tentar novamente.' : 'Sem pedidos registrados ainda.'}</p>
+        )}
+      </SidePanel>
     </div>
   )
 }

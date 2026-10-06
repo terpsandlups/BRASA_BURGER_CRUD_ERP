@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient.js'
 import PageHeader from '../components/layout/PageHeader.jsx'
 import Button from '../components/ui/Button.jsx'
+import SidePanel from '../components/layout/SidePanel.jsx'
+import EditarFicha from '../components/EditarFicha.jsx'
+import { validarVariacao, validarQuantidadeFicha } from '../lib/fichaTecnica.js'
 
 const TONS = {
   oliva: 'border-oliva text-oliva',
@@ -32,6 +35,8 @@ export default function Produtos() {
   const [adicionais, setAdicionais] = useState([])
   const [filtroCategoria, setFiltroCategoria] = useState('todas')
   const [expandido, setExpandido] = useState(null)
+  const [editandoId, setEditandoId] = useState(null)
+  const variacaoEditada = variacoes.find(v => v.id === editandoId)
 
   const [mostrarNovoProduto, setMostrarNovoProduto] = useState(false)
   const [novoProduto, setNovoProduto] = useState(PRODUTO_VAZIO)
@@ -110,14 +115,16 @@ export default function Produtos() {
   }
 
   async function salvarVariacao(sku) {
+    let dadosValidados
+    try { dadosValidados = validarVariacao(formVariacao.nome_variacao, formVariacao.preco_venda) }
+    catch (error) { alert(error.message); return }
     if (!formVariacao.nome_variacao || !formVariacao.preco_venda) {
       alert('Preencha nome da variação e preço.')
       return
     }
     const { error } = await supabase.from('produto_variacoes').insert({
       produto_sku: sku,
-      nome_variacao: formVariacao.nome_variacao,
-      preco_venda: Number(formVariacao.preco_venda),
+      ...dadosValidados,
       padrao: variacoesDoProduto(sku).length === 0,
     })
     if (error) {
@@ -130,6 +137,9 @@ export default function Produtos() {
   }
 
   async function salvarIngredienteFicha(variacaoId) {
+    let quantidadeValidada
+    try { quantidadeValidada = validarQuantidadeFicha(formIngrediente.peso_quantidade) }
+    catch (error) { alert(error.message); return }
     if (!formIngrediente.ingrediente_id || !formIngrediente.peso_quantidade) {
       alert('Selecione o ingrediente e a quantidade.')
       return
@@ -137,7 +147,7 @@ export default function Produtos() {
     const { error } = await supabase.from('fichas_tecnicas').insert({
       variacao_id: variacaoId,
       ingrediente_id: formIngrediente.ingrediente_id,
-      peso_quantidade: Number(formIngrediente.peso_quantidade),
+      peso_quantidade: quantidadeValidada,
     })
     if (error) {
       alert('Erro ao adicionar ingrediente: ' + error.message)
@@ -263,6 +273,9 @@ export default function Produtos() {
       </div>
 
       <div className="space-y-3">
+        <SidePanel aberto={!!variacaoEditada} onFechar={() => setEditandoId(null)} titulo={variacaoEditada ? `Ficha — ${variacaoEditada.nome_variacao}` : 'Ficha técnica'}>
+          {variacaoEditada && <EditarFicha key={variacaoEditada.id} variacao={variacaoEditada} onSalvo={carregar} />}
+        </SidePanel>
         {produtosFiltrados.map((produto) => (
           <div key={produto.sku} className={`bg-white border border-superficie2/20 ${!produto.ativo ? 'opacity-50' : ''}`}>
             <button
@@ -306,6 +319,7 @@ export default function Produtos() {
                     return (
                       <div key={v.id} className="border border-superficie2/30 p-4">
                         <p className="font-medium">{v.nome_variacao}</p>
+                        <button onClick={() => setEditandoId(v.id)} className="text-xs text-ambar mt-2">Ver / editar variação e ficha</button>
                         <p className="text-sm text-fumaca mt-1">Venda: R$ {Number(v.preco_venda).toFixed(2)}</p>
                         {custo ? (
                           <>
