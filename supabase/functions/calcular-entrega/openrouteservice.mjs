@@ -66,6 +66,54 @@ function pontoManual(dados, etapa) {
   return { coordenadas: [longitude, latitude], endereco: '', modo: 'ponto_marcado' }
 }
 
+function candidatoParaMapa(item, esperado) {
+  const p = item?.properties || {}
+  const coords = item?.geometry?.coordinates
+  if (item?.geometry?.type !== 'Point' || !Array.isArray(coords) || coords.length !== 2 ||
+    !coords.every(Number.isFinite) || coords[1] < -34 || coords[1] > 6 || coords[0] < -74 || coords[0] > -34 ||
+    p.country_a !== 'BRA' || uf(p) !== normalizar(esperado.estado)) return null
+  const cidade = texto(p.locality || p.localadmin)
+  if (cidade && cidade !== texto(esperado.cidade)) return null
+  const mesmaRua = p.street && rua(p.street) === rua(esperado.endereco)
+  const mesmoCep = p.postalcode && normalizar(p.postalcode) === normalizar(esperado.cep)
+  if (!cidade && !mesmoCep) return null
+  if (!mesmaRua && !mesmoCep) return null
+  const exato = divergencias(item, esperado).length === 0
+  return {
+    latitude: coords[1], longitude: coords[0],
+    precisao: exato ? 'imovel' : mesmaRua ? 'rua' : 'cep',
+    pontuacao: exato ? 3 : mesmaRua ? 2 : 1,
+    confianca: Number.isFinite(p.confidence) ? p.confidence : 0,
+  }
+}
+
+// Apenas centraliza o mapa: resultado aproximado nunca vira ponto de cobrança.
+export async function sugerirCentroMapa({ apiKey, endereco, textoEndereco, fetchFn }) {
+  async function buscar(consulta, camada) {
+    const url = new URL('https://api.heigit.org/pelias/v1/search')
+    url.searchParams.set('text', consulta)
+    url.searchParams.set('boundary.country', 'BRA')
+    url.searchParams.set('size', '5')
+    if (camada) url.searchParams.set('layers', camada)
+    let resposta
+    try {
+      resposta = await fetchFn(url.toString(), { signal: AbortSignal.timeout(12000), headers: { Authorization: apiKey } })
+    } catch { throw new Falha(502, 'O serviço de localização não respondeu. Mova o mapa manualmente.') }
+    if (resposta.status === 429) throw new Falha(429, 'Cota gratuita de localização atingida. Aguarde a renovação.')
+    if (!resposta.ok) throw new Falha(502, 'O serviço de localização está indisponível. Mova o mapa manualmente.')
+    let data
+    try { data = await resposta.json() } catch { throw new Falha(502, 'Resposta inválida do serviço de localização.') }
+    if (!Array.isArray(data?.features)) throw new Falha(502, 'Resposta inválida do serviço de localização.')
+    return data.features.map(item => candidatoParaMapa(item, endereco)).filter(Boolean)
+      .sort((a, b) => b.pontuacao - a.pontuacao || b.confianca - a.confianca)[0] || null
+  }
+  const encontrado = await buscar(textoEndereco)
+    || await buscar(`${endereco.endereco}, ${endereco.cidade} - ${endereco.estado}, Brasil`, 'street')
+  if (!encontrado) throw new Falha(422, 'Não encontramos uma região confiável para centralizar o mapa. Procure o imóvel manualmente; nenhuma taxa foi calculada.')
+  const { latitude, longitude, precisao } = encontrado
+  return { latitude, longitude, precisao }
+}
+
 export async function consultarORS({ apiKey, origem, destino, textoOrigem, textoDestino, fetchFn }) {
   const signal = AbortSignal.timeout(12000)
   async function consultar(url, options = {}) {

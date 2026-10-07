@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { criarHandler } from '../../supabase/functions/calcular-entrega/handler.mjs'
-import { selecionarEndereco } from '../../supabase/functions/calcular-entrega/openrouteservice.mjs'
+import { selecionarEndereco, sugerirCentroMapa } from '../../supabase/functions/calcular-entrega/openrouteservice.mjs'
 
 const endereco = { endereco: 'Rua Exemplo', numero: '10', bairro: 'Centro', cidade: 'Jundiaí', estado: 'SP', cep: '13201000' }
 const ponto = () => ({ geometry: { type: 'Point', coordinates: [-46.9, -23.1] }, properties: {
@@ -167,4 +167,39 @@ test('ponto apenas de um lado localiza o outro endereço; ponto inválido não c
     assert.equal((await resposta.json()).taxa, undefined)
     assert.equal(chamadas.length, 0)
   }
+})
+
+test('busca para centralizar mapa é autenticada, não consulta rota nem gera taxa', async () => {
+  const { handler, chamadas, request } = ambiente()
+  const original = request()
+  const body = await original.json()
+  const resposta = await handler(new Request(original.url, { method: 'POST', headers: original.headers,
+    body: JSON.stringify({ ...body, acao: 'sugerir_mapa' }) }))
+  assert.equal(resposta.status, 200)
+  const data = await resposta.json()
+  assert.deepEqual([data.latitude, data.longitude, data.precisao, data.apenas_centro], [-23.1, -46.9, 'imovel', true])
+  assert.equal(data.taxa, undefined)
+  assert.equal(chamadas.length, 1)
+  assert.ok(chamadas[0].url.includes('/pelias/v1/search'))
+})
+
+test('busca aproximada centraliza apenas rua correta; local errado é recusado', async () => {
+  const chamadas = []
+  const buscar = async (url) => {
+    chamadas.push(url)
+    const p = ponto()
+    p.properties.layer = 'street'
+    delete p.properties.housenumber
+    delete p.properties.postalcode
+    return Response.json({ features: [p] })
+  }
+  const sugestao = await sugerirCentroMapa({ apiKey: 'teste', endereco, textoEndereco: 'Rua Exemplo, 10, Jundiaí', fetchFn: buscar })
+  assert.equal(sugestao.precisao, 'rua')
+  assert.equal(chamadas.length, 1)
+  await assert.rejects(() => sugerirCentroMapa({ apiKey: 'teste', endereco, textoEndereco: 'Rua Exemplo, 10, Jundiaí',
+    fetchFn: async () => { const p = ponto(); p.properties.locality = 'Outra cidade'; return Response.json({ features: [p] }) } }),
+  /Não encontramos uma região confiável/)
+  await assert.rejects(() => sugerirCentroMapa({ apiKey: 'teste', endereco, textoEndereco: 'Rua Exemplo, 10, Jundiaí',
+    fetchFn: async () => { const p = ponto(); delete p.properties.locality; delete p.properties.postalcode; return Response.json({ features: [p] }) } }),
+  /Não encontramos uma região confiável/)
 })

@@ -1,5 +1,16 @@
 # Continuidade de execução
 
+## Base cartográfica vigente no MVP
+
+- O projeto está em testes com mapa Leaflet/OpenStreetMap e geocodificação/rotas openrouteservice/HeiGIT no plano gratuito. Google Maps API não está ativo; o guia Google é histórico e uma eventual migração exigirá decisão posterior sobre custos, cobertura e implementação.
+- Endereço postal e ponto geográfico têm funções diferentes: o endereço identifica a entrega, enquanto um ponto confirmado complementa a geocodificação quando a base gratuita não encontra o imóvel. A busca aproximada no mapa não gera taxa sozinha.
+
+## Busca assistida no mapa e posicionamento do produto — 05/10/2026
+
+- Adicionada busca autenticada por endereço que centraliza o mapa do destino na região encontrada pelo openrouteservice/Pelias. O resultado informa se é imóvel, rua ou CEP; somente um imóvel exato pode ser usado sem marcação manual. Rua/CEP aproximados nunca viram coordenadas de cobrança automaticamente.
+- Teste real com CEP 13211-772 e número 165 centralizou o mapa na Avenida Reserva do Japy e indicou corretamente precisão de rua, sem selecionar pino nem gerar taxa. 40 testes automatizados e build aprovados. O ponto da loja Eloy foi marcado e salvo pelo usuário; ele confirmou que corresponde ao imóvel real.
+- Visão de produto registrada no README: ERP de varejo alimentar com identidade própria da marca. Personalização integral por estabelecimento segue como evolução, não como recurso pronto. Cobrança de frete no pedido ainda não foi implementada.
+
 ## Decisão atual: mapa opcional para complementar endereços — 05/10/2026
 
 - A pedido do usuário, restaurados mapas OpenStreetMap/Leaflet para marcar origem persistente por loja e destino temporário por consulta. Quando há ponto, o openrouteservice roteia por essas coordenadas; se não há, tenta geocodificar o endereço completo. CEP sozinho não produz coordenada do imóvel.

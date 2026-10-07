@@ -7,6 +7,9 @@ export default function ConsultaEntrega({ lojaId, pontoSalvo, origemPendente }) 
   const [destino, setDestino] = useState({})
   const [ponto, setPonto] = useState(null)
   const [pontoConfirmado, setPontoConfirmado] = useState(false)
+  const [centroMapa, setCentroMapa] = useState(null)
+  const [buscandoMapa, setBuscandoMapa] = useState(false)
+  const [erroMapa, setErroMapa] = useState('')
   const [resultado, setResultado] = useState(null)
   const [erro, setErro] = useState('')
   const [consultando, setConsultando] = useState(false)
@@ -17,9 +20,37 @@ export default function ConsultaEntrega({ lojaId, pontoSalvo, origemPendente }) 
   function alterar(campo, valor) {
     versao.current += 1
     setDestino(anterior => ({ ...anterior, [campo]: valor }))
-    if (campo !== 'complemento') { setPonto(null); setPontoConfirmado(false) }
+    if (campo !== 'complemento') { setPonto(null); setPontoConfirmado(false); setCentroMapa(null); setErroMapa('') }
     setResultado(null)
     setErro('')
+  }
+
+  async function buscarNoMapa() {
+    if (consultando || buscandoMapa || origemPendente) return
+    const atual = ++versao.current
+    setBuscandoMapa(true)
+    setErroMapa('')
+    setResultado(null)
+    try {
+      const { data, error } = await supabase.functions.invoke('calcular-entrega', {
+        body: { acao: 'sugerir_mapa', loja_id: lojaId, destino },
+      })
+      if (error) {
+        let mensagem = 'Não foi possível localizar a região. Mova o mapa manualmente.'
+        try { mensagem = (await error.context?.json())?.error || mensagem } catch { /* resposta não JSON */ }
+        throw new Error(mensagem)
+      }
+      if (!data?.apenas_centro || !Number.isFinite(data.latitude) || !Number.isFinite(data.longitude)) {
+        throw new Error('O serviço não retornou um ponto confiável para centralizar o mapa.')
+      }
+      if (atual === versao.current) {
+        setPonto(null)
+        setPontoConfirmado(false)
+        setCentroMapa({ latitude: data.latitude, longitude: data.longitude, precisao: data.precisao, seq: atual })
+      }
+    } catch (error) {
+      if (atual === versao.current) setErroMapa(error.message)
+    } finally { setBuscandoMapa(false) }
   }
 
   async function consultar(event) {
@@ -59,11 +90,20 @@ export default function ConsultaEntrega({ lojaId, pontoSalvo, origemPendente }) 
       <p className="text-xs text-fumaca mb-3">Sem ponto marcado, tentamos localizar cada endereço completo. Se houver ponto, a rota usa sua posição — não o endereço digitado — daquele lado do trajeto.</p>
       {pontoSalvo && <p className="text-xs text-ambar mb-3">A origem desta loja está marcada no mapa e será usada no cálculo. Confira o endereço salvo da loja antes de simular.</p>}
       <form onSubmit={consultar}>
-        <fieldset disabled={consultando}>
+        <fieldset disabled={consultando || buscandoMapa}>
           <legend className="text-sm mb-3">Endereço de destino</legend>
           <CamposEndereco valores={destino} onChange={alterar} />
-          <MapaPonto titulo="Ponto da entrega (destino)" ponto={ponto} desabilitado={consultando}
-            onChange={valor => { versao.current += 1; setPonto(valor); setPontoConfirmado(false); setResultado(null); setErro('') }} />
+          <button type="button" onClick={buscarNoMapa} disabled={origemPendente} className="text-sm underline text-ambar mt-3 disabled:opacity-50">
+            {buscandoMapa ? 'Localizando região...' : 'Encontrar endereço no mapa'}
+          </button>
+          {erroMapa && <p role="alert" className="text-sm text-brasa mt-2">{erroMapa}</p>}
+          {centroMapa && <p role="status" className="text-xs text-ambar mt-2">
+            {centroMapa.precisao === 'imovel'
+              ? 'O serviço encontrou o imóvel. Tente calcular sem marcar um ponto.'
+              : `Mapa centralizado na região ${centroMapa.precisao === 'cep' ? 'do CEP' : 'da rua'}. Clique no imóvel exato para confirmar; esta sugestão não será usada automaticamente na taxa.`}
+          </p>}
+          <MapaPonto titulo="Ponto da entrega (destino)" ponto={ponto} centroSugerido={centroMapa} desabilitado={consultando || buscandoMapa}
+            onChange={valor => { versao.current += 1; setPonto(valor); setPontoConfirmado(false); setCentroMapa(null); setResultado(null); setErro('') }} />
           {ponto && <label className="flex items-start gap-2 text-xs text-ambar mt-3">
             <input type="checkbox" checked={pontoConfirmado} onChange={e => setPontoConfirmado(e.target.checked)} />
             Confirmo que o ponto marcado é o imóvel de entrega informado. Sei que o ponto, não o CEP, será usado na distância.

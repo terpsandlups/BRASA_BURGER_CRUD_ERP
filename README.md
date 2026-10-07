@@ -1,6 +1,18 @@
-# Brasa Burguer — Gestão Multiunidade
+# Brasa Burguer — ERP de varejo alimentar com identidade de marca
 
-Projeto acadêmico e de portfólio de um sistema web para uma rede fictícia de hamburguerias em Jundiaí/SP. Integra atendimento, clientes, pedidos, cardápio, fichas técnicas e indicadores gerenciais, com evolução gradual para ERP.
+Projeto acadêmico e de portfólio de um ERP de varejo alimentar em desenvolvimento, demonstrado pela rede fictícia Brasa Burguer, em Jundiaí/SP. Integra atendimento, clientes, pedidos, cardápio, fichas técnicas, estoque, entregas e análises gerenciais.
+
+## Visão do produto
+
+O objetivo é que a mesma base de gestão possa assumir a identidade e as regras de cada estabelecimento: marca, cores, linguagem, cardápio, unidades, canais de venda e fluxo operacional. Em vez de parecer um ERP genérico, a ferramenta deve se apresentar como um sistema próprio da marca que a utiliza. O Brasa Burguer é a primeira aplicação dessa visão; a personalização completa por estabelecimento ainda é uma meta do roadmap, não uma funcionalidade pronta.
+
+O protótipo atual já oferece dashboard e portal de análises, operação de pedidos, cadastros, estoque e simulação de frete por rota. O CEP preenche dados postais; quando o serviço gratuito não localiza um número, o operador pode buscar a região no mapa e confirmar o imóvel. A taxa de entrega ainda **não** é adicionada automaticamente ao pedido. Consulte [roadmap](ROADMAP_EXECUCAO.md) e [configuração do MVP gratuito](MVP_GRATUITO_SETUP.md).
+
+## Mapas e entregas no MVP em testes
+
+Nesta fase inicial, usamos **OpenStreetMap com Leaflet** para exibir o mapa e **openrouteservice/HeiGIT no plano gratuito** para buscar endereços e calcular rotas. O uso de dados cartográficos abertos ajuda a testar e iniciar o produto sem contratar a Google Maps API. O plano gratuito do serviço de rotas tem cotas e cobertura próprias; não significa uso ilimitado.
+
+O endereço físico continua necessário no cadastro da entrega. Se a base de localização não reconhecer o imóvel com precisão, a busca aproxima o mapa da rua ou do CEP para o operador confirmar o ponto correto. A aproximação não cria uma taxa automaticamente. **Google Maps não está ativo no MVP**; seu [guia antigo](GOOGLE_MAPS_SETUP.md) é apenas um registro de uma possibilidade futura, sujeita a decisão específica sobre custos e integração.
 
 ## Identificação acadêmica
 
@@ -35,9 +47,9 @@ O cenário considera Japy e Retiro com atendimento presencial e delivery, e Eloy
 
 React executa a interface no navegador. Node.js sustenta as ferramentas de desenvolvimento. A interface acessa o Supabase; Python executa tarefas independentes e não é uma API intermediária obrigatória.
 
-## Estado de desenvolvimento
+## Estado de desenvolvimento — registro documental anterior
 
-Esta revisão consolida o README anterior, a ficha técnica e o relatório de Design System. Os estados abaixo são **informados na documentação**; o código e os testes não acompanharam esta revisão. Uma tela existente não implica que todas as operações do módulo estejam completas.
+A tabela abaixo preserva o registro documental anterior. Para o estado mais recente do código e dos testes, consulte o roadmap e o registro de validação. Uma tela existente não implica que todas as operações do módulo estejam completas.
 
 | Área | Estado documentado | Limite ou próximo passo |
 |---|---|---|

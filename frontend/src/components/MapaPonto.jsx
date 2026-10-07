@@ -4,7 +4,7 @@ import 'leaflet/dist/leaflet.css'
 
 const centroInicial = [-23.185, -46.93] // Jundiaí; não representa o endereço de uma loja.
 
-export default function MapaPonto({ titulo, ponto, onChange, desabilitado = false }) {
+export default function MapaPonto({ titulo, ponto, onChange, centroSugerido = null, desabilitado = false }) {
   const container = useRef(null)
   const mapa = useRef(null)
   const marcador = useRef(null)
@@ -51,6 +51,14 @@ export default function MapaPonto({ titulo, ponto, onChange, desabilitado = fals
     } else marcador.current.setLatLng(posicao)
     mapa.current.setView(posicao, Math.max(mapa.current.getZoom(), 17))
   }, [ponto?.latitude, ponto?.longitude])
+
+  useEffect(() => {
+    if (!mapa.current || !centroSugerido) return
+    const { latitude, longitude, precisao } = centroSugerido
+    if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+      mapa.current.setView([latitude, longitude], precisao === 'cep' ? 15 : 17)
+    }
+  }, [centroSugerido])
 
   return (
     <div className="mt-4">

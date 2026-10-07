@@ -1,5 +1,9 @@
 # MVP sem contratação de serviços pagos
 
+O Brasa Burguer está em fase de testes. O mapa usa Leaflet e a base aberta do
+OpenStreetMap; busca de endereços e rotas usam openrouteservice/HeiGIT no plano
+gratuito. Google Maps API **não está ativo** nesta versão.
+
 Decisão do projeto: usar os planos gratuitos e aceitar seus limites nesta fase.
 Não ativar Google Cloud Billing, testes que exijam depósito, upgrades ou cobrança
 por excedente sem nova autorização. Isto não é uma garantia de gratuidade ilimitada:
@@ -66,6 +70,14 @@ se cada lado foi calculado pelo endereço confirmado ou pelo ponto marcado.
 Um ponto aleatório pode produzir uma rota válida, mas não valida o endereço;
 nesse caso, a taxa não corresponde à entrega pretendida. O cálculo manual
 continua disponível para simulação com uma distância conhecida.
+
+Para reduzir a busca manual, informe o CEP e o número do destino (os demais
+campos postais são preenchidos pelo CEP) e clique em **Encontrar endereço no
+mapa**. A função autenticada consulta o mesmo geocodificador gratuito e desloca
+o mapa para o imóvel, a rua ou a região do CEP, conforme a cobertura. Resultados
+aproximados servem **somente para centralizar o mapa**: não são salvos, não
+selecionam um pino e não geram taxa. Se for apenas a rua/CEP, clique no imóvel
+correto e confirme o ponto. A busca consome uma consulta da cota da função.
 
 Rota de carro, de ida, sem trânsito em tempo real. Distância arredondada ao metro,
 taxa ao centavo. Atribuição ao openrouteservice/HeiGIT e OpenStreetMap na tela.

@@ -1,20 +1,23 @@
-# Ativar cálculo de entrega com Google Maps
+# Arquivo histórico — proposta futura de Google Maps
 
-> Arquivado para uma versão futura: o MVP adotou openrouteservice gratuito.
-> Siga `MVP_GRATUITO_SETUP.md`. Não ative faturamento Google para esta fase.
-> A função atual não lê a chave Google; estas instruções não ativam o adaptador antigo.
+> **Este não é o guia de configuração do MVP atual.** O Brasa Burguer está em
+> fase de testes com mapa Leaflet/OpenStreetMap e geocodificação e rotas pelo
+> openrouteservice/HeiGIT no plano gratuito. A Google Maps API **não está ativa**.
+> Siga [MVP_GRATUITO_SETUP.md](MVP_GRATUITO_SETUP.md). Não ative faturamento
+> Google para esta fase. As instruções abaixo registram apenas uma alternativa
+> estudada anteriormente; não descrevem a interface ou o deploy atuais.
 
-## O que já está preparado
+## Proposta anterior, não vigente
 
-Na página **Entregas**, o bloco **Calcular pelas ruas — Google Maps** envia loja e
-endereço de destino à função `calcular-entrega` do Supabase. O servidor valida o
-usuário, a unidade e o limite de consultas; busca origem/tarifa salvas no banco;
-consulta a Routes API e calcula a taxa proporcional aos metros da rota.
+Uma versão futura poderia substituir a integração atual por uma consulta à
+Routes API do Google, após avaliação de custo, cobertura, privacidade e termos.
+O adaptador Google preservado no código não é selecionado pela função publicada.
+O bloco **Calcular pelas ruas — Google Maps** citado neste arquivo pertencia ao
+protótipo anterior e não deve ser procurado na interface atual.
 
-Somente simulação: não grava cotação, rota ou taxa em pedidos. Não há mapa visual
-embutido. São usadas rotas de **carro**, de ida, sem trânsito em tempo real; não
-representam necessariamente o percurso de moto nem a menor distância possível.
-Resultados parciais ou genéricos (como centro de CEP/rua sem imóvel) são recusados.
+Mesmo na proposta anterior, a consulta seria somente uma simulação: sem gravar
+cotação, rota ou taxa em pedidos. O MVP atual já oferece mapa visual com a base
+OpenStreetMap e permite confirmar um ponto quando o imóvel não é localizado.
 
 ## 1. Google Cloud — configuração feita pelo proprietário
 

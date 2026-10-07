@@ -1,5 +1,5 @@
 import { Falha } from './erro.mjs'
-import { consultarORS } from './openrouteservice.mjs'
+import { consultarORS, sugerirCentroMapa } from './openrouteservice.mjs'
 
 export function enderecoParaRota(dados) {
   if (!dados || typeof dados !== 'object') throw new Falha(400, 'Informe o endereço completo.')
@@ -83,6 +83,9 @@ export function criarHandler({ apiKey, provider = 'openrouteservice', allowedOri
       let body
       try { body = JSON.parse(new TextDecoder().decode(bytes)) } catch { throw new Falha(400, 'Requisição inválida.') }
       if (!/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(body?.loja_id || '')) throw new Falha(400, 'Selecione uma loja válida.')
+      const sugerirMapa = body.acao === 'sugerir_mapa'
+      if (body.acao && !sugerirMapa) throw new Falha(400, 'Ação inválida.')
+      if (sugerirMapa && provider !== 'openrouteservice') throw new Falha(503, 'Busca no mapa indisponível neste provedor.')
       const destino = enderecoParaRota(body.destino)
       // O navegador não decide origem, tarifa ou permissões. A RPC usa auth.uid().
       const { data: config, error } = await client.rpc('preparar_consulta_rota', { p_loja: body.loja_id })
@@ -93,6 +96,10 @@ export function criarHandler({ apiKey, provider = 'openrouteservice', allowedOri
         throw new Falha(503, 'Não foi possível preparar a consulta. Confira a instalação da migração de rotas.')
       }
       const origem = enderecoParaRota(config)
+      if (sugerirMapa) {
+        const centro = await sugerirCentroMapa({ apiKey, endereco: body.destino, textoEndereco: destino, fetchFn })
+        return responder(200, { ...centro, apenas_centro: true })
+      }
       if (provider === 'openrouteservice') {
         const rota = await consultarORS({ apiKey, origem: config, destino: body.destino, textoOrigem: origem, textoDestino: destino, fetchFn })
         return responder(200, { ...precificarDistancia(rota.metros, config.valor_km, 'openrouteservice'), origem, destino,
