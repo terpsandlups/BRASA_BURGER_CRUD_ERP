@@ -1,5 +1,47 @@
 # Continuidade de execução
 
+## Situação do MVP Brasa Burguer — 08/10/2026
+
+O produto está em **piloto funcional**, não homologado como MVP final. A base de
+cadastros, pedido transacional, frete próprio por rota gratuita, Histórico,
+Dashboard e portal Analytics existe e passou nos cenários registrados em
+`VALIDACAO.md`. Não existe ainda um ERP multi-marca configurável pelo usuário;
+essa evolução vem depois de estabilizar a operação Brasa Burguer.
+
+| Bloco | Situação verificada | Próximo fechamento |
+|---|---|---|
+| 4.1 Dashboard | Filtro Hoje/7/15/30/90 dias e separação do frete validados no cenário real | Testes de reconciliação, cancelados e perfis/unidades |
+| 4.2 Pedidos e entregas | Pedido transacional, idempotência, estoque na criação e frete openrouteservice integrados | Cancelamento com três destinos e validação de falhas/concorrência |
+| 4.3 Clientes/CRM | Cadastro, CEP, busca e histórico implementados | Testes conectados de permissão, edição e múltiplas sessões |
+| 4.4 Produtos e estoque | Catálogo/fichas, baixa por venda e telas de insumos/estoque existentes | Validar cadastro, vínculo por loja, saldo, ficha e movimentações |
+| 4.5 Analytics | Portal, filtros, ranking e exportação CSV implementados; frete separado | Conciliar taxas/CMV/cancelamentos e proteger dez views antigas |
+| 4.6 Promoções | Planejado, não implementado | Cupons de influenciadores e frete grátis com regras no servidor |
+| Fechamento do MVP | Ainda pendente | Testes ponta a ponta, segurança, instalação reproduzível e publicação |
+
+### Regra de cancelamento confirmada pelo usuário
+
+Todo cancelamento deve exigir **motivo** e uma das três destinações, registrada
+com usuário e data:
+
+1. **Voltar ao estoque:** reverter exatamente uma vez os insumos baixados pelo
+   pedido, com movimentação auditável.
+2. **Custo operacional:** o lanche já foi preparado; manter a baixa original e
+   classificar o consumo como perda/custo operacional. Não fazer segunda baixa.
+3. **Encaixar em outro pedido:** reaproveitar somente um item **idêntico**
+   (mesma variação e adicionais) de um pedido existente. Vincular origem e
+   destino, compensando a baixa duplicada do pedido de destino exatamente uma
+   vez. Não reutilizar o mesmo item em dois destinos.
+
+Implementar essas escolhas em operação transacional no servidor, com validação
+de permissão, unidade, status, quantidade e concorrência; a UI atual só grava
+motivo/status e **ainda não executa nenhuma das três destinações**. A regra de
+pagamento/reembolso e o tratamento de reaproveitamento parcial ainda precisam
+ser fechados antes de ativar essa opção em produção.
+
+**Ordem de execução recomendada:** (1) cancelamento e razão de estoque;
+(2) validação de insumos/fichas e perfis; (3) conciliação analítica e segurança
+das views; (4) cupons; (5) regressão completa e checklist de release gratuito.
+
 ## Etapa atual do MVP — frete no pedido e próximas validações (07/10/2026)
 
 - **Concluído no cenário testado:** cotação openrouteservice vinculada ao
@@ -178,14 +220,10 @@ Aplicação da migração confirmada pelo usuário. Ainda falta validar gravaç�
 
 Hoje e Analytics usam as tabelas já consultadas pelo sistema e não precisam de migração adicional.
 
-## Próximas dependências do roteiro
+## Registro histórico: dependências identificadas em 13/09/2026
 
-Pedido transacional preparado em `sql/migration_pedido_transacional.sql` e integrado no frontend sob `VITE_PEDIDO_TRANSACIONAL=true`. Ativação e validação descritas em `sql/PEDIDOS_TRANSACIONAIS.md`. Dez testes do cliente aprovados; execução SQL e testes transacionais no Supabase pendentes. O fluxo antigo continua ativo até a configuração ser alterada após a migração.
-
-1. Concluir validação integrada do cadastro/vínculo de insumos após a migração.
-2. Bloco 4.2: pedido transacional, idempotência e consistência de baixa/cancelamento; corrigir filtros do Histórico.
-3. Bloco 4.3: conferir cadastro e indicadores CRM.
-4. Bloco 4.4: manutenção de fichas e conversões de custo.
-5. Bloco 4.5: aprofundar análises e conciliação de adicionais, taxas e custos históricos.
-
-Verificações deste incremento: quatro testes automatizados e compilação de produção aprovados. Nenhum insumo de teste foi gravado no banco nesta execução.
+Naquela data, o pedido transacional ainda dependia de ativação, insumos
+aguardavam validação e o histórico precisava de correções. O pedido
+transacional, a idempotência, o frete e as correções do Histórico foram
+implementados depois. As pendências atuais estão na tabela de 08/10/2026
+acima; este registro não deve ser usado como checklist de implantação.
