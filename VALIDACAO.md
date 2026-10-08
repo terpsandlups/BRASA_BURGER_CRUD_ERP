@@ -8,10 +8,15 @@
 | Banco, teste com cotação sintética | Total, subtotal, idempotência e bloqueio de reuso conferidos; transação encerrada com `ROLLBACK` | Aprovado, sem registros de teste persistidos |
 | Escrita direta autenticada | `INSERT` em pedidos/itens e `UPDATE` do total negados; `SELECT` e `UPDATE` de status preservados | Aprovado por consulta de privilégios |
 | Frontend | 45 testes automatizados e build de produção | Aprovado; aviso de bundle grande permanece |
+| Navegador local após recarga | Pedido aparece no Kanban com total R$ 94,55; detalhe mostra itens R$ 86,60 e frete R$ 7,95; Histórico mostra a taxa; filtro Hoje e Analytics separam frete do faturamento | Aprovado no cenário testado |
 
 Pendências: testar criação, avanço/cancelamento e histórico com perfis restritos e
 duas sessões; validar erro de rede após envio e expiração da cotação na interface;
 confirmar trajetos reais variados. Este registro não equivale a homologação geral.
+Uma referência antiga de modo de gravação deixou a página de Pedidos vazia após
+recarga; foi removida e a página foi reaberta no navegador antes da publicação
+da correção. A auditoria de segurança ainda aponta dez views analíticas antigas
+com `SECURITY DEFINER`; revisão de exposição e RLS fica na próxima etapa.
 
 ## Retorno de uso — 07/10/2026
 

@@ -15,7 +15,7 @@
   homologação do produto.
 - **Próxima revisão técnica prioritária:** regras de transição/cancelamento no
   servidor, permissões por perfil/unidade, views analíticas antigas apontadas
-  pelo Advisor, cobertura das fichas e estoque. Depois, fechar testes de
+  pelo Advisor (dez alertas `SECURITY DEFINER`), cobertura das fichas e estoque. Depois, fechar testes de
   regressão, instruções de instalação e checklist de publicação do MVP gratuito.
 - **Cupons planejados:** códigos de influenciadores para atribuição e desconto;
   cupom de frete grátis para delivery próprio. Ambos devem ser validados no

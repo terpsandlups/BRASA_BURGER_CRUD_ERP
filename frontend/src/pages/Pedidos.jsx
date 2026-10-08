@@ -258,7 +258,7 @@ export default function Pedidos() {
   const [selecionandoAdicionaisPara, setSelecionandoAdicionaisPara] = useState(null)
 
   useEffect(() => {
-    if (!PEDIDO_TRANSACIONAL || confirmacaoPendente || enviando) return
+    if (confirmacaoPendente || enviando) return
     const config = configCanais.find((c) => c.canal_venda === canalVenda)
     if (!config) return
     setItens((atuais) => atuais.map((item) => {
