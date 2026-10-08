@@ -1,5 +1,11 @@
 # Continuidade de execução
 
+## Validação do usuário e próximos limites — 07/10/2026
+
+- O usuário confirmou que o fluxo de simulação de entrega está funcionando com mapa OpenStreetMap e rotas openrouteservice. Registro baseado no teste relatado pelo usuário; cobertura de outros endereços e comparação sistemática com trajetos reais ainda precisam de validação.
+- README atualizado para explicitar a proposta de ERP de varejo alimentar com identidade e operação configuráveis por estabelecimento. Essa personalização completa continua no roadmap; não está pronta para outras marcas.
+- Permanecem pendentes a aplicação transacional do frete ao pedido, tratamento dos limites do plano gratuito e testes de cobertura antes de uso operacional amplo. Google Maps não integra o MVP atual.
+
 ## Base cartográfica vigente no MVP
 
 - O projeto está em testes com mapa Leaflet/OpenStreetMap e geocodificação/rotas openrouteservice/HeiGIT no plano gratuito. Google Maps API não está ativo; o guia Google é histórico e uma eventual migração exigirá decisão posterior sobre custos, cobertura e implementação.

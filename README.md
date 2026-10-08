@@ -6,6 +6,8 @@ Projeto acadêmico e de portfólio de um ERP de varejo alimentar em desenvolvime
 
 O objetivo é que a mesma base de gestão possa assumir a identidade e as regras de cada estabelecimento: marca, cores, linguagem, cardápio, unidades, canais de venda e fluxo operacional. Em vez de parecer um ERP genérico, a ferramenta deve se apresentar como um sistema próprio da marca que a utiliza. O Brasa Burguer é a primeira aplicação dessa visão; a personalização completa por estabelecimento ainda é uma meta do roadmap, não uma funcionalidade pronta.
 
+A evolução prevista é configurar identidade visual e operação por estabelecimento sem manter uma cópia separada do código para cada marca. Assim, a temática da loja aparece na experiência de uso, enquanto os módulos de gestão são adaptados ao seu cardápio, unidades e processos. O projeto ainda está construindo essa capacidade: o visual atual do Brasa Burguer não significa que já exista um painel de personalização para outras marcas.
+
 O protótipo atual já oferece dashboard e portal de análises, operação de pedidos, cadastros, estoque e simulação de frete por rota. O CEP preenche dados postais; quando o serviço gratuito não localiza um número, o operador pode buscar a região no mapa e confirmar o imóvel. A taxa de entrega ainda **não** é adicionada automaticamente ao pedido. Consulte [roadmap](ROADMAP_EXECUCAO.md) e [configuração do MVP gratuito](MVP_GRATUITO_SETUP.md).
 
 ## Mapas e entregas no MVP em testes
@@ -13,6 +15,8 @@ O protótipo atual já oferece dashboard e portal de análises, operação de pe
 Nesta fase inicial, usamos **OpenStreetMap com Leaflet** para exibir o mapa e **openrouteservice/HeiGIT no plano gratuito** para buscar endereços e calcular rotas. O uso de dados cartográficos abertos ajuda a testar e iniciar o produto sem contratar a Google Maps API. O plano gratuito do serviço de rotas tem cotas e cobertura próprias; não significa uso ilimitado.
 
 O endereço físico continua necessário no cadastro da entrega. Se a base de localização não reconhecer o imóvel com precisão, a busca aproxima o mapa da rua ou do CEP para o operador confirmar o ponto correto. A aproximação não cria uma taxa automaticamente. **Google Maps não está ativo no MVP**; seu [guia antigo](GOOGLE_MAPS_SETUP.md) é apenas um registro de uma possibilidade futura, sujeita a decisão específica sobre custos e integração.
+
+**Validação em 07/10/2026:** o mantenedor confirmou que a simulação de distância e taxa funcionou no fluxo com mapa OpenStreetMap e rotas openrouteservice. É uma validação do MVP em desenvolvimento, não uma confirmação de cobertura para todos os endereços nem de cobrança automática nos pedidos.
 
 ## Identificação acadêmica
 

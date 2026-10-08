@@ -1,5 +1,18 @@
 # Registro de validação — Brasa Burguer
 
+## Retorno de uso — 07/10/2026
+
+**Versão:** fluxo de simulação de entregas publicado no projeto, antes da integração do frete ao pedido.
+
+| Área | Entrada ou cenário | Resultado esperado | Resultado observado | Estado |
+|---|---|---|---|---|
+| Entregas | Endereço físico e ponto confirmado no mapa OpenStreetMap | Calcular rota e taxa proporcional pelo openrouteservice | O mantenedor relatou que a simulação funcionou no aplicativo | Validado pelo usuário no cenário testado |
+
+O relato confirma o funcionamento desse cenário, não a cobertura de todos os
+endereços nem a precisão de cada trajeto. A taxa ainda não é lançada no pedido.
+Na revisão técnica anterior, 40 testes automatizados e o build do frontend
+passaram; a validação em campo acima foi informada pelo mantenedor.
+
 ## Execução de 13/09/2026
 
 **Versão:** cópia local ainda sem repositório Git (`.git` ausente).
