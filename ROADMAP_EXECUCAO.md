@@ -1,10 +1,35 @@
 # Continuidade de execução
 
+## Etapa atual do MVP — frete no pedido e próximas validações (07/10/2026)
+
+- **Concluído no cenário testado:** cotação openrouteservice vinculada ao
+  delivery próprio, consumida pela RPC transacional; itens e frete aparecem
+  separados no pedido, histórico, dashboard e Analytics. Pedido real conferido:
+  R$ 86,60 + R$ 7,95 = R$ 94,55. Marketplaces não recebem taxa própria extra.
+  As tabelas de pedido/itens não aceitam escrita direta do usuário autenticado;
+  atualização de status continua permitida. 45 testes locais e build passaram.
+- **Validação ainda necessária:** fluxo em duas sessões; perfis e lojas
+  diferentes; expiração, falta de cobertura e cota do provedor; perda da
+  resposta de rede; cancelamento/estorno e conciliação de estoque. Comparar
+  amostra de rotas com trajetos reais. Não tratar um único pedido como
+  homologação do produto.
+- **Próxima revisão técnica prioritária:** regras de transição/cancelamento no
+  servidor, permissões por perfil/unidade, views analíticas antigas apontadas
+  pelo Advisor, cobertura das fichas e estoque. Depois, fechar testes de
+  regressão, instruções de instalação e checklist de publicação do MVP gratuito.
+- **Cupons planejados:** códigos de influenciadores para atribuição e desconto;
+  cupom de frete grátis para delivery próprio. Ambos devem ser validados no
+  servidor, com período, limite de uso, elegibilidade e registro no pedido.
+  Frete grátis não dispensa calcular a rota: a cotação registra o custo bruto e
+  o cupom zera apenas a cobrança ao cliente. Antes de implementar, definir
+  porcentagem/valor do desconto, cumulatividade, elegibilidade por canal e
+  quem absorve o custo do frete. Não ativar cupons no navegador isoladamente.
+
 ## Validação do usuário e próximos limites — 07/10/2026
 
 - O usuário confirmou que o fluxo de simulação de entrega está funcionando com mapa OpenStreetMap e rotas openrouteservice. Registro baseado no teste relatado pelo usuário; cobertura de outros endereços e comparação sistemática com trajetos reais ainda precisam de validação.
 - README atualizado para explicitar a proposta de ERP de varejo alimentar com identidade e operação configuráveis por estabelecimento. Essa personalização completa continua no roadmap; não está pronta para outras marcas.
-- Permanecem pendentes a aplicação transacional do frete ao pedido, tratamento dos limites do plano gratuito e testes de cobertura antes de uso operacional amplo. Google Maps não integra o MVP atual.
+- A aplicação transacional do frete ao pedido foi concluída na etapa atual acima. Permanecem pendentes testes de cobertura e dos limites do plano gratuito antes de uso operacional amplo. Google Maps não integra o MVP atual.
 
 ## Base cartográfica vigente no MVP
 

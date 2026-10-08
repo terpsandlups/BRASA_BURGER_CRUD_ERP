@@ -7,11 +7,11 @@ import KPICard from '../components/data-display/KPICard.jsx'
 import Button from '../components/ui/Button.jsx'
 import SidePanel from '../components/layout/SidePanel.jsx'
 import StatusBadge from '../components/ui/StatusBadge.jsx'
+import ConsultaEntrega from '../components/ConsultaEntrega.jsx'
 import { criarEnvioTransacional, montarPedidoTransacional } from '../lib/pedidoTransacional.js'
+import { exigeFreteProprio, cotacaoPedidoValida, totalComFrete } from '../lib/entrega.js'
 import { carregarTodasPaginas, intervaloDashboard } from '../lib/dashboard.js'
 import { filtrarPedidosOperacao, indicadoresOperacao, criarAtualizadorStatus } from '../lib/operacaoPedidos.js'
-
-const PEDIDO_TRANSACIONAL = import.meta.env.VITE_PEDIDO_TRANSACIONAL === 'true'
 
 const COLUNAS = [
   { status: 'recebido', titulo: 'Novos Pedidos' },
@@ -48,6 +48,11 @@ function corTempo(min) {
 
 const CANAL_LABEL = { proprio: 'Próprio', ifood: 'iFood', rappi: 'Rappi' }
 
+function resumoEndereco(endereco) {
+  if (!endereco || typeof endereco !== 'object') return 'Não registrado'
+  return `${endereco.endereco || ''}, ${endereco.numero || ''} — ${endereco.bairro || ''}, ${endereco.cidade || ''}/${endereco.estado || ''} · CEP ${endereco.cep || ''}`
+}
+
 function CardPedido({ pedido, agora, onAvancar, onCancelar, onAbrirDetalhe, atualizando }) {
   const min = minutosDecorridos(pedido.criado_em, agora)
   const cor = corTempo(min)
@@ -76,7 +81,7 @@ function CardPedido({ pedido, agora, onAvancar, onCancelar, onAbrirDetalhe, atua
       </button>
 
       <div className="flex items-center justify-between mt-3 pt-3 border-t border-superficie2/20">
-        <span className="font-medium text-sm">R$ {Number(pedido.valor_total).toFixed(2)}</span>
+        <span className="font-medium text-sm">R$ {Number(pedido.valor_total).toFixed(2)}{Number(pedido.taxa_entrega) > 0 && <span className="text-xs text-fumaca ml-2">(inclui frete)</span>}</span>
         <span className="text-xs uppercase text-fumaca">{pedido.tipo_atendimento}</span>
       </div>
 
@@ -160,6 +165,17 @@ function DetalhePedido({ pedido, onAvancar, onCancelar, atualizando }) {
         </div>
       )}
 
+      {pedido.endereco_entrega && <div className="text-sm">
+        <p className="text-xs uppercase text-fumaca">Endereço da entrega</p>
+        <p>{resumoEndereco(pedido.endereco_entrega)}</p>
+        {pedido.endereco_entrega.complemento && <p>{pedido.endereco_entrega.complemento}</p>}
+      </div>}
+
+      {pedido.cotacao_entrega_id && <div className="text-sm space-y-1">
+        <div className="flex justify-between"><span>Itens</span><span>R$ {Number(pedido.subtotal_itens).toFixed(2)}</span></div>
+        <div className="flex justify-between"><span>Frete ({(Number(pedido.distancia_entrega_metros) / 1000).toFixed(2)} km)</span><span>R$ {Number(pedido.taxa_entrega).toFixed(2)}</span></div>
+      </div>}
+
       <div className="flex justify-between font-medium pt-3 border-t border-borda">
         <span>Total</span>
         <span>R$ {Number(pedido.valor_total).toFixed(2)}</span>
@@ -238,6 +254,7 @@ export default function Pedidos() {
   const [configCanais, setConfigCanais] = useState([])
   const [observacoes, setObservacoes] = useState('')
   const [trocoPara, setTrocoPara] = useState('')
+  const [cotacaoEntrega, setCotacaoEntrega] = useState(null)
   const [selecionandoAdicionaisPara, setSelecionandoAdicionaisPara] = useState(null)
 
   useEffect(() => {
@@ -412,6 +429,7 @@ export default function Pedidos() {
       return
     }
     setClienteEncontrado(data)
+    setCotacaoEntrega(null)
     setStatusCliente('encontrado')
     setNovoClienteNome('')
     setNovoClienteTelefone('')
@@ -459,70 +477,30 @@ export default function Pedidos() {
   const valorItem = (item) =>
     item.quantidade * (item.preco_unitario + item.adicionaisSelecionados.reduce((acc, a) => acc + Number(a.preco_adicional), 0))
 
-  const valorTotal = itens.reduce((acc, i) => acc + valorItem(i), 0)
+  const subtotalItens = itens.reduce((acc, i) => acc + valorItem(i), 0)
+  const freteObrigatorio = exigeFreteProprio(tipoAtendimento, canalVenda)
+  const cotacaoAtiva = freteObrigatorio && cotacaoPedidoValida(cotacaoEntrega, lojaId, clienteEncontrado?.cpf, agora.getTime())
+  const valorFrete = cotacaoAtiva ? cotacaoEntrega.taxa : 0
+  const valorTotal = totalComFrete(subtotalItens, valorFrete)
 
   async function finalizarPedido() {
     if (envioEmCursoRef.current) return
-    if (!lojaId || !clienteEncontrado || itens.length === 0 || !formaPagamento) {
+    if (!confirmacaoPendente && (!lojaId || !clienteEncontrado || itens.length === 0 || !formaPagamento)) {
       alert('Selecione a loja, confirme o cliente, adicione ao menos um item e escolha a forma de pagamento.')
+      return
+    }
+    if (!confirmacaoPendente && freteObrigatorio && !cotacaoPedidoValida(cotacaoEntrega, lojaId, clienteEncontrado.cpf)) {
+      alert('Calcule e confirme o frete desta entrega antes de finalizar. Se a cotação expirou, calcule novamente.')
       return
     }
     envioEmCursoRef.current = true
     setEnviando(true)
-    let pedidoCriado = null
     try {
-      if (PEDIDO_TRANSACIONAL) {
-        await transacaoRef.current.enviar(montarPedidoTransacional({
+      await transacaoRef.current.enviar(confirmacaoPendente ? undefined : montarPedidoTransacional({
           lojaId, clienteCpf: clienteEncontrado.cpf, tipoAtendimento, formaPagamento,
-          canalVenda, observacoes, trocoPara, itens,
+          canalVenda, observacoes, trocoPara, itens, cotacaoId: cotacaoEntrega?.cotacao_id,
         }))
-        setConfirmacaoPendente(false)
-      } else {
-      const { data: pedido, error } = await supabase
-        .from('pedidos')
-        .insert({
-          loja_id: lojaId,
-          cliente_cpf: clienteEncontrado.cpf,
-          tipo_atendimento: tipoAtendimento,
-          valor_total: valorTotal,
-          forma_pagamento: formaPagamento,
-          canal_venda: canalVenda,
-          observacoes: observacoes.trim() || null,
-          troco_para: formaPagamento === 'dinheiro' ? Number(trocoPara) : null,
-          status: 'recebido',
-        })
-        .select()
-        .single()
-      if (error) throw error
-      pedidoCriado = pedido
-
-      for (const i of itens) {
-        const { data: itemPedido, error: erroItem } = await supabase
-          .from('itens_pedido')
-          .insert({
-            pedido_id: pedido.id,
-            produto_sku: i.produto_sku,
-            variacao_id: i.variacao_id,
-            quantidade: i.quantidade,
-            preco_unitario: i.preco_unitario,
-          })
-          .select()
-          .single()
-        if (erroItem) throw erroItem
-
-        if (i.adicionaisSelecionados.length > 0) {
-          const { error: erroAdicionais } = await supabase.from('itens_pedido_adicionais').insert(
-            i.adicionaisSelecionados.map((a) => ({
-              item_pedido_id: itemPedido.id,
-              adicional_id: a.id,
-              quantidade: 1,
-              preco_unitario: a.preco_adicional,
-            }))
-          )
-          if (erroAdicionais) throw erroAdicionais
-        }
-      }
-      }
+      setConfirmacaoPendente(false)
 
       setItens([])
       setCpfCliente('')
@@ -532,20 +510,14 @@ export default function Pedidos() {
       setObservacoes('')
       setTrocoPara('')
       setCanalVenda('proprio')
+      setCotacaoEntrega(null)
       setMostrarFormulario(false)
     } catch (erro) {
-      if (PEDIDO_TRANSACIONAL) {
-        const pendente = transacaoRef.current.temPendente()
-        setConfirmacaoPendente(pendente)
-        alert(pendente
-          ? 'Não foi possível confirmar a resposta. Use Confirmar envio anterior sem fechar esta página; o mesmo pedido será recuperado sem duplicação.'
-          : 'Pedido não gravado: ' + (erro?.code === 'PGRST202' ? 'A função de pedidos ainda precisa ser instalada no Supabase.' : erro?.message || 'Confira os dados.'))
-      } else {
-      const prefixo = pedidoCriado
-        ? `O pedido #${pedidoCriado.id} foi iniciado, mas não foi gravado por completo. Confira-o antes de tentar novamente. `
-        : 'Não foi possível criar o pedido. '
-      alert(prefixo + (erro?.message || 'Erro inesperado.'))
-      }
+      const pendente = transacaoRef.current.temPendente()
+      setConfirmacaoPendente(pendente)
+      alert(pendente
+        ? 'Não foi possível confirmar a resposta. Use Confirmar envio anterior sem fechar esta página; o mesmo pedido será recuperado sem duplicação.'
+        : 'Pedido não gravado: ' + (erro?.code === 'PGRST202' ? 'A função de pedidos ainda precisa ser instalada no Supabase.' : erro?.message || 'Confira os dados.'))
     } finally {
       setEnviando(false)
       envioEmCursoRef.current = false
@@ -591,7 +563,7 @@ export default function Pedidos() {
                 <button
                   key={c.canal_venda}
                   type="button"
-                  onClick={() => setCanalVenda(c.canal_venda)}
+                  onClick={() => { setCanalVenda(c.canal_venda); setCotacaoEntrega(null) }}
                   className={`px-4 py-2 text-sm ${canalVenda === c.canal_venda ? 'bg-ambar text-carvao' : 'bg-carvao border border-superficie2'}`}
                 >
                   {c.nome_exibicao}
@@ -613,7 +585,7 @@ export default function Pedidos() {
               <label className="text-xs uppercase tracking-wide text-fumaca">Unidade</label>
               <select
                 value={lojaId}
-                onChange={(e) => { setLojaId(e.target.value); setTipoAtendimento('delivery') }}
+                onChange={(e) => { setLojaId(e.target.value); setTipoAtendimento('delivery'); setCotacaoEntrega(null) }}
                 className="w-full mt-1 px-3 py-2 bg-carvao border border-superficie2 text-osso"
               >
                 <option value="">Selecione...</option>
@@ -625,7 +597,7 @@ export default function Pedidos() {
               <input
                 ref={cpfClienteInputRef}
                 value={cpfCliente}
-                onChange={(e) => setCpfCliente(formatarCPF(e.target.value))}
+                onChange={(e) => { setCpfCliente(formatarCPF(e.target.value)); setCotacaoEntrega(null) }}
                 placeholder="000.000.000-00"
                 maxLength={16}
                 className="w-full mt-1 px-3 py-2 bg-carvao border border-superficie2 text-osso"
@@ -681,17 +653,29 @@ export default function Pedidos() {
             <div>
               <label className="text-xs uppercase tracking-wide text-fumaca">Tipo de atendimento</label>
               <div className="flex gap-3 mt-1">
-                <button type="button" onClick={() => setTipoAtendimento('delivery')}
+                <button type="button" onClick={() => { setTipoAtendimento('delivery'); setCotacaoEntrega(null) }}
                   className={`px-4 py-2 text-sm ${tipoAtendimento === 'delivery' ? 'bg-ambar text-carvao' : 'bg-carvao border border-superficie2'}`}>
                   Delivery
                 </button>
-                <button type="button" disabled={somenteDelivery} onClick={() => setTipoAtendimento('presencial')}
+                <button type="button" disabled={somenteDelivery} onClick={() => { setTipoAtendimento('presencial'); setCotacaoEntrega(null) }}
                   className={`px-4 py-2 text-sm disabled:opacity-30 ${tipoAtendimento === 'presencial' ? 'bg-ambar text-carvao' : 'bg-carvao border border-superficie2'}`}>
                   Presencial
                 </button>
               </div>
             </div>
           )}
+
+          {freteObrigatorio && lojaId && clienteEncontrado && (
+            <ConsultaEntrega key={`${lojaId}-${clienteEncontrado.cpf}`} lojaId={lojaId} modoPedido
+              pontoSalvo={lojaSelecionada?.latitude != null && lojaSelecionada?.longitude != null}
+              clienteCpf={clienteEncontrado.cpf}
+              destinoInicial={Object.fromEntries(['cep', 'numero', 'endereco', 'complemento', 'bairro', 'cidade', 'estado']
+                .map(campo => [campo, String(clienteEncontrado[campo] ?? '').trim()]))}
+              onInvalidar={() => setCotacaoEntrega(null)}
+              onCotacao={dados => setCotacaoEntrega({ ...dados, lojaId, clienteCpf: clienteEncontrado.cpf })} />
+          )}
+          {freteObrigatorio && (!lojaId || !clienteEncontrado) && <p className="text-xs text-ambar">Selecione a unidade e o cliente para calcular o frete do pedido.</p>}
+          {tipoAtendimento === 'delivery' && canalVenda !== 'proprio' && <p className="text-xs text-fumaca">Frete deste canal é tratado pela plataforma. O sistema não adiciona outra taxa.</p>}
 
           <div>
             <label className="text-xs uppercase tracking-wide text-fumaca">Adicionar item</label>
@@ -774,9 +758,10 @@ export default function Pedidos() {
                   )}
                 </div>
               ))}
-              <div className="flex justify-between font-medium mt-2 pt-2 border-t border-superficie2">
-                <span>Total</span>
-                <span>R$ {valorTotal.toFixed(2)}</span>
+              <div className="space-y-1 mt-2 pt-2 border-t border-superficie2 text-sm">
+                <div className="flex justify-between"><span>Itens</span><span>R$ {subtotalItens.toFixed(2)}</span></div>
+                {freteObrigatorio && <div className="flex justify-between"><span>Frete</span><span>{cotacaoAtiva ? `R$ ${valorFrete.toFixed(2)}` : 'Calcule a rota'}</span></div>}
+                <div className="flex justify-between font-medium pt-1"><span>Total</span><span>{freteObrigatorio && !cotacaoAtiva ? 'Aguardando frete' : `R$ ${valorTotal.toFixed(2)}`}</span></div>
               </div>
             </div>
           )}
@@ -838,11 +823,12 @@ export default function Pedidos() {
           <button
             onClick={finalizarPedido}
             disabled={
-              enviando || !clienteEncontrado || !formaPagamento ||
-              (formaPagamento === 'dinheiro' && (!trocoPara || Number(trocoPara) < valorTotal))
+              enviando || (!confirmacaoPendente && (!clienteEncontrado || !formaPagamento)) ||
+              (freteObrigatorio && !cotacaoAtiva && !confirmacaoPendente) ||
+              (!confirmacaoPendente && formaPagamento === 'dinheiro' && (!trocoPara || Number(trocoPara) < valorTotal))
             }
             className="bg-ambar text-carvao font-medium px-5 py-2.5 hover:bg-osso transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-            {enviando ? 'Enviando...' : 'Finalizar pedido'}
+            {enviando ? 'Enviando...' : confirmacaoPendente ? 'Confirmar envio anterior' : 'Finalizar pedido'}
           </button>
           </fieldset>
         </div>

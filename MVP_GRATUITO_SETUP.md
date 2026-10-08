@@ -91,8 +91,15 @@ Revise as condições de uso e privacidade antes de publicação para clientes.
 - Confirmar visualmente os pontos exatos da loja e da entrega e comparar a rota
   obtida com um trajeto real antes de usar qualquer valor operacionalmente.
   Testar também destino inválido e bloqueio por cota.
-- Ainda é simulação em Entregas, não cobrança no pedido. A integração de frete
-  no pedido transacional e no histórico permanece uma etapa posterior.
+- A página Entregas continua sendo uma simulação. Na página Pedidos, o delivery
+  próprio exige cotação válida de 15 minutos e inclui a taxa no total; o histórico
+  mostra itens, frete e endereço. A função `calcular-entrega` precisa estar
+  publicada e as migrações `20261008010733_frete_no_pedido.sql` e
+  `20261008012909_restringir_escrita_pedidos.sql` aplicadas. A chave privilegiada
+  fica somente na Edge Function, nunca em variável `VITE_`.
+- Um pedido real do canal próprio já foi conferido no banco: itens R$ 86,60,
+  frete R$ 7,95 e total R$ 94,55. Ainda faltam testes com diferentes perfis,
+  cancelamento e resposta perdida antes do fechamento do MVP.
 - Manter Supabase e hospedagem dentro dos planos gratuitos, sem domínio pago
   ou upgrades nesta fase. Nenhum plano dessas contas foi verificado/alterado aqui.
 

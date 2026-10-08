@@ -1,5 +1,18 @@
 # Registro de validação — Brasa Burguer
 
+## Frete no pedido — 07/10/2026
+
+| Cenário | Resultado observado | Estado |
+|---|---|---|
+| Pedido real, delivery próprio | Itens R$ 86,60 + frete R$ 7,95 = total R$ 94,55; distância 5.298 m; cotação marcada como consumida | Aprovado no cenário testado |
+| Banco, teste com cotação sintética | Total, subtotal, idempotência e bloqueio de reuso conferidos; transação encerrada com `ROLLBACK` | Aprovado, sem registros de teste persistidos |
+| Escrita direta autenticada | `INSERT` em pedidos/itens e `UPDATE` do total negados; `SELECT` e `UPDATE` de status preservados | Aprovado por consulta de privilégios |
+| Frontend | 45 testes automatizados e build de produção | Aprovado; aviso de bundle grande permanece |
+
+Pendências: testar criação, avanço/cancelamento e histórico com perfis restritos e
+duas sessões; validar erro de rede após envio e expiração da cotação na interface;
+confirmar trajetos reais variados. Este registro não equivale a homologação geral.
+
 ## Retorno de uso — 07/10/2026
 
 **Versão:** fluxo de simulação de entregas publicado no projeto, antes da integração do frete ao pedido.

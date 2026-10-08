@@ -189,6 +189,7 @@ export default function Historico() {
                 <th className="py-2 px-3">Atendimento / Canal</th>
                 <th className="py-2 px-3">Status</th>
                 <th className="py-2 px-3">Pagamento</th>
+                <th className="py-2 px-3">Frete</th>
                 <th className="py-2 px-3">Total</th>
               </tr>
             </thead>
@@ -206,6 +207,7 @@ export default function Historico() {
                       <span className={p.status === 'cancelado' ? 'text-brasa' : ''}>{STATUS_LABEL[p.status]}</span>
                     </td>
                     <td className="py-2 px-3">{PAGAMENTO_LABEL[p.forma_pagamento] || '—'}</td>
+                    <td className="py-2 px-3">{p.cotacao_entrega_id ? `R$ ${Number(p.taxa_entrega).toFixed(2)}` : '—'}</td>
                     <td className="py-2 px-3 font-medium">R$ {Number(p.valor_total).toFixed(2)}</td>
                   </tr>
               ))}
@@ -259,6 +261,15 @@ export default function Historico() {
                   </li>
                 ))}
               </ul>
+              {p.endereco_entrega && <div className="text-sm mb-4">
+                <p className="text-xs uppercase text-fumaca">Destino da entrega</p>
+                <p>{p.endereco_entrega.endereco}, {p.endereco_entrega.numero} — {p.endereco_entrega.bairro}, {p.endereco_entrega.cidade}/{p.endereco_entrega.estado} · CEP {p.endereco_entrega.cep}</p>
+                {p.endereco_entrega.complemento && <p>{p.endereco_entrega.complemento}</p>}
+              </div>}
+              {p.cotacao_entrega_id && <div className="text-sm space-y-1 mb-3">
+                <div className="flex justify-between"><span>Itens</span><span>R$ {Number(p.subtotal_itens).toFixed(2)}</span></div>
+                <div className="flex justify-between"><span>Frete ({(Number(p.distancia_entrega_metros) / 1000).toFixed(2)} km)</span><span>R$ {Number(p.taxa_entrega).toFixed(2)}</span></div>
+              </div>}
               <div className="text-sm font-medium flex justify-between border-t border-borda pt-3">
                 <span>Total do pedido</span>
                 <span>R$ {Number(p.valor_total).toFixed(2)}</span>

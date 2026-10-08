@@ -20,6 +20,21 @@ export function calcularTaxaEntrega(distanciaKm, valorKm) {
   return Math.round(metros * centavosKm / 1000) / 100
 }
 
+export function exigeFreteProprio(tipoAtendimento, canalVenda) {
+  return tipoAtendimento === 'delivery' && canalVenda === 'proprio'
+}
+
+export function cotacaoPedidoValida(cotacao, lojaId, clienteCpf, agora = Date.now()) {
+  return Boolean(cotacao && cotacao.lojaId === lojaId && cotacao.clienteCpf === clienteCpf &&
+    /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(cotacao.cotacao_id || '') &&
+    Number.isFinite(cotacao.taxa) && cotacao.taxa >= 0 &&
+    Number.isFinite(Date.parse(cotacao.expira_em)) && Date.parse(cotacao.expira_em) > agora)
+}
+
+export function totalComFrete(subtotal, taxa = 0) {
+  return Math.round((Number(subtotal) + Number(taxa)) * 100) / 100
+}
+
 export function prepararConfiguracaoEntrega(valores) {
   const campos = ['cep', 'numero', 'endereco', 'bairro', 'cidade', 'estado', 'complemento']
   const dados = Object.fromEntries(campos.map(campo => [campo, String(valores[campo] ?? '').trim()]))

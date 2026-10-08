@@ -8,7 +8,7 @@ O objetivo é que a mesma base de gestão possa assumir a identidade e as regras
 
 A evolução prevista é configurar identidade visual e operação por estabelecimento sem manter uma cópia separada do código para cada marca. Assim, a temática da loja aparece na experiência de uso, enquanto os módulos de gestão são adaptados ao seu cardápio, unidades e processos. O projeto ainda está construindo essa capacidade: o visual atual do Brasa Burguer não significa que já exista um painel de personalização para outras marcas.
 
-O protótipo atual já oferece dashboard e portal de análises, operação de pedidos, cadastros, estoque e simulação de frete por rota. O CEP preenche dados postais; quando o serviço gratuito não localiza um número, o operador pode buscar a região no mapa e confirmar o imóvel. A taxa de entrega ainda **não** é adicionada automaticamente ao pedido. Consulte [roadmap](ROADMAP_EXECUCAO.md) e [configuração do MVP gratuito](MVP_GRATUITO_SETUP.md).
+O protótipo atual já oferece dashboard e portal de análises, operação de pedidos, cadastros, estoque e frete por rota. O CEP preenche dados postais; quando o serviço gratuito não localiza um número, o operador pode buscar a região no mapa e confirmar o imóvel. No delivery próprio, uma cotação válida entra no total do pedido; marketplaces não recebem cobrança duplicada de frete. Consulte [roadmap](ROADMAP_EXECUCAO.md) e [configuração do MVP gratuito](MVP_GRATUITO_SETUP.md).
 
 ## Mapas e entregas no MVP em testes
 
@@ -16,7 +16,7 @@ Nesta fase inicial, usamos **OpenStreetMap com Leaflet** para exibir o mapa e **
 
 O endereço físico continua necessário no cadastro da entrega. Se a base de localização não reconhecer o imóvel com precisão, a busca aproxima o mapa da rua ou do CEP para o operador confirmar o ponto correto. A aproximação não cria uma taxa automaticamente. **Google Maps não está ativo no MVP**; seu [guia antigo](GOOGLE_MAPS_SETUP.md) é apenas um registro de uma possibilidade futura, sujeita a decisão específica sobre custos e integração.
 
-**Validação em 07/10/2026:** o mantenedor confirmou que a simulação de distância e taxa funcionou no fluxo com mapa OpenStreetMap e rotas openrouteservice. É uma validação do MVP em desenvolvimento, não uma confirmação de cobertura para todos os endereços nem de cobrança automática nos pedidos.
+**Validação em 07/10/2026:** o mantenedor confirmou a simulação com mapa OpenStreetMap e rotas openrouteservice. Depois, um pedido delivery próprio foi gravado com R$ 86,60 de itens + R$ 7,95 de frete = R$ 94,55, e a cotação foi consumida. Isso valida o cenário testado, não todos os endereços, perfis e falhas de rede.
 
 ## Identificação acadêmica
 

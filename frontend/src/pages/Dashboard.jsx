@@ -35,7 +35,7 @@ export default function Dashboard() {
           carregarTodasPaginas(() => {
             let query = supabase
               .from('pedidos')
-              .select('id, valor_total, criado_em, canal_venda, status, loja_id, lojas(nome), itens_pedido(produto_sku, variacao_id, quantidade, preco_unitario, produtos(nome))')
+              .select('id, valor_total, taxa_entrega, criado_em, canal_venda, status, loja_id, lojas(nome), itens_pedido(produto_sku, variacao_id, quantidade, preco_unitario, produtos(nome))')
               .gte('criado_em', intervalo.inicio)
               .lte('criado_em', intervalo.fim)
               .neq('status', 'cancelado')
@@ -105,8 +105,9 @@ export default function Dashboard() {
         <EmptyState titulo="Nenhum pedido no período" descricao="Ajuste o período ou a unidade selecionada." />
       ) : (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mb-6">
             <KPICard titulo="Faturamento" valor={`R$ ${metrica.faturamentoTotal.toFixed(2)}`} />
+            <KPICard titulo="Frete cobrado" valor={`R$ ${metrica.receitaFrete.toFixed(2)}`} contexto="Incluído no faturamento total" />
             <KPICard titulo="Pedidos" valor={metrica.pedidosTotal} />
             <KPICard titulo="Ticket médio" valor={metrica.ticketMedio !== null ? `R$ ${metrica.ticketMedio.toFixed(2)}` : '—'} />
             <KPICard titulo="CMV estimado" valor={metrica.cmvPercentual !== null ? `${metrica.cmvPercentual.toFixed(1)}%` : '—'} contexto={metrica.coberturaCusto !== null ? `Cobertura: ${metrica.coberturaCusto.toFixed(0)}% da receita dos itens` : 'Sem itens com custo cadastrado'} />

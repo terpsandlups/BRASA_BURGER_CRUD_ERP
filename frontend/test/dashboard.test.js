@@ -43,3 +43,15 @@ test('exclui cancelamentos de todas as métricas', () => {
   assert.equal(resultado.ticketMedio, null)
   assert.deepEqual(resultado.canais, [])
 })
+
+test('separa frete dos itens sem perder o total pago no faturamento', () => {
+  const resultado = calcularDashboard([
+    { status: 'entregue', valor_total: 33.15, taxa_entrega: 5.25, criado_em: '2026-09-13T10:00:00-03:00',
+      loja_id: 'japy', canal_venda: 'proprio', itens_pedido: [] },
+    { status: 'cancelado', valor_total: 20, taxa_entrega: 2, criado_em: '2026-09-13T11:00:00-03:00',
+      loja_id: 'japy', canal_venda: 'proprio', itens_pedido: [] },
+  ], [])
+  assert.equal(resultado.faturamentoTotal, 33.15)
+  assert.equal(resultado.faturamentoItens, 27.9)
+  assert.equal(resultado.receitaFrete, 5.25)
+})

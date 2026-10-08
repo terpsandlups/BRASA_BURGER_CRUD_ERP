@@ -9,9 +9,10 @@ const ponto = () => ({ geometry: { type: 'Point', coordinates: [-46.9, -23.1] },
   locality: 'Jundiaí', street: 'Rua Exemplo', housenumber: '10', postalcode: '13201-000', label: 'Rua Exemplo, 10, Jundiaí',
 } })
 function ambiente({ quota = false, impreciso = false, invalida = false, destinoImpreciso = false,
-  buscaLivreImprecisa = false, origemPonto = null, destinoPonto = null, key = 'chave-ficticia' } = {}) {
+  buscaLivreImprecisa = false, origemPonto = null, destinoPonto = null, key = 'chave-ficticia', salvarCotacao } = {}) {
   const chamadas = []
   const handler = criarHandler({ apiKey: key, allowedOrigins: ['http://localhost:5173'],
+    salvarCotacao,
     criarCliente: () => ({ auth: { getUser: async () => ({ data: { user: { id: 'u' } } }) },
       rpc: async () => ({ data: { ...endereco, ...origemPonto, valor_km: 1.5 } }) }),
     fetchFn: async (url, options) => {
@@ -202,4 +203,39 @@ test('busca aproximada centraliza apenas rua correta; local errado é recusado',
   await assert.rejects(() => sugerirCentroMapa({ apiKey: 'teste', endereco, textoEndereco: 'Rua Exemplo, 10, Jundiaí',
     fetchFn: async () => { const p = ponto(); delete p.properties.locality; delete p.properties.postalcode; return Response.json({ features: [p] }) } }),
   /Não encontramos uma região confiável/)
+})
+
+test('cotação de pedido grava somente valor calculado no servidor e devolve identificador', async () => {
+  let cotacao
+  const { handler, request } = ambiente({ salvarCotacao: async dados => {
+    cotacao = dados
+    return { id: '22222222-2222-2222-2222-222222222222', expiraEm: '2026-10-08T02:00:00Z' }
+  } })
+  const original = request()
+  const body = await original.json()
+  const resposta = await handler(new Request(original.url, { method: 'POST', headers: original.headers,
+    body: JSON.stringify({ ...body, acao: 'cotar_pedido', cliente_cpf: '12345678900', taxa: 0.01 }) }))
+  assert.equal(resposta.status, 200)
+  const data = await resposta.json()
+  assert.equal(data.cotacao_id, '22222222-2222-2222-2222-222222222222')
+  assert.equal(data.taxa, 5.25)
+  assert.equal(data.somente_simulacao, false)
+  assert.equal(cotacao.taxa, 5.25)
+  assert.equal(cotacao.usuarioId, 'u')
+  assert.equal(cotacao.clienteCpf, '12345678900')
+  assert.equal(cotacao.destino.complemento, 'privado')
+  assert.equal(cotacao.destino.cpf, undefined)
+})
+
+test('cotação não é criada para CPF inválido nem rota imprecisa', async () => {
+  let gravacoes = 0
+  const { handler, request } = ambiente({ destinoImpreciso: true, salvarCotacao: async () => { gravacoes++ } })
+  const original = request()
+  const body = await original.json()
+  for (const cpf of ['123', '12345678900']) {
+    const resposta = await handler(new Request(original.url, { method: 'POST', headers: original.headers,
+      body: JSON.stringify({ ...body, acao: 'cotar_pedido', cliente_cpf: cpf }) }))
+    assert.equal(resposta.status, cpf.length === 3 ? 400 : 422)
+  }
+  assert.equal(gravacoes, 0)
 })

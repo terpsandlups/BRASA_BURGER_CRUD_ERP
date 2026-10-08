@@ -42,7 +42,7 @@ export default function Analytics() {
         limiteFim.setUTCDate(limiteFim.getUTCDate() + 1)
         const [vendas, fichas, unidades] = await Promise.all([
           carregarTodasPaginas(() => supabase.from('pedidos')
-            .select('id, loja_id, criado_em, valor_total, canal_venda, tipo_atendimento, status, lojas(nome), itens_pedido(produto_sku, variacao_id, quantidade, preco_unitario, produtos(nome))')
+            .select('id, loja_id, criado_em, valor_total, taxa_entrega, canal_venda, tipo_atendimento, status, lojas(nome), itens_pedido(produto_sku, variacao_id, quantidade, preco_unitario, produtos(nome))')
             .gte('criado_em', `${inicio}T00:00:00-03:00`).lt('criado_em', limiteFim.toISOString())
             .neq('status', 'cancelado').order('criado_em').order('id')),
           carregarTodasPaginas(() => supabase.from('vw_custo_variacao').select('variacao_id, custo_ficha_tecnica').order('variacao_id')),
@@ -99,14 +99,15 @@ export default function Analytics() {
     </div>
     {carregando ? <SkeletonLinhas linhas={8} /> : erro ? <div role="alert"><EmptyState titulo="Análise indisponível" descricao={erro} /></div> : <>
       <p className="text-xs text-fumaca mb-4">Período no horário de São Paulo. Pedidos não cancelados, incluindo os em andamento. Atualizado às {atualizado?.toLocaleTimeString('pt-BR')}.</p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3 mb-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-3 mb-5">
         <KPICard titulo="Faturamento" valor={moeda(metrica.faturamentoTotal)} />
+        <KPICard titulo="Frete cobrado" valor={moeda(metrica.receitaFrete)} contexto="Incluído no faturamento" />
         <KPICard titulo="Pedidos" valor={metrica.pedidosTotal} />
         <KPICard titulo="Ticket médio" valor={metrica.ticketMedio == null ? '—' : moeda(metrica.ticketMedio)} />
         <KPICard titulo="CMV estimado" valor={percentual(metrica.cmvPercentual)} />
         <KPICard titulo="Margem bruta estimada" valor={percentual(metrica.margemPercentual)} />
       </div>
-      <p className="text-xs text-fumaca mb-5">Custos calculados pela ficha técnica atual; cobertura de {percentual(metrica.coberturaCusto)} da receita dos itens-base. Adicionais, descontos e taxas não entram no CMV e na margem aqui apresentados. A margem não é lucro líquido. O faturamento usa o total gravado dos pedidos; a receita de produtos usa os itens-base.</p>
+      <p className="text-xs text-fumaca mb-5">Faturamento: {moeda(metrica.faturamentoItens)} em itens/adicionais e {moeda(metrica.receitaFrete)} em frete próprio. Custos calculados pela ficha técnica atual; cobertura de {percentual(metrica.coberturaCusto)} da receita dos itens-base. Adicionais, descontos e taxas não entram no CMV e na margem aqui apresentados. A margem não é lucro líquido.</p>
       {!recorte.length ? <EmptyState titulo="Nenhuma venda no recorte" descricao="Ajuste as datas, a unidade ou os canais." /> : <>
         <section className="bg-branco border border-borda p-5 mb-5">
           <h2 className="text-xl mb-4">Receita por dia com vendas</h2>

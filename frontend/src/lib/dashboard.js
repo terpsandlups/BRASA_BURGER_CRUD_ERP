@@ -34,6 +34,7 @@ export async function carregarTodasPaginas(criarConsulta) {
 export function calcularDashboard(pedidos, custos, dias = []) {
   const validos = pedidos.filter((p) => p.status !== 'cancelado')
   const faturamentoTotal = validos.reduce((soma, p) => soma + Number(p.valor_total), 0)
+  const receitaFrete = validos.reduce((soma, p) => soma + Number(p.taxa_entrega || 0), 0)
   const custoPorVariacao = new Map(custos
     .filter((c) => c.custo_ficha_tecnica != null && Number.isFinite(Number(c.custo_ficha_tecnica)))
     .map((c) => [c.variacao_id, Number(c.custo_ficha_tecnica)]))
@@ -77,7 +78,7 @@ export function calcularDashboard(pedidos, custos, dias = []) {
   }
   const cmvPercentual = receitaComFicha > 0 ? custoTotal / receitaComFicha * 100 : null
   return {
-    faturamentoTotal, pedidosTotal: validos.length,
+    faturamentoTotal, faturamentoItens: faturamentoTotal - receitaFrete, receitaFrete, pedidosTotal: validos.length,
     ticketMedio: validos.length ? faturamentoTotal / validos.length : null,
     cmvPercentual, margemPercentual: cmvPercentual === null ? null : 100 - cmvPercentual,
     custoTotal, receitaComFicha, itensSemFicha,

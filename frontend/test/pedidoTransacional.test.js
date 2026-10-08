@@ -10,7 +10,7 @@ test('reenvio após resposta perdida preserva chave e conteúdo originais', asyn
   } }, () => 'chave-1')
   await assert.rejects(envio.enviar({ itens: [1] }))
   assert.equal(envio.temPendente(), true)
-  assert.equal(await envio.enviar({ itens: [2] }), 'pedido-1')
+  assert.equal(await envio.enviar(), 'pedido-1')
   assert.deepEqual(chamadas[0], chamadas[1])
   assert.equal(envio.temPendente(), false)
 })
@@ -53,4 +53,14 @@ test('monta itens com preços arredondados e mantém quantidade para baixa de ad
   assert.equal(dados.observacoes, 'sem cebola')
   assert.equal(dados.itens[0].quantidade, 3)
   assert.equal(dados.itens[0].adicionais[0].preco_unitario, 4.5)
+  assert.equal(dados.cotacao_entrega_id, null)
+})
+
+test('delivery próprio inclui apenas o identificador da cotação, não o valor escolhido no navegador', () => {
+  const dados = montarPedidoTransacional({ lojaId: 'loja', clienteCpf: '12345678900', tipoAtendimento: 'delivery',
+    formaPagamento: 'pix', canalVenda: 'proprio', observacoes: '', trocoPara: '', itens: [],
+    cotacaoId: '22222222-2222-2222-2222-222222222222' })
+  assert.equal(dados.cotacao_entrega_id, '22222222-2222-2222-2222-222222222222')
+  assert.equal(dados.taxa_entrega, undefined)
+  assert.equal(dados.valor_total, undefined)
 })

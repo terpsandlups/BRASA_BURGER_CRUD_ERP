@@ -1,7 +1,8 @@
-export function montarPedidoTransacional({ lojaId, clienteCpf, tipoAtendimento, formaPagamento, canalVenda, observacoes, trocoPara, itens }) {
+export function montarPedidoTransacional({ lojaId, clienteCpf, tipoAtendimento, formaPagamento, canalVenda, observacoes, trocoPara, itens, cotacaoId = null }) {
   return {
     loja_id: lojaId, cliente_cpf: clienteCpf, tipo_atendimento: tipoAtendimento,
     forma_pagamento: formaPagamento, canal_venda: canalVenda,
+    cotacao_entrega_id: tipoAtendimento === 'delivery' && canalVenda === 'proprio' ? cotacaoId : null,
     observacoes: observacoes.trim() || null,
     troco_para: formaPagamento === 'dinheiro' ? Number(trocoPara) : null,
     itens: itens.map((item) => ({

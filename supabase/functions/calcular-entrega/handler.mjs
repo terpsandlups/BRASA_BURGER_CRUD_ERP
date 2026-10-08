@@ -44,7 +44,7 @@ export function precificarDistancia(metros, valorKm, provedor) {
   }
 }
 
-export function criarHandler({ apiKey, provider = 'openrouteservice', allowedOrigins, criarCliente, fetchFn = fetch }) {
+export function criarHandler({ apiKey, provider = 'openrouteservice', allowedOrigins, criarCliente, salvarCotacao, fetchFn = fetch }) {
   return async request => {
     const origin = request.headers.get('origin')
     const headers = { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', Vary: 'Origin' }
@@ -84,8 +84,12 @@ export function criarHandler({ apiKey, provider = 'openrouteservice', allowedOri
       try { body = JSON.parse(new TextDecoder().decode(bytes)) } catch { throw new Falha(400, 'Requisição inválida.') }
       if (!/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(body?.loja_id || '')) throw new Falha(400, 'Selecione uma loja válida.')
       const sugerirMapa = body.acao === 'sugerir_mapa'
-      if (body.acao && !sugerirMapa) throw new Falha(400, 'Ação inválida.')
-      if (sugerirMapa && provider !== 'openrouteservice') throw new Falha(503, 'Busca no mapa indisponível neste provedor.')
+      const cotarPedido = body.acao === 'cotar_pedido'
+      if (body.acao && !sugerirMapa && !cotarPedido) throw new Falha(400, 'Ação inválida.')
+      if ((sugerirMapa || cotarPedido) && provider !== 'openrouteservice') throw new Falha(503, 'Busca no mapa indisponível neste provedor.')
+      if (cotarPedido && (!/^[0-9]{11}$/.test(body.cliente_cpf || '') || typeof salvarCotacao !== 'function')) {
+        throw new Falha(400, 'Selecione um cliente válido para cotar o pedido.')
+      }
       const destino = enderecoParaRota(body.destino)
       // O navegador não decide origem, tarifa ou permissões. A RPC usa auth.uid().
       const { data: config, error } = await client.rpc('preparar_consulta_rota', { p_loja: body.loja_id })
@@ -102,7 +106,29 @@ export function criarHandler({ apiKey, provider = 'openrouteservice', allowedOri
       }
       if (provider === 'openrouteservice') {
         const rota = await consultarORS({ apiKey, origem: config, destino: body.destino, textoOrigem: origem, textoDestino: destino, fetchFn })
-        return responder(200, { ...precificarDistancia(rota.metros, config.valor_km, 'openrouteservice'), origem, destino,
+        const calculo = precificarDistancia(rota.metros, config.valor_km, 'openrouteservice')
+        let cotacao = {}
+        if (cotarPedido) {
+          const complemento = body.destino.complemento ?? ''
+          if (typeof complemento !== 'string' || complemento.length > 250) throw new Falha(400, 'Complemento do destino inválido.')
+          const campos = ['cep', 'numero', 'endereco', 'bairro', 'cidade', 'estado']
+          const destinoSalvo = Object.fromEntries(campos.map(campo => [campo, String(body.destino[campo]).trim()]))
+          destinoSalvo.cep = destinoSalvo.cep.replace(/-/g, '')
+          destinoSalvo.estado = destinoSalvo.estado.toUpperCase()
+          destinoSalvo.complemento = complemento.trim()
+          let salva
+          try {
+            salva = await salvarCotacao({ usuarioId: sessao.user.id, lojaId: body.loja_id,
+              clienteCpf: body.cliente_cpf, origem: config, destino: destinoSalvo,
+              distanciaMetros: calculo.distancia_metros, valorKm: calculo.valor_km,
+              taxa: calculo.taxa, provedor: 'openrouteservice' })
+          } catch { throw new Falha(503, 'Não foi possível reservar a cotação. Tente calcular novamente; nenhuma taxa foi aplicada ao pedido.') }
+          if (!/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(salva?.id || '') || !salva?.expiraEm) {
+            throw new Falha(503, 'O banco não confirmou a cotação. Tente calcular novamente.')
+          }
+          cotacao = { cotacao_id: salva.id, expira_em: salva.expiraEm, somente_simulacao: false }
+        }
+        return responder(200, { ...calculo, ...cotacao, origem, destino,
           origem_localizada: rota.origemLocalizada, destino_localizado: rota.destinoLocalizado,
           origem_modo: rota.origemModo, destino_modo: rota.destinoModo })
       }
