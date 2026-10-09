@@ -12,6 +12,11 @@ const STATUS_LABEL = {
   saiu_entrega: 'Em entrega', entregue: 'Entregue', cancelado: 'Cancelado',
 }
 const PAGAMENTO_LABEL = { pix: 'Pix', credito: 'Crédito', debito: 'Débito', dinheiro: 'Dinheiro' }
+const DESTINO_LABEL = {
+  devolver_estoque: 'Devolvido ao estoque',
+  perda_operacional: 'Perda operacional (estoque já consumido)',
+  reaproveitar: 'Reaproveitado em outro pedido',
+}
 
 const POR_PAGINA = 25
 
@@ -47,7 +52,7 @@ export default function Historico() {
     const relacaoCliente = busca.tipo === 'nome' ? 'clientes!inner(nome)' : 'clientes(nome)'
     let query = supabase
       .from('pedidos')
-      .select(`*, lojas(nome), ${relacaoCliente}, itens_pedido(*, produtos(nome), itens_pedido_adicionais(*, adicionais(nome)))`, { count: 'exact' })
+      .select(`*, lojas(nome), ${relacaoCliente}, cancelamentos_pedido(*), itens_pedido(*, produtos(nome), itens_pedido_adicionais(*, adicionais(nome)))`, { count: 'exact' })
       .order('criado_em', { ascending: false })
       .order('id', { ascending: false })
 
@@ -190,7 +195,7 @@ export default function Historico() {
                 <th className="py-2 px-3">Status</th>
                 <th className="py-2 px-3">Pagamento</th>
                 <th className="py-2 px-3">Frete</th>
-                <th className="py-2 px-3">Total</th>
+                <th className="py-2 px-3">Faturamento</th>
               </tr>
             </thead>
             <tbody>
@@ -208,7 +213,7 @@ export default function Historico() {
                     </td>
                     <td className="py-2 px-3">{PAGAMENTO_LABEL[p.forma_pagamento] || '—'}</td>
                     <td className="py-2 px-3">{p.cotacao_entrega_id ? `R$ ${Number(p.taxa_entrega).toFixed(2)}` : '—'}</td>
-                    <td className="py-2 px-3 font-medium">R$ {Number(p.valor_total).toFixed(2)}</td>
+                    <td className="py-2 px-3 font-medium">{p.status === 'cancelado' ? 'R$ 0,00' : `R$ ${Number(p.valor_total).toFixed(2)}`}</td>
                   </tr>
               ))}
             </tbody>
@@ -271,9 +276,20 @@ export default function Historico() {
                 <div className="flex justify-between"><span>Frete ({(Number(p.distancia_entrega_metros) / 1000).toFixed(2)} km)</span><span>R$ {Number(p.taxa_entrega).toFixed(2)}</span></div>
               </div>}
               <div className="text-sm font-medium flex justify-between border-t border-borda pt-3">
-                <span>Total do pedido</span>
+                <span>Valor original do pedido</span>
                 <span>R$ {Number(p.valor_total).toFixed(2)}</span>
               </div>
+              {p.status === 'cancelado' && <div className="mt-4 border border-brasa/30 p-3 text-sm space-y-1">
+                <p className="font-medium text-brasa">Não computado no faturamento</p>
+                <p>Estorno sistêmico: R$ {Number(p.cancelamentos_pedido?.valor_estornado ?? p.valor_total).toFixed(2)}</p>
+                <p>Motivo: {p.cancelamentos_pedido?.motivo || p.motivo_cancelamento || 'Não informado no registro antigo'}</p>
+                <p>Destino: {DESTINO_LABEL[p.cancelamentos_pedido?.destino] || 'Sem lançamento de estoque no fluxo antigo'}</p>
+                {p.cancelamentos_pedido?.destino === 'perda_operacional' && <p>Custo dos insumos: {p.cancelamentos_pedido.custo_operacional == null
+                  ? 'não apurado (pedido anterior ao rastreamento)'
+                  : `R$ ${Number(p.cancelamentos_pedido.custo_operacional).toFixed(2)}`}</p>}
+                {p.cancelamentos_pedido?.pedido_destino_id && <p>Reaproveitado no pedido #{p.cancelamentos_pedido.pedido_destino_id}</p>}
+                {p.cancelamentos_pedido?.criado_em && <p>Registrado em {new Date(p.cancelamentos_pedido.criado_em).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</p>}
+              </div>}
             </div>
           )
         })()}

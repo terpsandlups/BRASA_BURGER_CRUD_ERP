@@ -1,6 +1,6 @@
 # Continuidade de execução
 
-## Situação do MVP Brasa Burguer — 08/10/2026
+## Situação do MVP Brasa Burguer — 09/10/2026
 
 O produto está em **piloto funcional**, não homologado como MVP final. A base de
 cadastros, pedido transacional, frete próprio por rota gratuita, Histórico,
@@ -11,10 +11,10 @@ essa evolução vem depois de estabilizar a operação Brasa Burguer.
 | Bloco | Situação verificada | Próximo fechamento |
 |---|---|---|
 | 4.1 Dashboard | Filtro Hoje/7/15/30/90 dias e separação do frete validados no cenário real | Testes de reconciliação, cancelados e perfis/unidades |
-| 4.2 Pedidos e entregas | Pedido transacional, idempotência, estoque na criação e frete openrouteservice integrados | Cancelamento com três destinos e validação de falhas/concorrência |
+| 4.2 Pedidos e entregas | Pedido transacional, frete openrouteservice e cancelamento/estorno com três destinos implantados | Homologar cancelamento e estoque com pedidos de teste autorizados, duas sessões e perfis/unidades |
 | 4.3 Clientes/CRM | Cadastro, CEP, busca e histórico implementados | Testes conectados de permissão, edição e múltiplas sessões |
 | 4.4 Produtos e estoque | Catálogo/fichas, baixa por venda e telas de insumos/estoque existentes | Validar cadastro, vínculo por loja, saldo, ficha e movimentações |
-| 4.5 Analytics | Portal, filtros, ranking e exportação CSV implementados; frete separado | Conciliar taxas/CMV/cancelamentos e proteger dez views antigas |
+| 4.5 Analytics | Portal, filtros, ranking e exportação CSV implementados; frete separado; fatos de venda corrigidos para cancelamentos | Conciliar taxas/CMV e proteger oito views antigas |
 | 4.6 Promoções | Planejado, não implementado | Cupons de influenciadores e frete grátis com regras no servidor |
 | Fechamento do MVP | Ainda pendente | Testes ponta a ponta, segurança, instalação reproduzível e publicação |
 
@@ -32,11 +32,27 @@ com usuário e data:
    destino, compensando a baixa duplicada do pedido de destino exatamente uma
    vez. Não reutilizar o mesmo item em dois destinos.
 
-Implementar essas escolhas em operação transacional no servidor, com validação
-de permissão, unidade, status, quantidade e concorrência; a UI atual só grava
-motivo/status e **ainda não executa nenhuma das três destinações**. A regra de
-pagamento/reembolso e o tratamento de reaproveitamento parcial ainda precisam
-ser fechados antes de ativar essa opção em produção.
+Fluxo implantado em `20261009000030_cancelamento_estorno_estoque.sql`:
+cancelamento e estorno contábil ocorrem em uma RPC atômica, com usuário, motivo,
+data, valor original e destino registrados. O pedido permanece no histórico,
+mas seu faturamento passa a zero nos indicadores. Não há devolução automática
+do dinheiro no Pix/cartão; isso depende de integração futura com um meio de
+pagamento. A perda operacional guarda o custo dos insumos registrado na venda,
+sem nova baixa. O reaproveitamento exige pedido ativo da mesma loja com o
+**pedido inteiro idêntico** (itens, variações, adicionais e quantidades), sem
+aproveitamento parcial; desfaz somente a baixa duplicada do destino. Pedidos
+anteriores à implantação não têm fotografia do consumo e só podem ser
+cancelados como perda operacional para evitar reposição estimada.
+
+Migração aplicada no Supabase e inspecionada sem cancelar pedidos reais; 47
+testes de frontend e build passaram. Falta validar um ciclo ponta a ponta em
+ambiente de teste com estoque, dois pedidos idênticos, concorrência e permissões
+de perfis/unidades. Não considerar o fluxo homologado para produção até isso.
+As views `fato_vendas` e `fato_itens_venda` também foram corrigidas: cancelados
+ficam com receita e encargos zerados no fato de vendas, têm o valor original em
+coluna separada e não aparecem no fato de itens vendidos. Ambas agora usam
+permissões do usuário (`security_invoker`). A auditoria ainda aponta oito
+views antigas com `SECURITY DEFINER`, fora deste incremento.
 
 **Ordem de execução recomendada:** (1) cancelamento e razão de estoque;
 (2) validação de insumos/fichas e perfis; (3) conciliação analítica e segurança

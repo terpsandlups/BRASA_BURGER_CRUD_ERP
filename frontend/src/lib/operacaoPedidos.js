@@ -23,15 +23,48 @@ export function indicadoresOperacao(hoje, ativos, lojaId, agora) {
 
 export function criarAtualizadorStatus(client) {
   const emCurso = new Set()
-  return async (pedido, alteracoes) => {
+  return async (pedido) => {
     if (emCurso.has(pedido.id)) return false
     emCurso.add(pedido.id)
     try {
-      const { data, error } = await client.from('pedidos').update(alteracoes)
-        .eq('id', pedido.id).eq('status', pedido.status).select('id').maybeSingle()
+      const { data, error } = await client.rpc('avancar_pedido_transacional', {
+        p_pedido: pedido.id, p_status_esperado: pedido.status,
+      })
       if (error) throw error
       if (!data) throw new Error('O pedido mudou em outra sessão ou você não tem permissão. Atualize a lista antes de tentar novamente.')
       return true
     } finally { emCurso.delete(pedido.id) }
   }
+}
+
+export function assinaturaItensPedido(pedido) {
+  return (pedido.itens_pedido || []).map(item => JSON.stringify({
+    sku: item.produto_sku,
+    variacao: item.variacao_id,
+    quantidade: Number(item.quantidade),
+    adicionais: (item.itens_pedido_adicionais || [])
+      .map(a => `${a.adicional_id}:${Number(a.quantidade)}`).sort(),
+  })).sort().join('|')
+}
+
+export function destinosReaproveitamento(origem, ativos) {
+  const assinatura = assinaturaItensPedido(origem)
+  if (!assinatura || !origem.estoque_rastreado) return []
+  return ativos.filter(p => p.id !== origem.id && p.loja_id === origem.loja_id &&
+    p.estoque_rastreado && assinaturaItensPedido(p) === assinatura)
+}
+
+export async function cancelarPedidoTransacional(client, pedido, { motivo, destino, pedidoDestinoId }) {
+  if (motivo.trim().length < 3 || motivo.trim().length > 500) throw new Error('Informe um motivo entre 3 e 500 caracteres.')
+  if (!['devolver_estoque', 'perda_operacional', 'reaproveitar'].includes(destino)) throw new Error('Selecione o destino dos itens.')
+  if (destino === 'reaproveitar' && !pedidoDestinoId) throw new Error('Selecione o pedido que receberá os itens.')
+  const { data, error } = await client.rpc('cancelar_pedido_transacional', {
+    p_pedido: pedido.id,
+    p_status_esperado: pedido.status,
+    p_motivo: motivo.trim(),
+    p_destino: destino,
+    p_pedido_destino: destino === 'reaproveitar' ? pedidoDestinoId : null,
+  })
+  if (error) throw error
+  return data
 }

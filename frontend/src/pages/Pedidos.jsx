@@ -11,7 +11,7 @@ import ConsultaEntrega from '../components/ConsultaEntrega.jsx'
 import { criarEnvioTransacional, montarPedidoTransacional } from '../lib/pedidoTransacional.js'
 import { exigeFreteProprio, cotacaoPedidoValida, totalComFrete } from '../lib/entrega.js'
 import { carregarTodasPaginas, intervaloDashboard } from '../lib/dashboard.js'
-import { filtrarPedidosOperacao, indicadoresOperacao, criarAtualizadorStatus } from '../lib/operacaoPedidos.js'
+import { filtrarPedidosOperacao, indicadoresOperacao, criarAtualizadorStatus, destinosReaproveitamento, cancelarPedidoTransacional } from '../lib/operacaoPedidos.js'
 
 const COLUNAS = [
   { status: 'recebido', titulo: 'Novos Pedidos' },
@@ -213,6 +213,11 @@ export default function Pedidos() {
   const [agora, setAgora] = useState(new Date())
   const [expandidoId, setExpandidoId] = useState(null)
   const pedidoDetalhe = pedidosAtivos.find(p => p.id === expandidoId) || null
+  const [cancelamento, setCancelamento] = useState(null)
+  const [motivoCancelamento, setMotivoCancelamento] = useState('')
+  const [destinoCancelamento, setDestinoCancelamento] = useState('')
+  const [pedidoDestinoId, setPedidoDestinoId] = useState('')
+  const [erroCancelamento, setErroCancelamento] = useState('')
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
   const [categoriaSelecionada, setCategoriaSelecionada] = useState('todas')
 
@@ -294,7 +299,7 @@ export default function Pedidos() {
     try {
       const [ativos, hoje] = await Promise.all([
         carregarTodasPaginas(() => supabase.from('pedidos')
-          .select('*, lojas(nome), clientes(nome), itens_pedido(*, produtos(nome, categorias(nome)))')
+          .select('*, lojas(nome), clientes(nome), itens_pedido(*, produtos(nome, categorias(nome)), itens_pedido_adicionais(*))')
           .in('status', ['recebido', 'em_preparo', 'pronto', 'saiu_entrega'])
           .order('criado_em', { ascending: true }).order('id', { ascending: true })),
         carregarTodasPaginas(() => supabase.from('pedidos').select('id, loja_id, valor_total, status')
@@ -340,12 +345,12 @@ export default function Pedidos() {
   const kpis = useMemo(() => indicadoresOperacao(pedidosHoje, pedidosAtivos, filtroLoja, agora),
     [pedidosHoje, pedidosAtivos, filtroLoja, agora])
 
-  async function alterarStatus(pedido, alteracoes) {
+  async function alterarStatus(pedido) {
     if (statusEmCursoRef.current.has(pedido.id)) return
     statusEmCursoRef.current.add(pedido.id)
     marcarPedidoEmAtualizacao(pedido.id, true)
     try {
-      await atualizarStatusRef.current(pedido, alteracoes)
+      await atualizarStatusRef.current(pedido)
     } catch (error) {
       alert('Não foi possível atualizar o pedido: ' + error.message)
     } finally {
@@ -357,20 +362,38 @@ export default function Pedidos() {
 
   async function avancarStatus(pedido) {
     if (pedidosEmAtualizacao.has(pedido.id)) return
-    const novoStatus = proximoStatus(pedido)
-    if (!novoStatus) return
-    await alterarStatus(pedido, { status: novoStatus })
+    if (!proximoStatus(pedido)) return
+    await alterarStatus(pedido)
   }
 
-  async function cancelarPedido(pedido) {
+  function cancelarPedido(pedido) {
     if (pedidosEmAtualizacao.has(pedido.id)) return
-    const motivo = prompt(`Cancelar pedido #${pedido.id} — motivo:`)
-    if (motivo === null) return // usuário desistiu
-    if (!motivo.trim()) {
-      alert('Informe um motivo para o cancelamento.')
-      return
+    setExpandidoId(null)
+    setCancelamento(pedido)
+    setMotivoCancelamento('')
+    setDestinoCancelamento('')
+    setPedidoDestinoId('')
+    setErroCancelamento('')
+  }
+
+  async function confirmarCancelamento(event) {
+    event.preventDefault()
+    if (!cancelamento || statusEmCursoRef.current.has(cancelamento.id)) return
+    statusEmCursoRef.current.add(cancelamento.id)
+    marcarPedidoEmAtualizacao(cancelamento.id, true)
+    setErroCancelamento('')
+    try {
+      await cancelarPedidoTransacional(supabase, cancelamento, {
+        motivo: motivoCancelamento, destino: destinoCancelamento, pedidoDestinoId,
+      })
+      setCancelamento(null)
+    } catch (error) {
+      setErroCancelamento(error.message)
+    } finally {
+      statusEmCursoRef.current.delete(cancelamento.id)
+      marcarPedidoEmAtualizacao(cancelamento.id, false)
+      await carregarPedidos()
     }
-    await alterarStatus(pedido, { status: 'cancelado', motivo_cancelamento: motivo.trim() })
   }
 
   // ----- lógica do formulário de novo pedido -----
@@ -887,6 +910,48 @@ export default function Pedidos() {
         {pedidoDetalhe && (
           <DetalhePedido pedido={pedidoDetalhe} onAvancar={avancarStatus} onCancelar={cancelarPedido} atualizando={pedidosEmAtualizacao.has(pedidoDetalhe.id)} />
         )}
+      </SidePanel>
+      <SidePanel aberto={!!cancelamento} onFechar={() => setCancelamento(null)}
+        titulo={cancelamento ? `Cancelar pedido #${cancelamento.id}` : ''}>
+        {cancelamento && <form onSubmit={confirmarCancelamento} className="space-y-5 text-sm">
+          <p className="text-fumaca">O total de R$ {Number(cancelamento.valor_total).toFixed(2)} será estornado no ERP e deixará de compor o faturamento. O sistema não devolve dinheiro automaticamente via Pix ou cartão.</p>
+          <div>
+            <label className="block text-xs uppercase text-fumaca mb-1" htmlFor="motivo-cancelamento">Motivo obrigatório</label>
+            <textarea id="motivo-cancelamento" required minLength={3} maxLength={500}
+              value={motivoCancelamento} onChange={e => setMotivoCancelamento(e.target.value)}
+              className="w-full border border-borda p-2 min-h-24" placeholder="Explique o motivo do cancelamento" />
+          </div>
+          <fieldset className="space-y-2">
+            <legend className="text-xs uppercase text-fumaca mb-2">Destino dos itens</legend>
+            {[
+              ['devolver_estoque', 'Devolver ao estoque', 'O preparo não consumiu os ingredientes; repõe a baixa original.'],
+              ['perda_operacional', 'Perda operacional', 'O lanche já foi preparado; mantém a baixa de estoque como custo.'],
+              ['reaproveitar', 'Encaixar em outro pedido', 'Aproveita o item pronto em pedido idêntico, sem segunda baixa.'],
+            ].map(([valor, rotulo, detalhe]) => <label key={valor} className="flex gap-2 border border-borda p-3 cursor-pointer">
+              <input type="radio" name="destino-cancelamento" value={valor} checked={destinoCancelamento === valor}
+                disabled={!cancelamento.estoque_rastreado && valor !== 'perda_operacional'}
+                onChange={() => { setDestinoCancelamento(valor); setPedidoDestinoId('') }} />
+              <span><strong className="block">{rotulo}</strong><span className="text-fumaca">{detalhe}</span></span>
+            </label>)}
+          </fieldset>
+          {!cancelamento.estoque_rastreado && <p className="text-xs text-ambar">Este pedido é anterior ao registro exato do consumo. Para não repor quantidades estimadas, só a perda operacional está disponível.</p>}
+          {destinoCancelamento === 'reaproveitar' && <div>
+            <label className="block text-xs uppercase text-fumaca mb-1" htmlFor="pedido-destino">Pedido ativo idêntico da mesma unidade</label>
+            <select id="pedido-destino" required value={pedidoDestinoId} onChange={e => setPedidoDestinoId(e.target.value)}
+              className="w-full border border-borda p-2">
+              <option value="">Selecione um pedido</option>
+              {destinosReaproveitamento(cancelamento, pedidosAtivos).map(p =>
+                <option key={p.id} value={p.id}>#{p.id} · {p.clientes?.nome || formatarCPF(p.cliente_cpf)}</option>)}
+            </select>
+            {destinosReaproveitamento(cancelamento, pedidosAtivos).length === 0 && <p className="text-xs text-fumaca mt-1">Nenhum pedido com os mesmos itens, variações, adicionais e quantidades.</p>}
+          </div>}
+          {erroCancelamento && <p role="alert" className="text-brasa">{erroCancelamento}</p>}
+          <Button variant="danger" className="w-full" type="submit"
+            disabled={pedidosEmAtualizacao.has(cancelamento.id) || !destinoCancelamento ||
+              (destinoCancelamento === 'reaproveitar' && !pedidoDestinoId)}>
+            Confirmar cancelamento e estorno
+          </Button>
+        </form>}
       </SidePanel>
     </div>
   )
