@@ -1,6 +1,6 @@
 # Continuidade de execução
 
-## Situação do MVP Brasa Burguer — 09/10/2026
+## Situação do MVP Brasa Burguer — 08/10/2026 (horário de Brasília)
 
 O produto está em **piloto funcional**, não homologado como MVP final. A base de
 cadastros, pedido transacional, frete próprio por rota gratuita, Histórico,
