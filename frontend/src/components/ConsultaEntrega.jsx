@@ -93,7 +93,7 @@ export default function ConsultaEntrega({ lojaId, pontoSalvo, origemPendente, mo
   }
 
   return (
-    <section className="bg-carvao text-osso p-5 mt-5">
+    <section className="ui-form delivery-quote">
       <h2 className="font-display text-xl">{modoPedido ? 'Frete deste pedido — plano gratuito' : 'Calcular pelas ruas — plano gratuito'}</h2>
       <p className="text-sm text-fumaca my-3">Para entregas próprias. O CEP preenche rua e cidade, mas não identifica o imóvel no mapa. Usamos a origem e a tarifa já salvas da loja.</p>
       <p className="text-xs text-fumaca mb-3">Sem ponto marcado, tentamos localizar cada endereço completo. Se houver ponto, a rota usa sua posição — não o endereço digitado — daquele lado do trajeto.</p>

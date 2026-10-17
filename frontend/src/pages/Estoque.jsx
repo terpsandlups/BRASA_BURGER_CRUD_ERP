@@ -127,17 +127,17 @@ export default function Estoque() {
 
   return (
     <div>
-      <PageHeader titulo="Estoque" descricao="Insumos e saldos por unidade, ligados às fichas técnicas." acaoPrincipal={podeOperar('estoque','criar') && <Button onClick={() => setMostrarCadastro(!mostrarCadastro)}>{mostrarCadastro ? 'Fechar cadastro' : '+ Cadastrar insumo'}</Button>} />
+      <PageHeader icone="estoque" titulo="Estoque" descricao="Insumos e saldos por unidade, ligados às fichas técnicas." acaoPrincipal={podeOperar('estoque','criar') && <Button onClick={() => setMostrarCadastro(!mostrarCadastro)}>{mostrarCadastro ? 'Fechar cadastro' : '+ Cadastrar insumo'}</Button>} />
 
       {mostrarCadastro && <CadastroInsumo onSalvo={carregarIngredientes} />}
       {erro && <p role="alert" className="text-brasa mb-4">{erro}</p>}
       {mensagem && <p role="status" className="text-oliva bg-oliva/5 border border-oliva/30 rounded-lg p-3 mb-4">{mensagem}</p>}
       <div className="grid grid-cols-2 gap-3 mb-5">
-        <KPICard titulo="Insumos nesta unidade" valor={estoque.length} />
-        <KPICard titulo="Abaixo do mínimo" valor={totalAlertas} />
+        <KPICard icone="estoque" titulo="Insumos nesta unidade" valor={estoque.length} />
+        <KPICard icone="alerta" titulo="Abaixo do mínimo" valor={totalAlertas} alerta={totalAlertas > 0} />
       </div>
 
-      <div className="flex flex-wrap gap-3 mb-6 items-center">
+      <div className="ui-filters flex flex-wrap gap-3 mb-6 items-center">
         <select aria-label="Unidade do estoque" disabled={vinculando} value={filtroLoja} onChange={(e) => { setFiltroLoja(e.target.value); setNovoSaldo({ ingrediente_id: '', quantidade_disponivel: '0', quantidade_minima: '0' }) }}
           className="px-3 py-2 border border-superficie2/40 text-sm">
           {lojas.map((l) => <option key={l.id} value={l.id}>{l.nome}</option>)}
@@ -149,14 +149,14 @@ export default function Estoque() {
           className="px-3 py-2 border border-superficie2/40 text-sm flex-1 min-w-[200px]"
         />
         <button
-          onClick={() => setSomenteAlerta(!somenteAlerta)}
-          className={`px-3 py-2 text-sm ${somenteAlerta ? 'bg-brasa text-osso' : 'bg-white border border-superficie2/30'}`}
+          onClick={() => setSomenteAlerta(!somenteAlerta)} aria-pressed={somenteAlerta}
+          className={`rounded-lg px-3 py-2 text-sm ${somenteAlerta ? 'bg-brasa text-osso' : 'bg-white border border-superficie2/30'}`}
         >
           ⚠️ Só abaixo do mínimo {totalAlertas > 0 && `(${totalAlertas})`}
         </button>
       </div>
 
-      {mostrarCadastro && <form onSubmit={vincular} className="bg-branco border border-borda p-5 mb-5">
+      {mostrarCadastro && <form onSubmit={vincular} className="ui-form mb-5">
         <h2 className="text-xl mb-3">Vincular insumo à unidade selecionada</h2>
         <fieldset disabled={vinculando} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <label className="text-sm">Insumo
@@ -176,7 +176,7 @@ export default function Estoque() {
       </form>}
 
       {carregando && <p role="status" className="text-sm text-fumaca mb-3">Atualizando saldos…</p>}
-      <div className="overflow-x-auto rounded-xl border border-borda"><table className="w-full min-w-[640px] text-sm bg-white">
+      <div className="ui-table-wrap"><table className="w-full min-w-[640px] text-sm bg-white">
         <thead>
           <tr className="text-left text-xs uppercase tracking-wide text-fumaca">
             <th className="py-2">Ingrediente</th>

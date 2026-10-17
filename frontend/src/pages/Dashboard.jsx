@@ -8,7 +8,7 @@ import EmptyState from '../components/ui/EmptyState.jsx'
 import Button from '../components/ui/Button.jsx'
 import { calcularDashboard, carregarTodasPaginas, intervaloDashboard } from '../lib/dashboard.js'
 
-const CORES_CANAL = ['#C98A3A', '#211E1A', '#2E7D5B', '#766F66']
+const CORES_CANAL = ['#E4AE65', '#8FA6CF', '#85B99B', '#B39AC5']
 
 export default function Dashboard() {
   const [lojas, setLojas] = useState([])
@@ -72,10 +72,10 @@ export default function Dashboard() {
   return (
     <div>
       <PageHeader
-        titulo="Painel Geral"
+        icone="painel" titulo="Painel Geral"
         descricao="Visão consolidada da rede"
         acaoPrincipal={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <select aria-label="Período" value={periodo} onChange={(e) => setPeriodo(Number(e.target.value))}
               className="px-3 py-2 border border-borda text-sm bg-branco">
               <option value={1}>Hoje</option>
@@ -84,7 +84,7 @@ export default function Dashboard() {
               <option value={30}>Últimos 30 dias</option>
               <option value={90}>Últimos 90 dias</option>
             </select>
-            <select value={lojaFiltro} onChange={(e) => setLojaFiltro(e.target.value)}
+            <select aria-label="Unidade do painel" value={lojaFiltro} onChange={(e) => setLojaFiltro(e.target.value)}
               className="px-3 py-2 border border-borda text-sm bg-branco">
               <option value="todas">Todas as unidades</option>
               {lojas.map((l) => <option key={l.id} value={l.id}>{l.nome}</option>)}
@@ -107,15 +107,15 @@ export default function Dashboard() {
         <>
           <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mb-6">
             <KPICard titulo="Faturamento" valor={`R$ ${metrica.faturamentoTotal.toFixed(2)}`} />
-            <KPICard titulo="Frete cobrado" valor={`R$ ${metrica.receitaFrete.toFixed(2)}`} contexto="Incluído no faturamento total" />
-            <KPICard titulo="Pedidos" valor={metrica.pedidosTotal} />
-            <KPICard titulo="Ticket médio" valor={metrica.ticketMedio !== null ? `R$ ${metrica.ticketMedio.toFixed(2)}` : '—'} />
+            <KPICard icone="entrega" titulo="Frete cobrado" valor={`R$ ${metrica.receitaFrete.toFixed(2)}`} contexto="Incluído no faturamento total" />
+            <KPICard icone="pedido" titulo="Pedidos" valor={metrica.pedidosTotal} />
+            <KPICard icone="cartao" titulo="Ticket médio" valor={metrica.ticketMedio !== null ? `R$ ${metrica.ticketMedio.toFixed(2)}` : '—'} />
             <KPICard titulo="CMV estimado" valor={metrica.cmvPercentual !== null ? `${metrica.cmvPercentual.toFixed(1)}%` : '—'} contexto={metrica.coberturaCusto !== null ? `Cobertura: ${metrica.coberturaCusto.toFixed(0)}% da receita dos itens` : 'Sem itens com custo cadastrado'} />
             <KPICard titulo="Margem bruta estimada" valor={metrica.margemPercentual !== null ? `${metrica.margemPercentual.toFixed(1)}%` : '—'} contexto={metrica.itensSemFicha > 0 ? `${metrica.itensSemFicha} item(ns) sem ficha técnica` : 'Todos os itens têm ficha técnica'} />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div className="bg-branco border border-borda p-6">
+            <div className="ui-surface ui-chart p-4 sm:p-5">
               <h3 className="font-display text-lg text-texto mb-4">Evolução do faturamento</h3>
               <ResponsiveContainer width="100%" height={220}>
                 <LineChart data={metrica.evolucao}>
@@ -123,12 +123,12 @@ export default function Dashboard() {
                   <XAxis dataKey="dia" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} />
                   <Tooltip formatter={(v) => [`R$ ${Number(v).toFixed(2)}`, 'Faturamento']} />
-                  <Line type="monotone" dataKey="valor" stroke="#C98A3A" strokeWidth={2} dot={periodo === 1} />
+                  <Line type="monotone" dataKey="valor" stroke="#E4AE65" strokeWidth={2} dot={periodo === 1} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
 
-            <div className="bg-branco border border-borda p-6">
+            <div className="ui-surface ui-chart p-4 sm:p-5">
               <h3 className="font-display text-lg text-texto mb-4">Faturamento por unidade</h3>
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={metrica.faturamentoPorLoja}>
@@ -136,14 +136,14 @@ export default function Dashboard() {
                   <XAxis dataKey="loja" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} />
                   <Tooltip formatter={(v) => [`R$ ${Number(v).toFixed(2)}`, 'Faturamento']} />
-                  <Bar dataKey="faturamento" fill="#C98A3A" radius={[2, 2, 0, 0]} />
+                  <Bar dataKey="faturamento" fill="#E4AE65" radius={[2, 2, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-branco border border-borda p-6">
+            <div className="ui-surface ui-chart p-4 sm:p-5">
               <h3 className="font-display text-lg text-texto mb-4">Top produtos</h3>
               <table className="w-full text-sm">
                 <thead>
@@ -165,7 +165,7 @@ export default function Dashboard() {
               </table>
             </div>
 
-            <div className="bg-branco border border-borda p-6">
+            <div className="ui-surface ui-chart p-4 sm:p-5">
               <h3 className="font-display text-lg text-texto mb-4">Canais</h3>
               <ResponsiveContainer width="100%" height={220}>
                 <PieChart>

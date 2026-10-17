@@ -12,7 +12,10 @@ O protótipo atual já oferece dashboard e portal de análises, operação de pe
 
 **Revisão de 17/10/2026:** operação responsiva, pesquisa de cardápio, quantidades
 editáveis, cálculo decimal de markup, recuperação de envio, reposição atômica
-e controle de acesso por perfil/unidade. Foram executados 68 testes locais,
+e controle de acesso por perfil/unidade. O visual grafite aprovado de Pedidos
+foi padronizado nas oito abas: cabeçalhos, indicadores, filtros, tabelas,
+gráficos, formulários e painéis laterais usam uma base de tema compartilhada.
+Foram executados 79 testes locais,
 incluindo 15 de PostgreSQL isolado. Veja os [casos de uso](CASOS_USO_VAREJO.md)
 e o [registro de validação](VALIDACAO.md). O produto continua em piloto; canais
 Goomer/iFood são lançados manualmente, sem integração comercial nesta etapa.
@@ -82,7 +85,7 @@ A tabela abaixo preserva o registro documental anterior. Para o estado mais rece
 | Histórico e clientes | Telas mencionadas no status recente; ficha técnica descreve histórico e cadastro durante o pedido | Confirmar filtros, retorno ao pedido e persistência |
 | Produtos | Catálogo, variações, adicionais e consulta de ficha técnica/CMV | Cadastro completo pela interface não confirmado |
 | Estoque | Tela mencionada no status recente; ficha técnica descreve baixas por triggers | Inventário, transferências, perdas e reposição ainda não comprovados |
-| Design System | Tokens e componentes reutilizáveis; Dashboard como tela de referência | Propagar os componentes às demais telas |
+| Design System | Tema grafite compartilhado nas oito abas, componentes e responsividade | Ampliar testes de acessibilidade e homologação operacional |
 | Camada analítica | Views e estruturas analíticas descritas na ficha técnica | Integração efetiva com Power BI permanece futura |
 | Testes e publicação | Plano de validação e Netlify previstos | Sem evidência de suíte automatizada, CI/CD ou deploy nesta revisão |
 

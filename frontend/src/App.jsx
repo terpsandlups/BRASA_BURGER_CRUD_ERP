@@ -46,11 +46,11 @@ function AreaProtegida() {
   </div>
 
   return (
-    <div className={`flex min-h-screen ${location.pathname === '/pedidos' ? 'order-shell' : 'bg-osso'}`}>
+    <div className="app-shell flex min-h-screen">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
         <Topbar onAbrirMenu={() => setMenuAberto(true)} menuAberto={menuAberto} />
-        <main id="conteudo" className="flex-1 min-w-0 px-4 py-5 sm:px-6 lg:py-8 xl:px-8">
+        <main id="conteudo" className="app-content flex-1 min-w-0 px-4 py-5 sm:px-6 lg:py-8 xl:px-8">
           <ErrorBoundary key={location.pathname}>
           <Suspense fallback={<div role="status" className="bg-branco border border-borda rounded-xl p-8 text-fumaca">Carregando página…</div>}>
           <Routes>

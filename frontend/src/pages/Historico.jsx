@@ -108,11 +108,11 @@ export default function Historico() {
 
   return (
     <div>
-      <PageHeader titulo="Histórico de Pedidos" descricao="Consulte, filtre e recupere qualquer pedido já realizado." />
+      <PageHeader icone="historico" titulo="Histórico de Pedidos" descricao="Consulte, filtre e recupere qualquer pedido já realizado." />
       {erro && <p role="alert" className="text-brasa mb-4">{erro}</p>}
 
       {/* Filtros */}
-      <div className="bg-white border border-superficie2/20 p-4 mb-6 grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="ui-filters p-4 mb-6 grid grid-cols-2 md:grid-cols-4 gap-3">
         <div>
           <label className="text-[11px] uppercase text-fumaca">De</label>
           <input type="date" value={filtros.dataInicio}
@@ -185,7 +185,7 @@ export default function Historico() {
       ) : pedidosExibidos.length === 0 ? (
         <EmptyState titulo="Nenhum pedido encontrado" descricao="Ajuste os filtros e tente novamente." />
       ) : (
-        <div className="bg-white border border-borda rounded-xl overflow-x-auto">
+        <div className="ui-table-wrap">
           <table className="w-full text-sm whitespace-nowrap">
             <thead>
               <tr className="text-left text-xs uppercase tracking-wide text-fumaca border-b border-superficie2/20">

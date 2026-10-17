@@ -1,5 +1,18 @@
 # Continuidade de execução
 
+## Padronização visual do ERP — 17/10/2026
+
+Tema de Pedidos estendido às outras sete abas, com base de tokens compartilhada,
+cabeçalhos/indicadores, tabelas, gráficos, filtros, cadastros e painéis laterais.
+Clientes ganhou abertura de cadastro pelo cabeçalho; Entregas mantém origem e
+consulta em duas colunas no desktop. Sem novos pacotes, migrações ou alterações
+nas regras de faturamento, frete, estoque e autorização.
+
+79 testes aprovados (incluindo seis de contraste), build e conferência das oito
+rotas no navegador. Não houve envio real de pedido, cadastro de cliente ou
+movimentação de estoque para validar layout. Permanecem as homologações e os
+blocos funcionais pendentes abaixo; a padronização não equivale a MVP final.
+
 ## Redesenho do Novo Pedido — 17/10/2026
 
 Compositor de PDV implantado: cardápio com busca/categorias e adição rápida à

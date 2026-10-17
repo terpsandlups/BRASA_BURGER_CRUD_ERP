@@ -1,5 +1,6 @@
 import { useAuth } from '../../lib/AuthContext.jsx'
 import { useEffect, useState } from 'react'
+import Icon from '../ui/Icon.jsx'
 
 export default function Topbar({ onAbrirMenu, menuAberto }) {
   const { usuario, sair } = useAuth()
@@ -21,7 +22,7 @@ export default function Topbar({ onAbrirMenu, menuAberto }) {
   return (
     <header className="app-topbar min-h-16 shrink-0 bg-branco border-b border-borda flex items-center justify-between gap-3 px-4 sm:px-6 py-3">
       <button type="button" onClick={onAbrirMenu} aria-label="Abrir menu" aria-expanded={menuAberto}
-        className="lg:hidden rounded-lg border border-borda px-3 py-2 text-sm">☰ <span className="sr-only sm:not-sr-only">Menu</span></button>
+        className="lg:hidden rounded-lg border border-borda px-3 py-2 text-sm"><Icon nome="menu" size={18} /><span className="sr-only sm:not-sr-only">Menu</span></button>
       <div className="flex items-center gap-2 text-xs text-fumaca">
         <span className={`w-2 h-2 rounded-full inline-block ${online ? 'bg-oliva' : 'bg-brasa'}`} />
         <span className="hidden sm:inline">{online ? 'Sessão ativa' : 'Sem conexão'}</span>

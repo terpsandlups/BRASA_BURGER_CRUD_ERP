@@ -4,6 +4,8 @@ import { useAuth } from '../lib/AuthContext.jsx'
 import CamposEndereco from '../components/CamposEndereco.jsx'
 import ConsultaEntrega from '../components/ConsultaEntrega.jsx'
 import MapaPonto from '../components/MapaPonto.jsx'
+import PageHeader from '../components/layout/PageHeader.jsx'
+import Button from '../components/ui/Button.jsx'
 import { calcularTaxaEntrega, prepararConfiguracaoEntrega } from '../lib/entrega.js'
 
 const vazio = { cep: '', numero: '', endereco: '', complemento: '', bairro: '', cidade: '', estado: '', valor_km: '1,50', latitude: null, longitude: null }
@@ -112,20 +114,21 @@ export default function Entregas() {
 
   return (
     <div>
-      <h1 className="font-display text-3xl text-carvao">Entregas por distância</h1>
-      <p className="text-sm text-fumaca mt-2 mb-6">Configure a origem, a tarifa por unidade e simule trajetos. No delivery próprio, calcule o frete ao montar o pedido.</p>
+      <PageHeader icone="entrega" titulo="Entregas por distância" descricao="Configure a origem e a tarifa da unidade. Simule trajetos ou calcule o frete dentro do pedido."
+        acaoPrincipal={<Button variant="secondary" disabled={salvando || carregando} onClick={() => setRevisao(v => v + 1)}>Recarregar configuração</Button>} />
+      <div className="ui-filters mb-5">
       <label className="text-sm">Unidade
         <select aria-label="Unidade" value={lojaId} disabled={salvando || carregando} onChange={e => setLojaId(e.target.value)} className={input}>
           {!lojas.length && <option value="">Nenhuma unidade disponível</option>}
           {lojas.map(loja => <option key={loja.id} value={loja.id}>{loja.nome}</option>)}
         </select>
       </label>
-      <button type="button" disabled={salvando || carregando} onClick={() => setRevisao(v => v + 1)} className="text-sm underline my-3">Recarregar</button>
+      </div>
       {erro && <p role="alert" className="text-brasa text-sm mb-4">{erro}</p>}
       {aviso && <p role="status" className="text-sm mb-4">{aviso}</p>}
       {carregando ? <p>Carregando configuração...</p> : pronto && (
-        <>
-          <form onSubmit={salvar} className="bg-carvao text-osso p-5">
+        <div className="delivery-layout grid grid-cols-1 xl:grid-cols-2 gap-5 items-start">
+          <form onSubmit={salvar} className="ui-form">
             <h2 className="font-display text-xl mb-4">Origem da entrega</h2>
             <fieldset disabled={!podeEditar || salvando}>
               <CamposEndereco key={`${lojaId}-${revisao}`} valores={valores} onChange={(campo, valor) => {
@@ -154,7 +157,7 @@ export default function Entregas() {
           </form>
           <ConsultaEntrega key={`${lojaId}-${revisao}-${versaoSalva}`} lojaId={lojaId}
             pontoSalvo={pontoSalvo} origemPendente={alteracaoPendente} />
-          <section className="bg-carvao text-osso p-5 mt-5">
+          <section className="ui-form xl:col-span-2">
             <h2 className="font-display text-xl">Simular taxa — distância manual</h2>
             <p className="text-sm text-fumaca mt-2">Use a distância do trajeto pelas ruas, somente de ida. O CEP não calcula esse trajeto. A simulação usa a tarifa exibida acima, mesmo antes de salvar.</p>
             <label className="block text-sm mt-4">Distância em km
@@ -164,7 +167,7 @@ export default function Entregas() {
             {taxa !== null && <p role="status" className="text-2xl text-ambar mt-3">Taxa simulada: {moeda(taxa)}</p>}
             <p className="text-xs text-fumaca mt-3">Proporcional aos quilômetros, arredondada ao centavo no final. Sem taxa mínima, ida e volta ou integração com marketplaces nesta etapa.</p>
           </section>
-        </>
+        </div>
       )}
     </div>
   )

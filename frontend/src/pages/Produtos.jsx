@@ -15,7 +15,7 @@ const TONS = {
 
 function Badge({ children, tone = 'oliva' }) {
   return (
-    <span className={`text-[10px] uppercase tracking-wide px-2 py-0.5 border mr-1 ${TONS[tone]}`}>
+    <span className={`ui-badge text-[10px] uppercase tracking-wide px-2 py-0.5 border mr-1 ${TONS[tone]}`}>
       {children}
     </span>
   )
@@ -180,7 +180,8 @@ export default function Produtos() {
   return (
     <div>
       <PageHeader
-        titulo="Produtos & Fichas Técnicas"
+        icone="produto" titulo="Produtos & Fichas Técnicas"
+        descricao="Catálogo, variações e composição dos seus produtos."
         acaoPrincipal={
           <Button variant="primary" disabled={!podeOperar('produtos','criar')} onClick={() => setMostrarNovoProduto(!mostrarNovoProduto)}>
             + Novo Produto
@@ -195,7 +196,8 @@ export default function Produtos() {
       </p>
 
       {mostrarNovoProduto && (
-        <form onSubmit={salvarNovoProduto} className="bg-superficie text-osso p-6 mb-6 grid grid-cols-2 gap-4">
+        <form onSubmit={salvarNovoProduto} className="ui-form ui-form-responsive mb-6 grid grid-cols-2 gap-4">
+          <div className="col-span-2"><h2 className="ui-form-title">Cadastrar produto</h2><p className="ui-form-description">Comece pelos dados do catálogo. As variações e fichas são adicionadas depois.</p></div>
           <div>
             <label className="text-xs uppercase tracking-wide text-fumaca">SKU</label>
             <input required value={novoProduto.sku}
@@ -280,13 +282,13 @@ export default function Produtos() {
         </form>
       )}
 
-      <div className="flex gap-2 mb-6 flex-wrap">
-        <button onClick={() => setFiltroCategoria('todas')}
+      <div className="ui-chip-list mb-6" role="group" aria-label="Categorias de produtos">
+        <button aria-pressed={filtroCategoria === 'todas'} onClick={() => setFiltroCategoria('todas')}
           className={`px-3 py-1.5 text-xs ${filtroCategoria === 'todas' ? 'bg-ambar text-carvao' : 'bg-white border border-superficie2/30'}`}>
           Todas
         </button>
         {categorias.map((cat) => (
-          <button key={cat.id} onClick={() => setFiltroCategoria(cat.nome)}
+          <button key={cat.id} aria-pressed={filtroCategoria === cat.nome} onClick={() => setFiltroCategoria(cat.nome)}
             className={`px-3 py-1.5 text-xs ${filtroCategoria === cat.nome ? 'bg-ambar text-carvao' : 'bg-white border border-superficie2/30'}`}>
             {cat.nome}
           </button>
@@ -298,8 +300,9 @@ export default function Produtos() {
           {variacaoEditada && <EditarFicha key={variacaoEditada.id} variacao={variacaoEditada} onSalvo={carregar} />}
         </SidePanel>
         {produtosFiltrados.map((produto) => (
-          <div key={produto.sku} className={`bg-white border border-superficie2/20 ${!produto.ativo ? 'opacity-50' : ''}`}>
+          <div key={produto.sku} className={`ui-product ${!produto.ativo ? 'opacity-50' : ''}`}>
             <button
+              aria-expanded={expandido === produto.sku}
               onClick={() => setExpandido(expandido === produto.sku ? null : produto.sku)}
               className="w-full flex items-center justify-between px-5 py-4 text-left"
             >
@@ -335,11 +338,11 @@ export default function Produtos() {
                 >
                   {produto.ativo ? 'Desativar produto' : 'Reativar produto'}
                 </button>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <div className="ui-variant-grid grid grid-cols-2 md:grid-cols-3 gap-3">
                   {variacoesDoProduto(produto.sku).map((v) => {
                     const custo = custoDaVariacao(v.id)
                     return (
-                      <div key={v.id} className="border border-superficie2/30 p-4">
+                      <div key={v.id} className="ui-variant border border-superficie2/30 p-4">
                         <p className="font-medium">{v.nome_variacao}</p>
                         <button onClick={() => setEditandoId(v.id)} className="text-xs text-ambar mt-2">Ver / editar variação e ficha</button>
                         <p className="text-sm text-fumaca mt-1">Venda: R$ {Number(v.preco_venda).toFixed(2)}</p>

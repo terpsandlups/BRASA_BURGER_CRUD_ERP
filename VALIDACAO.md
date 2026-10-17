@@ -1,5 +1,25 @@
 # Registro de validação — Brasa Burguer
 
+## Tema comum e padronização das abas — 17/10/2026
+
+| Cenário | Evidência | Resultado |
+|---|---|---|
+| Rotas no desktop | Painel, Analytics, Histórico, Clientes, Produtos, Estoque, Entregas e Pedidos em 1.440 × 1.000 | Mesma base grafite `rgb(20,22,25)`; sem transbordamento da página |
+| Rotas no celular | Oito rotas com dados carregados, viewport 390 × 844 | Largura do conteúdo igual à largura útil da página; tabelas com rolagem interna |
+| Cadastro de clientes | Abrir **Novo cliente** sem preencher/enviar | Card e campos legíveis no desktop e celular; rótulos associados; cadastro pode ser recolhido |
+| Produtos/ficha | Abrir card e painel de ficha; pressionar Escape | Painel grafite, texto claro e fechamento por teclado; nenhum preço ou ingrediente editado |
+| Analytics | Canal Rappi sem vendas e retorno a Todos | Estado vazio distinto, filtros preservados e indicadores recuperados |
+| Menu móvel | Abrir menu e navegar para Analytics | Ícones e item ativo no tema comum; painel fecha após navegar |
+| Contraste | Seis testes calculam luminância/razão dos tokens para texto, secundário, marca, sucesso, erro e CTA | Contraste mínimo 4,5:1 nos pares testados; não é auditoria WCAG integral |
+| Regressão | `npm test`: 79 testes, incluindo os 15 cenários de banco efêmero existentes | Todos aprovados; regras de negócio não alteradas |
+
+Limites: validação visual e de navegação, sem gravações reais nem nova consulta
+de rota cobrada por cota. Cadastros, reposições e configurações de loja não foram
+salvos. A recarga de desenvolvimento fechou o compositor da aba original; o
+rascunho observado (um Bacon Cheese, unidade Japy) é recomposto sem envio ao
+encerrar a revisão. Concorrência, carga e homologação com perfis restritos
+continuam nas pendências do MVP.
+
 ## Compositor de pedido em duas colunas — 17/10/2026
 
 | Cenário | Evidência | Resultado |

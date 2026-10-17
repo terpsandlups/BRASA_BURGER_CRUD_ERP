@@ -1,28 +1,4 @@
-/* Tema local de Pedidos: não altera as demais páginas do ERP. */
-.order-shell { background: #141619; color: #eeeef0; color-scheme: dark; }
-.order-shell .app-topbar { background: #191b1f; border-color: #2e3036; }
-.order-shell .app-topbar .text-texto { color: #eeeef0; }
-.order-shell .app-topbar .text-fumaca { color: #a5a6ae; }
-.order-shell .app-sidebar { background: #191b1f; border-right: 1px solid #2e3036; }
-.order-shell .app-sidebar .text-fumaca { color: #a5a6ae; }
-.order-shell .app-sidebar nav a { display: flex; align-items: center; gap: 12px; }
-.order-shell .app-sidebar nav a[aria-current="page"] { background: #d79b4e; color: #17191c; }
-.order-page { --order-panel: #1c1e22; --order-field: #24262b; --order-border: #34363d; --order-muted: #a5a6b0; --order-gold: #e4ae65; color: #eeeef0; font-family: 'Work Sans', sans-serif; }
-.order-page :is(h1,h2,h3,.font-display) { font-family: 'Work Sans', sans-serif; letter-spacing: -.025em; font-weight: 600; }
-.order-page h1 { font-size: 27px; }
-.order-page .text-texto { color: #eeeef0; }
-.order-page .text-fumaca { color: var(--order-muted); }
-.order-page .text-brasa { color: #f4968c; }
-.order-page .text-oliva { color: #9ac8a6; }
-.order-page .text-ambar { color: var(--order-gold); }
-.order-page .bg-branco { background: var(--order-panel); }
-.order-page .bg-osso { background: #282a30; }
-.order-page .border-borda { border-color: var(--order-border); }
-.order-page :is(input,select,textarea) { color: #f1f0f3; background: var(--order-field); border-color: var(--order-border); }
-.order-page :is(input,textarea)::placeholder { color: #a1a2ad; opacity: 1; }
-.order-page dialog { color: #eeeef0; background: var(--order-panel); }
-.order-page dialog::backdrop { background: #0009; }
-.order-page dialog .bg-branco { background: var(--order-panel); }
+/* Estrutura exclusiva do compositor; tema compartilhado em styles/theme.css. */
 .operation-kpis { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 12px; margin: 0 0 24px; }
 .operation-kpi { padding: 16px; border: 1px solid #303238; background: #1c1e22; border-radius: 12px; min-width: 0; }
 .operation-kpi dt { display: flex; align-items: center; gap: 7px; color: #aaaab3; font-size: 11px; font-weight: 500; }

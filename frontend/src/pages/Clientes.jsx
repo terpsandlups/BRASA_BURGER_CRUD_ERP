@@ -18,6 +18,7 @@ export default function Clientes() {
   const { podeOperar } = useAuth()
   const [clientes, setClientes] = useState([])
   const [form, setForm] = useState(vazio)
+  const [mostrarCadastro, setMostrarCadastro] = useState(false)
   const cpfInputRef = useRef(null)
   const telefoneInputRef = useRef(null)
 
@@ -151,15 +152,18 @@ export default function Clientes() {
 
   return (
     <div>
-      <PageHeader titulo="Clientes" descricao="Cadastro robusto com busca de CEP, validação de CPF e perfil CRM." />
+      <PageHeader icone="clientes" titulo="Clientes" descricao="Cadastro, endereços e relacionamento com seus clientes."
+        acaoPrincipal={podeOperar('clientes','criar') && <Button type="button" disabled={salvando} aria-expanded={mostrarCadastro} onClick={() => setMostrarCadastro(v => !v)}>{mostrarCadastro ? 'Fechar cadastro' : '+ Novo cliente'}</Button>} />
       {erroLista && <p role="alert" className="text-sm text-brasa mb-3">{erroLista} <button onClick={carregar} className="underline">Tentar novamente</button></p>}
 
-      {podeOperar('clientes','criar') && <form onSubmit={salvar} className="bg-superficie text-osso rounded-xl p-4 sm:p-6 mb-8 grid grid-cols-2 gap-4">
+      {podeOperar('clientes','criar') && mostrarCadastro && <form onSubmit={salvar} className="ui-form ui-form-responsive mb-6 grid grid-cols-2 gap-4">
+        <div className="col-span-2"><h2 className="ui-form-title">Dados do cliente</h2><p className="ui-form-description">Informe o CPF e os contatos. O CEP ajuda a preencher o endereço.</p></div>
         <div className="col-span-2">
-          <label className="text-xs uppercase tracking-wide text-fumaca">CPF (identificador)</label>
+          <label htmlFor="cadastro-cliente-cpf" className="text-xs uppercase tracking-wide text-fumaca">CPF (identificador)</label>
           <input
             required
             ref={cpfInputRef}
+            id="cadastro-cliente-cpf" inputMode="numeric"
             value={form.cpf}
             onChange={(e) => setForm({ ...form, cpf: formatarCPF(e.target.value) })}
             placeholder="000.000.000-00"
@@ -168,19 +172,21 @@ export default function Clientes() {
           />
         </div>
         <div>
-          <label className="text-xs uppercase tracking-wide text-fumaca">Nome</label>
+          <label htmlFor="cadastro-cliente-nome" className="text-xs uppercase tracking-wide text-fumaca">Nome</label>
           <input
             required
             value={form.nome}
+            id="cadastro-cliente-nome" autoComplete="name"
             onChange={(e) => setForm({ ...form, nome: e.target.value })}
             className="w-full mt-1 px-3 py-2 bg-carvao border border-superficie2 text-osso focus:outline-none focus:border-ambar"
           />
         </div>
         <div>
-          <label className="text-xs uppercase tracking-wide text-fumaca">Telefone</label>
+          <label htmlFor="cadastro-cliente-telefone" className="text-xs uppercase tracking-wide text-fumaca">Telefone</label>
           <input
             required
             ref={telefoneInputRef}
+            id="cadastro-cliente-telefone" inputMode="tel" autoComplete="tel"
             value={form.telefone}
             onChange={(e) => setForm({ ...form, telefone: formatarTelefone(e.target.value) })}
             placeholder="(11) 98765-4321"
@@ -189,9 +195,10 @@ export default function Clientes() {
           />
         </div>
         <div>
-          <label className="text-xs uppercase tracking-wide text-fumaca">E-mail</label>
+          <label htmlFor="cadastro-cliente-email" className="text-xs uppercase tracking-wide text-fumaca">E-mail</label>
           <input
             value={form.email}
+            id="cadastro-cliente-email" autoComplete="email"
             onChange={(e) => setForm({ ...form, email: e.target.value })}
             className="w-full mt-1 px-3 py-2 bg-carvao border border-superficie2 text-osso focus:outline-none focus:border-ambar"
           />
@@ -210,13 +217,13 @@ export default function Clientes() {
       </form>}
 
       <input
-        placeholder="Buscar por nome ou CPF..."
+        aria-label="Buscar cliente por nome ou CPF" placeholder="Buscar por nome ou CPF..."
         value={busca}
         onChange={(e) => setBusca(e.target.value)}
         className="w-full mb-4 px-3 py-2 border border-superficie2/40 focus:outline-none focus:border-ambar"
       />
 
-      <div className="overflow-x-auto border border-borda rounded-xl"><table className="w-full min-w-[600px] text-sm bg-white">
+      <div className="ui-table-wrap"><table className="w-full min-w-[600px] text-sm bg-white">
         <thead>
           <tr className="text-left text-xs uppercase tracking-wide text-fumaca">
             <th className="py-2">CPF</th>

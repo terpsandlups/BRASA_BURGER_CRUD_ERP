@@ -1,4 +1,5 @@
 const paths = {
+  menu: 'M4 6h16M4 12h16M4 18h16',
   painel: 'M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z',
   analytics: 'M4 20V10m8 10V4m8 16v-7M2 20h20',
   entrega: 'M3 5h11v12H3z M14 9h4l3 4v4h-7 M6 17a2 2 0 1 0 0 .01 M18 17a2 2 0 1 0 0 .01',

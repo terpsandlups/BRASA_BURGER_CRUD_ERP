@@ -611,6 +611,7 @@ export default function Pedidos() {
   return (
     <div className="order-page">
       <PageHeader
+        icone="pedido"
         titulo="Operação de pedidos"
         descricao="Da confirmação à entrega, acompanhe cada etapa da sua cozinha."
         acoesSecundarias={<Button variant="secondary" disabled={atualizandoPedidos} onClick={carregarPedidos}>{atualizandoPedidos ? 'Atualizando…' : 'Atualizar'}</Button>}

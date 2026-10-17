@@ -12,7 +12,7 @@ const ESTADOS = {
 
 export default function StatusBadge({ estado = 'neutro', children }) {
   return (
-    <span className={`inline-flex items-center text-[11px] uppercase tracking-wide px-2 py-0.5 border ${ESTADOS[estado] || ESTADOS.neutro}`}>
+    <span className={`ui-badge inline-flex items-center text-[11px] uppercase tracking-wide px-2 py-0.5 border ${ESTADOS[estado] || ESTADOS.neutro}`}>
       {children}
     </span>
   )

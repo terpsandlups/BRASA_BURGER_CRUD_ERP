@@ -37,7 +37,7 @@ export default function CadastroInsumo({ onSalvo }) {
     }
   }
 
-  return <form onSubmit={salvar} className="bg-branco border border-borda p-5 mb-5">
+  return <form onSubmit={salvar} className="ui-form mb-5">
     <h2 className="text-xl mb-3">Cadastrar insumo</h2>
     <fieldset disabled={salvando} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
       <label className="text-sm">Nome

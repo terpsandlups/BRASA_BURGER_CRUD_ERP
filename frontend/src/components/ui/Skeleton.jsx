@@ -1,5 +1,5 @@
 export default function Skeleton({ className = '' }) {
-  return <div className={`animate-pulse bg-borda/50 ${className}`} />
+  return <div aria-hidden="true" className={`ui-skeleton animate-pulse bg-borda/50 ${className}`} />
 }
 
 export function SkeletonLinhas({ linhas = 3 }) {
