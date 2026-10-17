@@ -40,7 +40,7 @@ export default function NovoPedido({ catalogo, cliente, atendimento, carrinho, p
     <fieldset disabled={enviando || pendente} className="composer-grid">
       <section className="order-catalog" aria-label="Cardápio de produtos">
         <div className="catalog-toolbar">
-          <div className="section-heading"><div><span className="composer-eyebrow">Escolha os produtos</span><h3>Cardápio</h3></div><div className="catalog-quick-actions"><span className="composer-count">{quantidadeProdutos} opções</span><a className="catalog-cart-link" href={`#${id}-carrinho`}><Icon nome="sacola" size={15} />Ver pedido ({quantidadeCarrinho})</a></div></div>
+          <div className="section-heading"><div><span className="composer-eyebrow">Escolha os produtos</span><h3>Cardápio</h3></div><div className="catalog-quick-actions"><span className="composer-count">{quantidadeProdutos} {quantidadeProdutos === 1 ? 'opção' : 'opções'}</span><a className="catalog-cart-link" href={`#${id}-carrinho`}><Icon nome="sacola" size={15} />Ver pedido ({quantidadeCarrinho})</a></div></div>
           <div className="catalog-search"><Icon nome="busca" /><input type="search" aria-label="Buscar produto no cardápio" placeholder="Buscar produto, nome ou SKU…" value={busca} onChange={e => onBusca(e.target.value)} /></div>
           <div className="catalog-categories" role="group" aria-label="Categorias do cardápio">
             <Segmento ativo={categoria === 'todas'} onClick={() => onCategoria('todas')}>Todas</Segmento>
