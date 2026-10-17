@@ -46,7 +46,7 @@ function AreaProtegida() {
   </div>
 
   return (
-    <div className="flex min-h-screen bg-osso">
+    <div className={`flex min-h-screen ${location.pathname === '/pedidos' ? 'order-shell' : 'bg-osso'}`}>
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
         <Topbar onAbrirMenu={() => setMenuAberto(true)} menuAberto={menuAberto} />

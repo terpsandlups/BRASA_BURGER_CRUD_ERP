@@ -1,6 +1,31 @@
 # Design System Brasa Burguer — Status de implementação
 
-Revisão documental alinhada ao README. O estado abaixo deriva do relatório de implementação fornecido; ainda não representa inspeção dos componentes ou teste visual do código.
+## Pedidos: redesenho verificado — 17/10/2026
+
+O formulário vertical foi substituído por um compositor de pedido com duas
+colunas a partir de 1.024px: cardápio pesquisável à esquerda e carrinho à direita.
+O total e a conclusão ficam fora da rolagem interna do carrinho no desktop.
+No celular, as seções se empilham e o atalho **Ver pedido** leva ao resumo.
+
+- Tema grafite local de Pedidos, detalhes âmbar, cantos de 8–12px e Work Sans
+  nos títulos e controles. Demais páginas mantêm seu tema atual.
+- Categorias horizontais, cards com adição rápida, busca por nome, SKU e variação,
+  quantidades, adicionais e preços por canal preservados.
+- Unidade/CPF compactos, canais e pagamentos com estado `aria-pressed`, endereço
+  e observações recolhíveis. Mapa recalcula sua área ao expandir o endereço.
+- Menu lateral com ícones SVG, KPIs compactos e alerta discreto de atraso.
+- Conferido no navegador em 390 × 844, 1.024 × 900 e 1.440 × 1.000;
+  testes e limitações registrados em `VALIDACAO.md`.
+
+Componentes novos: `pedidos/NovoPedido.jsx`, `pedidos/novoPedido.css` e
+`ui/Icon.jsx`. A inspiração é o fluxo modular documentado publicamente pelo
+[iFood](https://blog-parceiros.ifood.com.br/painel-de-expedicao-gestor-de-pedidos/),
+sem cópia de código, ativos ou integração comercial.
+
+## Registro documental anterior
+
+As seções abaixo preservam o levantamento original. Onde houver divergência,
+prevalecem a revisão verificada acima e os registros de `VALIDACAO.md`.
 
 ## Identidade visual
 

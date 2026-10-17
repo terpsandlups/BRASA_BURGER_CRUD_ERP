@@ -1,5 +1,25 @@
 # Registro de validação — Brasa Burguer
 
+## Compositor de pedido em duas colunas — 17/10/2026
+
+| Cenário | Evidência | Resultado |
+|---|---|---|
+| Cardápio | Busca por `SM001`, busca inexistente e limpeza; busca de acentos, nome comercial e variação nos testes locais | SKU encontra o produto; vazio tem mensagem e ação de limpar |
+| Carrinho | Dois cliques no Smash Clássico geram uma linha com quantidade 2; incremento para 3 | Subtotal R$ 59,70 no canal próprio |
+| Canal | Troca para iFood com 3 unidades | Subtotal atualizado para R$ 68,67, sem frete próprio duplicado |
+| Adicionais | Monte Seu Burger adicionado com Cheddar | Linha R$ 30,90 no canal próprio; total dos quatro itens R$ 90,60 |
+| Identificação/pagamento | CPF sintético inválido, seleção de unidade e dinheiro sem valor recebido | Erro de CPF visível; vazio explicado como valor exato; nenhuma escrita de cliente/pedido |
+| Conclusão | Cinco novos testes de filtro e pendências, incluindo quantidade inválida, frete ausente e troco insuficiente | Botão não libera pedido incompleto; dinheiro exato vazio aceito |
+| Layout | Navegador em 390 × 844, 1.024 × 900 e 1.440 × 1.000; celular com 382px úteis e conteúdo de 382px | Sem estouro horizontal; carrinho/CTA visíveis em notebook; atalho móvel ao resumo |
+| Acessibilidade | Rótulos de campos, botões de quantidade/remover, canais pressionados, estado vazio, observações e entrega expansíveis | Estados apresentados na árvore de acessibilidade; console sem erros/avisos durante a conferência |
+| Regressão | `npm test`: 73 aprovados, incluindo 15 cenários de PostgreSQL isolado; `npm run build` aprovado | Sem novos pacotes ou migrações |
+
+Limites desta revisão: não foi enviado, cancelado ou alterado um pedido real;
+não houve nova consulta de rota real ou homologação do cadastro rápido no
+Supabase. A integração existente foi preservada. O mapa ganhou observação de
+redimensionamento para acompanhar a expansão da seção de endereço. Testes com
+duas sessões, carga e perfis distintos continuam pendentes de homologação.
+
 ## Revisão operacional, interface e segurança — 17/10/2026
 
 História validada: operador monta um pedido com preço por canal e adicionais;

@@ -19,7 +19,7 @@ export default function Topbar({ onAbrirMenu, menuAberto }) {
   }, [])
 
   return (
-    <header className="min-h-16 shrink-0 bg-branco border-b border-borda flex items-center justify-between gap-3 px-4 sm:px-6 py-3">
+    <header className="app-topbar min-h-16 shrink-0 bg-branco border-b border-borda flex items-center justify-between gap-3 px-4 sm:px-6 py-3">
       <button type="button" onClick={onAbrirMenu} aria-label="Abrir menu" aria-expanded={menuAberto}
         className="lg:hidden rounded-lg border border-borda px-3 py-2 text-sm">☰ <span className="sr-only sm:not-sr-only">Menu</span></button>
       <div className="flex items-center gap-2 text-xs text-fumaca">

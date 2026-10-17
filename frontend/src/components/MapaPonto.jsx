@@ -22,6 +22,12 @@ export default function MapaPonto({ titulo, ponto, onChange, centroSugerido = nu
       maxZoom: 19,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>',
     }).addTo(instancia)
+    // Endereço pode estar recolhido no carrinho. Recalcula os tiles ao abrir
+    // ou redimensionar o painel, sem alterar o ponto escolhido pelo operador.
+    const redimensionamento = new ResizeObserver(() => {
+      if (container.current?.clientWidth && container.current?.clientHeight) instancia.invalidateSize({ pan: false })
+    })
+    redimensionamento.observe(container.current)
     instancia.on('click', evento => {
       if (bloqueado.current) return
       const latitude = Number(evento.latlng.lat.toFixed(6))
@@ -34,7 +40,7 @@ export default function MapaPonto({ titulo, ponto, onChange, centroSugerido = nu
       aoMudar.current({ latitude, longitude })
     })
     mapa.current = instancia
-    return () => { instancia.remove(); mapa.current = null; marcador.current = null }
+    return () => { redimensionamento.disconnect(); instancia.remove(); mapa.current = null; marcador.current = null }
   }, [])
 
   useEffect(() => {

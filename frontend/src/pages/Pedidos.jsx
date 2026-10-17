@@ -1,14 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabaseClient.js'
 import { useAuth } from '../lib/AuthContext.jsx'
-import CamposEndereco from '../components/CamposEndereco.jsx'
-import { formatarCPF, apenasDigitos, validarCPF, formatarTelefone } from '../lib/format.js'
+import { formatarCPF, apenasDigitos, validarCPF } from '../lib/format.js'
 import PageHeader from '../components/layout/PageHeader.jsx'
-import KPICard from '../components/data-display/KPICard.jsx'
+import Icon from '../components/ui/Icon.jsx'
 import Button from '../components/ui/Button.jsx'
 import SidePanel from '../components/layout/SidePanel.jsx'
 import StatusBadge from '../components/ui/StatusBadge.jsx'
-import ConsultaEntrega from '../components/ConsultaEntrega.jsx'
+import NovoPedido from '../components/pedidos/NovoPedido.jsx'
 import ItensPedido from '../components/ItensPedido.jsx'
 import { codigoPedido, dinheiro, quantidadeItens, esperaPedido } from '../lib/pedidoApresentacao.js'
 import { criarEnvioTransacional, montarPedidoTransacional, calcularPrecoCanal } from '../lib/pedidoTransacional.js'
@@ -62,7 +61,7 @@ function CardPedido({ pedido, agora, onAvancar, onCancelar, onAbrirDetalhe, atua
   const acao = rotuloAcao(pedido)
 
   return (
-    <article aria-label={`Pedido #${codigoPedido(pedido.id)}`} className="bg-branco border border-borda rounded-xl p-4 mb-3 shadow-sm">
+    <article aria-label={`Pedido #${codigoPedido(pedido.id)}`} className="operation-ticket bg-branco border border-borda rounded-xl p-4 mb-3 shadow-sm">
       <div className="flex items-start justify-between">
         <div className="min-w-0">
           <p className="text-xs text-fumaca" title={pedido.id}>
@@ -522,7 +521,7 @@ export default function Pedidos() {
       return [...atuais, {
       chave: crypto.randomUUID(),
       produto_sku: variacao.produto_sku,
-      nome: `${produto.nome} — ${variacao.nome_variacao}`,
+      nome: `${produto.nome_comercial || produto.nome} — ${variacao.nome_variacao}`,
       variacao_id: variacao.id,
       quantidade: 1,
       preco_unitario: precoComMarkup,
@@ -610,7 +609,7 @@ export default function Pedidos() {
   }
 
   return (
-    <div>
+    <div className="order-page">
       <PageHeader
         titulo="Operação de pedidos"
         descricao="Da confirmação à entrega, acompanhe cada etapa da sua cozinha."
@@ -630,320 +629,52 @@ export default function Pedidos() {
       {/* KPIs */}
       {erroPedidos && <p role="alert" className="text-brasa text-sm mb-3">{erroPedidos} <button onClick={carregarPedidos} className="underline">Tentar novamente</button></p>}
       <p className="text-xs text-fumaca mb-3">Indicadores da unidade selecionada. A busca por cliente ou pedido filtra somente os cartões. Hoje considera o horário de São Paulo.</p>
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 mb-6">
-        <KPICard titulo="Pedidos hoje" valor={carregandoPedidos ? '—' : kpis.pedidosHoje} />
-        <KPICard titulo="Em preparo" valor={carregandoPedidos ? '—' : kpis.emPreparo} />
-        <KPICard titulo="Em entrega" valor={carregandoPedidos ? '—' : kpis.emEntrega} />
-        <KPICard titulo="Atrasados" valor={carregandoPedidos ? '—' : kpis.atrasados} variacao={!carregandoPedidos && kpis.atrasados > 0 ? { positiva: false, texto: 'requer atenção' } : undefined} />
-        <div className="col-span-2 md:col-span-1"><KPICard titulo="Faturamento hoje" valor={carregandoPedidos ? '—' : dinheiro(kpis.faturamentoHoje)} /></div>
-      </div>
+      <dl className="operation-kpis" aria-label="Indicadores da operação">
+        {[
+          { titulo: 'Pedidos hoje', valor: kpis.pedidosHoje, icone: 'pedido' },
+          { titulo: 'Em preparo', valor: kpis.emPreparo, icone: 'produto' },
+          { titulo: 'Em entrega', valor: kpis.emEntrega, icone: 'entrega' },
+          { titulo: 'Atrasados', valor: kpis.atrasados, icone: 'alerta', alerta: !carregandoPedidos && kpis.atrasados > 0 },
+          { titulo: 'Faturamento hoje', valor: dinheiro(kpis.faturamentoHoje), icone: 'analytics' },
+        ].map(kpi => <div key={kpi.titulo} className={`operation-kpi${kpi.alerta ? ' is-warning' : ''}`}>
+          <dt><Icon nome={kpi.icone} size={15} />{kpi.titulo}</dt><dd>{carregandoPedidos ? '—' : kpi.valor}</dd>
+        </div>)}
+      </dl>
 
-      {/* Formulário de novo pedido (colapsável) */}
-      {mostrarFormulario && (
-        <div className="bg-superficie text-osso rounded-xl p-4 sm:p-6 mb-8 space-y-4">
-          <h2 className="text-2xl">Novo pedido</h2>
-          {erroFormulario && <p role="alert" className="border border-ambar text-ambar p-3 rounded-lg">{erroFormulario}</p>}
-          {confirmacaoPendente && <div role="alert">
-            <p>Envio aguardando confirmação. Confirme antes de fechar esta página ou iniciar outro pedido.</p>
-            <Button onClick={finalizarPedido} disabled={enviando}>Confirmar envio anterior</Button>
-          </div>}
-          <fieldset disabled={enviando || confirmacaoPendente} className="space-y-4">
-          <div>
-            <label className="text-xs uppercase tracking-wide text-fumaca">Canal de venda</label>
-            <div className="flex flex-wrap gap-2 mt-1">
-              {configCanais.map((c) => (
-                <button
-                  key={c.canal_venda}
-                  type="button"
-                  onClick={() => { setCanalVenda(c.canal_venda); setCotacaoEntrega(null) }}
-                  className={`px-4 py-2 text-sm ${canalVenda === c.canal_venda ? 'bg-ambar text-carvao' : 'bg-carvao border border-superficie2'}`}
-                >
-                  {c.nome_exibicao}
-                  {Number(c.taxa_plataforma_percentual) > 0 && (
-                    <span className="text-[10px] opacity-70 ml-1">(taxa {c.taxa_plataforma_percentual}%)</span>
-                  )}
-                </button>
-              ))}
-            </div>
-            {canalVenda !== 'proprio' && (
-              <p className="text-[11px] text-ambar mt-1">
-                Preços ajustados automaticamente pra esse canal (markup pra compensar a comissão da plataforma).
-              </p>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs uppercase tracking-wide text-fumaca">Unidade</label>
-              <select
-                value={lojaId}
-                onChange={(e) => { setLojaId(e.target.value); setTipoAtendimento('delivery'); setCotacaoEntrega(null) }}
-                className="w-full mt-1 px-3 py-2 bg-carvao border border-superficie2 text-osso"
-              >
-                <option value="">Selecione...</option>
-                {lojas.map((l) => <option key={l.id} value={l.id}>{l.nome}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs uppercase tracking-wide text-fumaca">CPF do cliente</label>
-              <input
-                ref={cpfClienteInputRef}
-                disabled={cadastrandoCliente} aria-label="CPF do cliente"
-                value={cpfCliente}
-                onChange={(e) => { setCpfCliente(formatarCPF(e.target.value)); setCotacaoEntrega(null) }}
-                placeholder="000.000.000-00"
-                maxLength={16}
-                className="w-full mt-1 px-3 py-2 bg-carvao border border-superficie2 text-osso"
-              />
-
-              {statusCliente === 'invalido' && (
-                <p className="text-xs text-brasa mt-1">CPF inválido — confira os números.</p>
-              )}
-              {statusCliente === 'buscando' && (
-                <p className="text-xs text-fumaca mt-1">Buscando...</p>
-              )}
-              {statusCliente === 'erro' && <p role="alert" className="text-xs text-ambar mt-2">Não foi possível consultar o cliente. <button type="button" onClick={() => setTentativaCliente(n => n + 1)} className="underline">Tentar novamente</button></p>}
-              {statusCliente === 'encontrado' && (
-                <p className="text-xs text-oliva mt-1">✓ Cliente: {clienteEncontrado?.nome}</p>
-              )}
-              {statusCliente === 'nao_encontrado' && (
-                <div className="mt-2 p-4 bg-carvao border-2 border-ambar space-y-3">
-                  <p className="text-sm text-ambar font-medium">
-                    ⚠ CPF não cadastrado — complete o cadastro abaixo para continuar o pedido
-                  </p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <input
-                      placeholder="Nome completo"
-                      value={novoClienteNome}
-                      onChange={(e) => setNovoClienteNome(e.target.value)}
-                      className="w-full px-2 py-1.5 bg-superficie border border-superficie2 text-osso text-xs"
-                    />
-                    <input
-                      placeholder="(11) 98765-4321"
-                      ref={novoClienteTelefoneInputRef}
-                      value={novoClienteTelefone}
-                      onChange={(e) => setNovoClienteTelefone(formatarTelefone(e.target.value))}
-                      maxLength={16}
-                      className="w-full px-2 py-1.5 bg-superficie border border-superficie2 text-osso text-xs"
-                    />
-                  </div>
-                  <CamposEndereco
-                    valores={novoClienteEndereco}
-                    onChange={(campo, valor) => setNovoClienteEndereco((atual) => ({ ...atual, [campo]: valor }))}
-                  />
-                  <button
-                    onClick={cadastrarClienteRapido}
-                    disabled={cadastrandoCliente}
-                    className="w-full bg-ambar text-carvao text-xs font-medium py-1.5"
-                  >
-                    {cadastrandoCliente ? 'Cadastrando...' : 'Cadastrar e usar'}
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {lojaSelecionada && (
-            <div>
-              <label className="text-xs uppercase tracking-wide text-fumaca">Tipo de atendimento</label>
-              <div className="flex gap-3 mt-1">
-                <button type="button" onClick={() => { setTipoAtendimento('delivery'); setCotacaoEntrega(null) }}
-                  className={`px-4 py-2 text-sm ${tipoAtendimento === 'delivery' ? 'bg-ambar text-carvao' : 'bg-carvao border border-superficie2'}`}>
-                  Delivery
-                </button>
-                <button type="button" disabled={somenteDelivery} onClick={() => { setTipoAtendimento('presencial'); setCotacaoEntrega(null) }}
-                  className={`px-4 py-2 text-sm disabled:opacity-30 ${tipoAtendimento === 'presencial' ? 'bg-ambar text-carvao' : 'bg-carvao border border-superficie2'}`}>
-                  Presencial
-                </button>
-              </div>
-            </div>
-          )}
-
-          {freteObrigatorio && lojaId && clienteEncontrado && (
-            <ConsultaEntrega key={`${lojaId}-${clienteEncontrado.cpf}`} lojaId={lojaId} modoPedido
-              pontoSalvo={lojaSelecionada?.latitude != null && lojaSelecionada?.longitude != null}
-              clienteCpf={clienteEncontrado.cpf}
-              destinoInicial={Object.fromEntries(['cep', 'numero', 'endereco', 'complemento', 'bairro', 'cidade', 'estado']
-                .map(campo => [campo, String(clienteEncontrado[campo] ?? '').trim()]))}
-              onInvalidar={() => setCotacaoEntrega(null)}
-              onCotacao={dados => setCotacaoEntrega({ ...dados, lojaId, clienteCpf: clienteEncontrado.cpf })} />
-          )}
-          {freteObrigatorio && (!lojaId || !clienteEncontrado) && <p className="text-xs text-ambar">Selecione a unidade e o cliente para calcular o frete do pedido.</p>}
-          {tipoAtendimento === 'delivery' && canalVenda !== 'proprio' && <p className="text-xs text-fumaca">Frete deste canal é tratado pela plataforma. O sistema não adiciona outra taxa.</p>}
-
-          <div>
-            <label className="text-xs uppercase tracking-wide text-fumaca">Adicionar item</label>
-            <input aria-label="Buscar produto no cardápio" placeholder="Buscar produto, nome ou SKU…" value={buscaProduto}
-              onChange={e => setBuscaProduto(e.target.value)} className="w-full mt-2 px-3 py-3 bg-carvao border border-superficie2 rounded-lg text-sm" />
-            <div className="flex flex-wrap gap-2 mt-2 mb-3">
-              <button
-                onClick={() => setCategoriaSelecionada('todas')}
-                className={`px-3 py-1.5 text-xs ${categoriaSelecionada === 'todas' ? 'bg-ambar text-carvao' : 'bg-carvao border border-superficie2 text-osso'}`}
-              >
-                Todas
-              </button>
-              {categorias.map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => setCategoriaSelecionada(cat.nome)}
-                  className={`px-3 py-1.5 text-xs ${categoriaSelecionada === cat.nome ? 'bg-ambar text-carvao' : 'bg-carvao border border-superficie2 text-osso'}`}
-                >
-                  {cat.nome}
-                </button>
-              ))}
-            </div>
-
-            <div className="max-h-96 overflow-y-auto pr-1">{categorias
-              .filter((cat) => categoriaSelecionada === 'todas' || categoriaSelecionada === cat.nome)
-              .map((cat) => {
-                const termo = buscaProduto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
-                const produtosDaCategoria = produtos.filter(p => p.categorias?.nome === cat.nome &&
-                  (tipoAtendimento === 'delivery' ? p.disponivel_delivery : p.disponivel_presencial) &&
-                  `${p.nome} ${p.nome_comercial || ''} ${p.sku}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes(termo))
-                if (produtosDaCategoria.length === 0) return null
-                return (
-                  <div key={cat.id} className="mb-3">
-                    <p className="text-[11px] uppercase tracking-wide text-fumaca mb-1.5">{cat.nome}</p>
-                    <div className="flex flex-wrap gap-2">
-                      {produtosDaCategoria.map((produto) =>
-                        variacoes
-                          .filter((v) => v.produto_sku === produto.sku)
-                          .map((v) => (
-                            <button
-                              key={v.id}
-                              onClick={() => adicionarItem(v)}
-                              className="px-3 py-3 rounded-lg text-left text-xs bg-carvao border border-superficie2 hover:border-ambar"
-                            >
-                              {produto.nome} · {v.nome_variacao}
-                              <span className="block text-ambar mt-1 font-medium">{dinheiro(calcularPrecoCanal(v.preco_venda, configCanais.find(c => c.canal_venda === canalVenda)?.markup_preco_percentual || 0))}</span>
-                            </button>
-                          ))
-                      )}
-                    </div>
-                  </div>
-                )
-              })}</div>
-          </div>
-
-          {itens.length > 0 && (
-            <div className="border-t border-superficie2 pt-3">
-              {itens.map((i, idx) => (
-                <div key={i.chave || idx} className="py-3 border-b border-superficie2/50 last:border-0">
-                  <div className="flex flex-wrap justify-between gap-2 text-sm">
-                    <span>{i.nome}</span>
-                    <span className="flex items-center gap-3">
-                      {dinheiro(valorItem(i))}
-                      <button onClick={() => removerItem(idx)} className="text-brasa text-xs">remover</button>
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 mt-2">
-                    <button type="button" aria-label={`Diminuir quantidade de ${i.nome}`} disabled={Number(i.quantidade) <= 1}
-                      onClick={() => setItens(atuais => atuais.map((item, j) => j === idx ? { ...item, quantidade: Math.max(1, Number(item.quantidade) - 1) } : item))}
-                      className="w-11 h-11 rounded-lg border border-superficie2">−</button>
-                    <input type="number" min="1" max="9999" step="1" aria-label={`Quantidade de ${i.nome}`} value={i.quantidade}
-                      onChange={e => { const qtd = e.target.value; setItens(atuais => atuais.map((item, j) => j === idx ? { ...item, quantidade: qtd } : item)) }}
-                      className="w-20 text-center py-2 bg-carvao rounded-lg border border-superficie2" />
-                    <button type="button" aria-label={`Aumentar quantidade de ${i.nome}`} disabled={Number(i.quantidade) >= 9999}
-                      onClick={() => setItens(atuais => atuais.map((item, j) => j === idx ? { ...item, quantidade: (Number(item.quantidade) || 0) + 1 } : item))}
-                      className="w-11 h-11 rounded-lg border border-superficie2">+</button>
-                  </div>
-                  {i.permiteAdicionais && (
-                    <div className="mt-1">
-                      <button type="button" onClick={() => setSelecionandoAdicionaisPara(selecionandoAdicionaisPara === idx ? null : idx)} className="text-xs text-ambar">
-                        {i.adicionaisSelecionados.length > 0 ? `${i.adicionaisSelecionados.length} adicional(is) — editar` : '+ adicionar personalização'}
-                      </button>
-                      {selecionandoAdicionaisPara === idx && (
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          {adicionaisDoProduto(i.produto_sku).map((a) => {
-                            const marcado = i.adicionaisSelecionados.some((s) => s.id === a.id)
-                            return (
-                              <button key={a.id} type="button" onClick={() => alternarAdicional(idx, a)}
-                                className={`text-xs px-2.5 py-1 border ${marcado ? 'bg-ambar text-carvao border-ambar' : 'border-superficie2 text-osso'}`}>
-                                {a.nome} · +R$ {Number(a.preco_adicional).toFixed(2)}
-                              </button>
-                            )
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
-              <div className="space-y-1 mt-2 pt-2 border-t border-superficie2 text-sm">
-                <div className="flex justify-between"><span>Itens</span><span>{dinheiro(subtotalItens)}</span></div>
-                {freteObrigatorio && <div className="flex justify-between"><span>Frete</span><span>{cotacaoAtiva ? dinheiro(valorFrete) : 'Calcule a rota'}</span></div>}
-                <div className="flex justify-between font-medium pt-1"><span>Total</span><span>{freteObrigatorio && !cotacaoAtiva ? 'Aguardando frete' : dinheiro(valorTotal)}</span></div>
-              </div>
-            </div>
-          )}
-
-          <div>
-            <label className="text-xs uppercase tracking-wide text-fumaca">Forma de pagamento</label>
-            <div className="flex flex-wrap gap-2 mt-1">
-              {[
-                { valor: 'pix', label: 'Pix' },
-                { valor: 'credito', label: 'Crédito' },
-                { valor: 'debito', label: 'Débito' },
-                { valor: 'dinheiro', label: 'Dinheiro' },
-              ].map((opcao) => (
-                <button
-                  key={opcao.valor}
-                  type="button"
-                  onClick={() => setFormaPagamento(opcao.valor)}
-                  className={`px-4 py-2 text-sm ${formaPagamento === opcao.valor ? 'bg-ambar text-carvao' : 'bg-carvao border border-superficie2 text-osso'}`}
-                >
-                  {opcao.label}
-                </button>
-              ))}
-            </div>
-
-            {formaPagamento === 'dinheiro' && (
-              <div className="mt-2">
-                <label className="text-xs uppercase tracking-wide text-fumaca">Valor recebido (deixe vazio para valor exato)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={trocoPara}
-                  onChange={(e) => setTrocoPara(e.target.value)}
-                  placeholder={`Ex: ${Math.ceil(valorTotal / 10) * 10}`}
-                  className="w-40 mt-1 px-3 py-2 bg-carvao border border-superficie2 text-osso text-sm"
-                />
-                {trocoPara && Number(trocoPara) >= valorTotal && (
-                  <p className="text-xs text-oliva mt-1">
-                    Troco: R$ {(Number(trocoPara) - valorTotal).toFixed(2)}
-                  </p>
-                )}
-                {trocoPara && Number(trocoPara) < valorTotal && (
-                  <p className="text-xs text-brasa mt-1">Valor menor que o total do pedido.</p>
-                )}
-              </div>
-            )}
-          </div>
-
-          <div>
-            <label className="text-xs uppercase tracking-wide text-fumaca">Observações do pedido</label>
-            <textarea
-              value={observacoes}
-              onChange={(e) => setObservacoes(e.target.value)}
-              placeholder="Ex: sem cebola, troco combinado na entrega, ponto da carne..."
-              rows={2}
-              className="w-full mt-1 px-3 py-2 bg-carvao border border-superficie2 text-osso text-sm"
-            />
-          </div>
-
-          <button
-            onClick={finalizarPedido}
-            disabled={
-              enviando || (!confirmacaoPendente && (!clienteEncontrado || !formaPagamento)) ||
-              (freteObrigatorio && !cotacaoAtiva && !confirmacaoPendente) ||
-              (!confirmacaoPendente && formaPagamento === 'dinheiro' && (!trocoPara || Number(trocoPara) < valorTotal))
-            }
-            className="bg-ambar text-carvao font-medium px-5 py-2.5 hover:bg-osso transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-            {enviando ? 'Enviando...' : confirmacaoPendente ? 'Confirmar envio anterior' : 'Finalizar pedido'}
-          </button>
-          </fieldset>
-        </div>
-      )}
+      {mostrarFormulario && <NovoPedido
+        catalogo={{
+          produtos, variacoes, categorias, configCanais, canalVenda,
+          onCanal: canal => { setCanalVenda(canal); setCotacaoEntrega(null) },
+          categoria: categoriaSelecionada, onCategoria: setCategoriaSelecionada,
+          busca: buscaProduto, onBusca: setBuscaProduto,
+        }}
+        cliente={{
+          cpf: cpfCliente, onCpf: cpf => { setCpfCliente(cpf); setCotacaoEntrega(null) },
+          inputRef: cpfClienteInputRef, status: statusCliente, encontrado: clienteEncontrado,
+          cadastrando: cadastrandoCliente, nome: novoClienteNome, onNome: setNovoClienteNome,
+          telefone: novoClienteTelefone, onTelefone: setNovoClienteTelefone, telefoneRef: novoClienteTelefoneInputRef,
+          endereco: novoClienteEndereco,
+          onEndereco: (campo, valor) => setNovoClienteEndereco(atual => ({ ...atual, [campo]: valor })),
+          onCadastrar: cadastrarClienteRapido, onTentar: () => setTentativaCliente(n => n + 1),
+        }}
+        atendimento={{
+          lojaId, lojas, loja: lojaSelecionada, somenteDelivery, tipo: tipoAtendimento,
+          onLoja: id => { setLojaId(id); setTipoAtendimento('delivery'); setCotacaoEntrega(null) },
+          onTipo: tipo => { setTipoAtendimento(tipo); setCotacaoEntrega(null) },
+          freteObrigatorio, cotacaoAtiva, cotacao: cotacaoEntrega,
+          onInvalidar: () => setCotacaoEntrega(null),
+          onCotacao: dados => setCotacaoEntrega({ ...dados, lojaId, clienteCpf: clienteEncontrado.cpf }),
+        }}
+        carrinho={{
+          itens, onAdicionar: adicionarItem, onRemover: removerItem, setItens, valorItem,
+          subtotal: subtotalItens, frete: valorFrete, total: valorTotal,
+          adicionaisDoProduto, adicionalAberto: selecionandoAdicionaisPara,
+          onAdicionalAberto: setSelecionandoAdicionaisPara, onAdicional: alternarAdicional,
+        }}
+        pagamento={{ forma: formaPagamento, onForma: setFormaPagamento, troco: trocoPara, onTroco: setTrocoPara }}
+        envio={{ enviando, pendente: confirmacaoPendente, erro: erroFormulario, onConcluir: finalizarPedido }}
+        observacoes={observacoes} onObservacoes={setObservacoes}
+      />}
 
       {/* Filtros */}
       <div className="flex flex-wrap gap-3 mb-6">
@@ -962,7 +693,7 @@ export default function Pedidos() {
       <div className="flex flex-wrap items-center gap-2 mb-4" aria-label="Etapas dos pedidos">
         {[{ status: 'todos', titulo: 'Todos' }, ...COLUNAS].map(coluna => <button type="button" key={coluna.status}
           onClick={() => setFiltroStatus(coluna.status)} aria-pressed={filtroStatus === coluna.status}
-          className={`px-3 py-2 rounded-full text-xs border ${filtroStatus === coluna.status ? 'bg-carvao text-osso border-carvao' : 'bg-branco border-borda'}`}>
+          className="operation-stage px-3 py-2 rounded-full text-xs border">
           {coluna.titulo} · {pedidosFiltrados.filter(p => coluna.status === 'todos' || p.status === coluna.status).length}
         </button>)}
         <span className="text-xs text-fumaca ml-auto">{ultimaAtualizacao ? `Atualizado às ${ultimaAtualizacao.toLocaleTimeString('pt-BR')}` : 'Carregando pedidos…'}</span>
@@ -974,7 +705,7 @@ export default function Pedidos() {
         {COLUNAS.filter(c => filtroStatus === 'todos' || c.status === filtroStatus).map((coluna) => {
           const pedidosColuna = pedidosFiltrados.filter((p) => p.status === coluna.status)
           return (
-            <section key={coluna.status} aria-label={coluna.titulo} className="min-w-0 bg-borda/20 rounded-xl p-3">
+            <section key={coluna.status} aria-label={coluna.titulo} className="operation-lane min-w-0 rounded-xl p-3">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-display text-sm uppercase tracking-wide text-fumaca">{coluna.titulo}</h3>
                 <span className="text-xs bg-superficie2/20 px-2 py-0.5">{pedidosColuna.length}</span>

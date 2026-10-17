@@ -1,5 +1,19 @@
 # Continuidade de execução
 
+## Redesenho do Novo Pedido — 17/10/2026
+
+Compositor de PDV implantado: cardápio com busca/categorias e adição rápida à
+esquerda, cliente/unidade e carrinho com total/conclusão à direita; no celular,
+fluxo empilhado com acesso rápido ao resumo. Tema escuro local, KPIs compactos
+e ícones de navegação. Regras transacionais de frete, estoque e canais mantidas.
+Corrigido bloqueio indevido de pagamento em dinheiro com valor exato vazio.
+Sem alteração de esquema ou publicação de função no Supabase nesta etapa.
+
+Validação: 73 testes locais aprovados, build e cenários de carrinho no navegador,
+sem enviar pedidos reais. Detalhes em `VALIDACAO.md`. Esta entrega melhora a
+operação; não conclui as homologações de concorrência/carga nem antecipa cupons,
+integrações comerciais ou multi-marca configurável.
+
 ## Revisão mais recente — 17/10/2026
 
 Aplicadas melhorias de operação e segurança seguindo os casos de uso de
