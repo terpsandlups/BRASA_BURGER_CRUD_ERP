@@ -7,7 +7,7 @@ export async function buscarCEP(cepFormatadoOuDigitos) {
   const digitos = (cepFormatadoOuDigitos || '').replace(/\D/g, '')
   if (digitos.length !== 8) return null
   try {
-    const resposta = await fetch(`https://viacep.com.br/ws/${digitos}/json/`)
+    const resposta = await fetch(`https://viacep.com.br/ws/${digitos}/json/`, { signal: AbortSignal.timeout(8000) })
     if (!resposta.ok) return null
     const dados = await resposta.json()
     if (dados.erro) return null

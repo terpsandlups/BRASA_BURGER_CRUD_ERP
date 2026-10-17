@@ -1,10 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabaseClient.js'
+import { useAuth } from '../lib/AuthContext.jsx'
 import PageHeader from '../components/layout/PageHeader.jsx'
 import Button from '../components/ui/Button.jsx'
 import CadastroInsumo from '../components/CadastroInsumo.jsx'
+import { criarRepositorEstoque } from '../lib/reposicaoEstoque.js'
+import KPICard from '../components/data-display/KPICard.jsx'
+
+const quantidadeFormatada = valor => Number(valor).toLocaleString('pt-BR', { maximumFractionDigits: 3 })
 
 export default function Estoque() {
+  const { podeOperar } = useAuth()
   const [lojas, setLojas] = useState([])
   const [estoque, setEstoque] = useState([])
   const [filtroLoja, setFiltroLoja] = useState('')
@@ -17,8 +23,16 @@ export default function Estoque() {
   const [novoSaldo, setNovoSaldo] = useState({ ingrediente_id: '', quantidade_disponivel: '0', quantidade_minima: '0' })
   const [vinculando, setVinculando] = useState(false)
   const [erro, setErro] = useState('')
+  const [mensagem, setMensagem] = useState('')
+  const [carregando, setCarregando] = useState(false)
+  const [pendentes, setPendentes] = useState({})
   const travaVinculo = useRef(false)
   const consultaRef = useRef(0)
+  const lojaAtualRef = useRef(filtroLoja)
+  lojaAtualRef.current = filtroLoja
+  const repositorRef = useRef(null)
+  if (!repositorRef.current) repositorRef.current = criarRepositorEstoque(supabase)
+  const travaReposicao = useRef(false)
 
   async function carregarIngredientes() {
     const { data, error } = await supabase.from('ingredientes').select('id, nome, unidade_medida').eq('ativo', true).order('nome')
@@ -60,40 +74,45 @@ export default function Estoque() {
   }
 
   async function carregarEstoque(lojaId) {
-    if (!lojaId) return
+    if (!lojaId || lojaId !== lojaAtualRef.current) return
     const consulta = ++consultaRef.current
-    setEstoque([])
+    setCarregando(true)
     const { data, error } = await supabase
       .from('estoque_lojas')
       .select('*, ingredientes(nome, unidade_medida, categoria)')
       .eq('loja_id', lojaId)
       .order('quantidade_disponivel', { ascending: true })
-    if (consulta !== consultaRef.current) return
+    if (consulta !== consultaRef.current || lojaId !== lojaAtualRef.current) return
+    setCarregando(false)
     if (error) setErro(error.message)
-    else setEstoque(data || [])
+    else { setEstoque(data || []); setErro('') }
   }
 
   useEffect(() => { carregar(); carregarIngredientes() }, [])
-  useEffect(() => { carregarEstoque(filtroLoja) }, [filtroLoja])
+  useEffect(() => { setEstoque([]); carregarEstoque(filtroLoja) }, [filtroLoja])
 
   const chave = (item) => `${item.loja_id}-${item.ingrediente_id}`
 
   async function repor(item) {
+    if (travaReposicao.current) return
     const valor = Number(reposicao[chave(item)])
-    if (!valor || valor <= 0) return
+    travaReposicao.current = true
     setSalvandoChave(chave(item))
-    const { error } = await supabase
-      .from('estoque_lojas')
-      .update({ quantidade_disponivel: Number(item.quantidade_disponivel) + valor })
-      .eq('loja_id', item.loja_id)
-      .eq('ingrediente_id', item.ingrediente_id)
-    setSalvandoChave(null)
-    if (error) {
-      alert('Não foi possível repor: ' + error.message)
-      return
+    setErro('')
+    setMensagem('')
+    try {
+      await repositorRef.current.enviar(item, valor)
+      setReposicao(atuais => ({ ...atuais, [chave(item)]: '' }))
+      setMensagem(`Reposição registrada: ${quantidadeFormatada(valor)} ${item.ingredientes?.unidade_medida} de ${item.ingredientes?.nome}.`)
+      await carregarEstoque(item.loja_id)
+    } catch (error) {
+      const pendente = repositorRef.current.temPendente(item)
+      setErro(pendente ? 'A resposta não foi confirmada. Clique em Confirmar para recuperar a mesma reposição sem duplicar o estoque.' : 'Não foi possível repor: ' + error.message)
+    } finally {
+      setPendentes(atuais => ({ ...atuais, [chave(item)]: repositorRef.current.temPendente(item) }))
+      setSalvandoChave(null)
+      travaReposicao.current = false
     }
-    setReposicao({ ...reposicao, [chave(item)]: '' })
-    carregarEstoque(filtroLoja)
   }
 
   const itensFiltrados = estoque.filter((item) => {
@@ -108,10 +127,15 @@ export default function Estoque() {
 
   return (
     <div>
-      <PageHeader titulo="Estoque" descricao="Insumos e saldos por unidade, ligados às fichas técnicas." acaoPrincipal={<Button onClick={() => setMostrarCadastro(!mostrarCadastro)}>{mostrarCadastro ? 'Fechar cadastro' : '+ Cadastrar insumo'}</Button>} />
+      <PageHeader titulo="Estoque" descricao="Insumos e saldos por unidade, ligados às fichas técnicas." acaoPrincipal={podeOperar('estoque','criar') && <Button onClick={() => setMostrarCadastro(!mostrarCadastro)}>{mostrarCadastro ? 'Fechar cadastro' : '+ Cadastrar insumo'}</Button>} />
 
       {mostrarCadastro && <CadastroInsumo onSalvo={carregarIngredientes} />}
       {erro && <p role="alert" className="text-brasa mb-4">{erro}</p>}
+      {mensagem && <p role="status" className="text-oliva bg-oliva/5 border border-oliva/30 rounded-lg p-3 mb-4">{mensagem}</p>}
+      <div className="grid grid-cols-2 gap-3 mb-5">
+        <KPICard titulo="Insumos nesta unidade" valor={estoque.length} />
+        <KPICard titulo="Abaixo do mínimo" valor={totalAlertas} />
+      </div>
 
       <div className="flex flex-wrap gap-3 mb-6 items-center">
         <select aria-label="Unidade do estoque" disabled={vinculando} value={filtroLoja} onChange={(e) => { setFiltroLoja(e.target.value); setNovoSaldo({ ingrediente_id: '', quantidade_disponivel: '0', quantidade_minima: '0' }) }}
@@ -151,7 +175,8 @@ export default function Estoque() {
         </fieldset>
       </form>}
 
-      <div className="overflow-x-auto"><table className="w-full text-sm bg-white">
+      {carregando && <p role="status" className="text-sm text-fumaca mb-3">Atualizando saldos…</p>}
+      <div className="overflow-x-auto rounded-xl border border-borda"><table className="w-full min-w-[640px] text-sm bg-white">
         <thead>
           <tr className="text-left text-xs uppercase tracking-wide text-fumaca">
             <th className="py-2">Ingrediente</th>
@@ -171,9 +196,9 @@ export default function Estoque() {
                   <span className="text-fumaca text-xs"> ({item.ingredientes?.unidade_medida})</span>
                 </td>
                 <td className={`py-2 font-medium ${abaixo ? 'text-brasa' : ''}`}>
-                  {Number(item.quantidade_disponivel).toFixed(0)}
+                  {quantidadeFormatada(item.quantidade_disponivel)}
                 </td>
-                <td className="py-2 text-fumaca">{Number(item.quantidade_minima).toFixed(0)}</td>
+                <td className="py-2 text-fumaca">{quantidadeFormatada(item.quantidade_minima)}</td>
                 <td className="py-2">
                   {abaixo ? (
                     <span className="text-xs text-brasa font-medium">⚠️ Repor</span>
@@ -185,17 +210,21 @@ export default function Estoque() {
                   <div className="flex gap-1.5">
                     <input
                       type="number"
+                      disabled={!podeOperar('estoque','editar')}
+                      min="0.001" step="0.001" aria-label={`Quantidade para repor ${item.ingredientes?.nome}`}
+                      readOnly={pendentes[chave(item)] || salvandoChave === chave(item)}
                       placeholder="qtd"
                       value={reposicao[chave(item)] || ''}
-                      onChange={(e) => setReposicao({ ...reposicao, [chave(item)]: e.target.value })}
+                      onChange={(e) => { const valor = e.target.value; setReposicao(atuais => ({ ...atuais, [chave(item)]: valor })) }}
                       className="w-20 px-2 py-1 border border-superficie2/40 text-xs"
                     />
                     <button
                       onClick={() => repor(item)}
-                      disabled={salvandoChave === chave(item)}
-                      className="px-2.5 py-1 bg-ambar text-carvao text-xs hover:bg-carvao hover:text-osso transition-colors"
+                      disabled={!podeOperar('estoque','editar') || salvandoChave !== null}
+                      aria-label={`${pendentes[chave(item)] ? 'Confirmar reposição de' : 'Repor'} ${item.ingredientes?.nome}`}
+                      className="px-3 py-2 rounded-lg bg-ambar text-carvao text-xs hover:bg-carvao hover:text-osso transition-colors"
                     >
-                      +
+                      {salvandoChave === chave(item) ? 'Salvando…' : pendentes[chave(item)] ? 'Confirmar' : 'Repor'}
                     </button>
                   </div>
                 </td>
@@ -204,6 +233,7 @@ export default function Estoque() {
           })}
         </tbody>
       </table></div>
+      {!carregando && itensFiltrados.length === 0 && <p className="text-center p-8 text-sm text-fumaca">Nenhum insumo encontrado. Confira os filtros ou vincule insumos a esta unidade.</p>}
     </div>
   )
 }

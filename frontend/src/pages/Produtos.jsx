@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabaseClient.js'
+import { useAuth } from '../lib/AuthContext.jsx'
 import PageHeader from '../components/layout/PageHeader.jsx'
 import Button from '../components/ui/Button.jsx'
 import SidePanel from '../components/layout/SidePanel.jsx'
@@ -26,6 +27,7 @@ const PRODUTO_VAZIO = {
 }
 
 export default function Produtos() {
+  const { podeOperar } = useAuth()
   const [produtos, setProdutos] = useState([])
   const [variacoes, setVariacoes] = useState([])
   const [custos, setCustos] = useState([])
@@ -33,6 +35,9 @@ export default function Produtos() {
   const [ingredientes, setIngredientes] = useState([])
   const [adicionaisDisponiveis, setAdicionaisDisponiveis] = useState([])
   const [adicionais, setAdicionais] = useState([])
+  const [erro, setErro] = useState('')
+  const [carregando, setCarregando] = useState(true)
+  const consultaRef = useRef(0)
   const [filtroCategoria, setFiltroCategoria] = useState('todas')
   const [expandido, setExpandido] = useState(null)
   const [editandoId, setEditandoId] = useState(null)
@@ -49,13 +54,22 @@ export default function Produtos() {
   const [formIngrediente, setFormIngrediente] = useState({ ingrediente_id: '', peso_quantidade: '' })
 
   async function carregar() {
-    const { data: p } = await supabase.from('produtos').select('*, categorias(nome)').order('sku')
-    const { data: v } = await supabase.from('produto_variacoes').select('*')
-    const { data: c } = await supabase.from('vw_custo_variacao').select('*')
-    const { data: cat } = await supabase.from('categorias').select('*').order('ordem')
-    const { data: ing } = await supabase.from('ingredientes').select('*').eq('ativo', true).order('nome')
-    const { data: pad } = await supabase.from('produto_adicionais_disponiveis').select('*')
-    const { data: ad } = await supabase.from('adicionais').select('*')
+    const consulta = ++consultaRef.current
+    setCarregando(true)
+    try {
+    const resultados = await Promise.all([
+      supabase.from('produtos').select('*, categorias(nome)').order('sku'),
+      supabase.from('produto_variacoes').select('*'),
+      supabase.from('vw_custo_variacao').select('*'),
+      supabase.from('categorias').select('*').order('ordem'),
+      supabase.from('ingredientes').select('*').eq('ativo', true).order('nome'),
+      supabase.from('produto_adicionais_disponiveis').select('*'),
+      supabase.from('adicionais').select('*'),
+    ])
+    const falha = resultados.find(r => r.error)
+    if (falha) throw falha.error
+    if (consulta !== consultaRef.current) return
+    const [{ data: p }, { data: v }, { data: c }, { data: cat }, { data: ing }, { data: pad }, { data: ad }] = resultados
     if (p) setProdutos(p)
     if (v) setVariacoes(v)
     if (c) setCustos(c)
@@ -63,9 +77,13 @@ export default function Produtos() {
     if (ing) setIngredientes(ing)
     if (pad) setAdicionaisDisponiveis(pad)
     if (ad) setAdicionais(ad)
+    setErro('')
+    } catch (error) {
+      if (consulta === consultaRef.current) setErro('Não foi possível carregar o catálogo: ' + error.message)
+    } finally { if (consulta === consultaRef.current) setCarregando(false) }
   }
 
-  useEffect(() => { carregar() }, [])
+  useEffect(() => { carregar(); return () => { consultaRef.current += 1 } }, [])
 
   const variacoesDoProduto = (sku) => variacoes.filter((v) => v.produto_sku === sku)
   const custoDaVariacao = (variacaoId) => custos.find((c) => c.variacao_id === variacaoId)
@@ -106,11 +124,12 @@ export default function Produtos() {
   }
 
   async function alternarAtivo(produto) {
-    const { error } = await supabase.from('produtos').update({ ativo: !produto.ativo }).eq('sku', produto.sku)
+    const { data, error } = await supabase.from('produtos').update({ ativo: !produto.ativo }).eq('sku', produto.sku).eq('ativo', produto.ativo).select('sku').maybeSingle()
     if (error) {
       alert('Erro ao atualizar: ' + error.message)
       return
     }
+    if (!data) { setErro('Produto alterado em outra sessão ou usuário sem permissão de edição. Recarregue o catálogo.'); return }
     carregar()
   }
 
@@ -163,11 +182,13 @@ export default function Produtos() {
       <PageHeader
         titulo="Produtos & Fichas Técnicas"
         acaoPrincipal={
-          <Button variant="primary" onClick={() => setMostrarNovoProduto(!mostrarNovoProduto)}>
+          <Button variant="primary" disabled={!podeOperar('produtos','criar')} onClick={() => setMostrarNovoProduto(!mostrarNovoProduto)}>
             + Novo Produto
           </Button>
         }
       />
+      {erro && <p role="alert" className="text-brasa text-sm mb-4">{erro} <button type="button" onClick={carregar} className="underline">Tentar novamente</button></p>}
+      {carregando && <p role="status" className="text-fumaca text-sm mb-4">Atualizando catálogo…</p>}
       <p className="text-sm text-fumaca mb-4">
         Cada variação tem peso pré-definido de ingredientes — o CMV é calculado
         automaticamente a partir da ficha técnica.
@@ -308,6 +329,7 @@ export default function Produtos() {
             {expandido === produto.sku && (
               <div className="px-5 pb-5">
                 <button
+                  disabled={!podeOperar('produtos','editar')}
                   onClick={() => alternarAtivo(produto)}
                   className={`text-xs mb-3 px-3 py-1.5 border ${produto.ativo ? 'border-brasa text-brasa' : 'border-oliva text-oliva'}`}
                 >
@@ -347,14 +369,14 @@ export default function Produtos() {
                               onChange={(e) => setFormIngrediente({ ...formIngrediente, peso_quantidade: e.target.value })}
                               className="w-full px-2 py-1.5 border border-superficie2/40 text-xs" />
                             <div className="flex gap-2">
-                              <button onClick={() => salvarIngredienteFicha(v.id)}
+                              <button disabled={!podeOperar('produtos','criar')} onClick={() => salvarIngredienteFicha(v.id)}
                                 className="flex-1 bg-ambar text-carvao text-xs py-1.5">Adicionar</button>
                               <button onClick={() => setNovoIngredientePara(null)}
                                 className="px-3 text-xs text-fumaca">Cancelar</button>
                             </div>
                           </div>
                         ) : (
-                          <button onClick={() => setNovoIngredientePara(v.id)}
+                          <button disabled={!podeOperar('produtos','criar')} onClick={() => setNovoIngredientePara(v.id)}
                             className="text-xs text-ambar mt-3">+ ingrediente na ficha técnica</button>
                         )}
                       </div>
@@ -370,14 +392,14 @@ export default function Produtos() {
                         onChange={(e) => setFormVariacao({ ...formVariacao, preco_venda: e.target.value })}
                         className="w-full px-2 py-1.5 border border-superficie2/40 text-xs" />
                       <div className="flex gap-2">
-                        <button onClick={() => salvarVariacao(produto.sku)}
+                        <button disabled={!podeOperar('produtos','criar')} onClick={() => salvarVariacao(produto.sku)}
                           className="flex-1 bg-ambar text-carvao text-xs py-1.5">Salvar</button>
                         <button onClick={() => setNovaVariacaoPara(null)}
                           className="px-3 text-xs text-fumaca">Cancelar</button>
                       </div>
                     </div>
                   ) : (
-                    <button onClick={() => setNovaVariacaoPara(produto.sku)}
+                    <button disabled={!podeOperar('produtos','criar')} onClick={() => setNovaVariacaoPara(produto.sku)}
                       className="border border-dashed border-superficie2/40 p-4 text-sm text-ambar hover:border-ambar">
                       + Nova variação
                     </button>

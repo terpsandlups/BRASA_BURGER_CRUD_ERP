@@ -1,5 +1,37 @@
 # Registro de validação — Brasa Burguer
 
+## Revisão operacional, interface e segurança — 17/10/2026
+
+História validada: operador monta um pedido com preço por canal e adicionais;
+o servidor confirma total, estoque e entrega; avanço e cancelamento preservam
+estado e auditoria; a interface apresenta o resultado e permite recuperação.
+Referências e casos derivados em `CASOS_USO_VAREJO.md`.
+
+| Camada | Evidência | Resultado |
+|---|---|---|
+| Testes locais | `npm test`: 68 testes, incluindo 15 de PostgreSQL isolado | Todos passaram |
+| Banco isolado | SQLs reais de criação/frete, estorno, reposição e RLS carregados no PGlite; cada cenário termina em rollback | Sem acesso ao Supabase real nos testes |
+| Preço por canal | Antes: R$ 24,90 + 15% mostrava R$ 28,63; agora navegador e `round(numeric)` retornam R$ 28,64 | Corrigido e testado com venda pela RPC |
+| Estoque | Falta de adicional reverte a venda inteira; reposição soma saldo atual e não duplica no reenvio | Aprovado no banco isolado |
+| Cancelamento | Devolução pela ficha da venda, perda com custo, reaproveitamento em cadeia e recusa de composição diferente | Aprovado no banco isolado |
+| Permissões | Leitor não edita RBAC/catálogo; gerente de outra loja e usuário inativo não leem/alteram pedidos | Aprovado no banco isolado |
+| Supabase real | Duas migrações aplicadas e registradas; 12 pedidos preservados e zero reposições de teste | Nenhum pedido real cancelado para testar |
+| Advisor do Supabase | `db advisors --type security --level error`: `No issues found` | Oito erros antigos de views resolvidos; isto não afirma ausência de avisos de outros níveis |
+| Dependências | `npm audit`: `found 0 vulnerabilities` | Vite 6.4.4, Tailwind 4.3.3 e Router 7.18.4 com lockfile atualizado |
+| Build | Produção compilada; entrada JS de aproximadamente 1.081,78 kB para 424,89 kB | Cerca de 61% menor; páginas, mapas e gráficos carregados separadamente |
+| Navegador conectado | Histórico com 12 registros; catálogo com 38 produtos; estoque com 38 insumos na unidade Japy; Analytics carregado | Leituras sem alertas de erro após as políticas novas |
+| Carrinho | Busca `hamburguer` encontra `Hambúrguer`; dois cliques agrupam quantidade 2; quantidade pode ser editada; canal atualiza preço | Aprovado sem enviar um pedido real |
+| Operação | Busca inexistente zera cartões sem alterar KPIs; filtro Pronto isola a coluna; Escape fecha painel e devolve foco | Aprovado no navegador |
+| Layout | Conferência de celular 390 × 844 e desktop 1440 × 900; no celular largura do conteúdo igual à da página (382px úteis) | Sem transbordamento horizontal da operação |
+| Exportação | CSV baixado com 9 produtos e quatro colunas esperadas | Aprovado no navegador e leitura do arquivo |
+| Regressão futura | Workflow `.github/workflows/validacao.yml` executa testes, build e auditoria no GitHub | Configurado; resultado do runner remoto deve ser conferido após o push |
+
+Limites: testes de banco usam ambiente efêmero, não duas conexões remotas
+concorrentes. As chamadas cartográficas continuam com testes simulados e com a
+validação real anterior do usuário. Ainda é necessário homologar carga,
+concorrência e operação com perfis distintos num ambiente descartável antes de
+classificar o produto como MVP final de produção.
+
 ## Frete no pedido — 07/10/2026
 
 | Cenário | Resultado observado | Estado |

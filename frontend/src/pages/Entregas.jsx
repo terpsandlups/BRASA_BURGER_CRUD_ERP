@@ -94,7 +94,7 @@ export default function Entregas() {
       setPontoLojaConfirmado(dados.latitude != null)
       setAlteracaoPendente(false)
       setVersaoSalva(v => v + 1)
-      setAviso('Endereço e tarifa salvos. A cobrança automática nos pedidos ainda não está ativada.')
+      setAviso('Endereço e tarifa salvos. Novas cotações de delivery próprio usarão esta configuração.')
     } catch (error) {
       setErro(error.message || 'Não foi possível salvar a configuração.')
     } finally {
@@ -113,7 +113,7 @@ export default function Entregas() {
   return (
     <div>
       <h1 className="font-display text-3xl text-carvao">Entregas por distância</h1>
-      <p className="text-sm text-fumaca mt-2 mb-6">Endereço de saída e tarifa por unidade. Esta etapa configura e simula; não altera pedidos.</p>
+      <p className="text-sm text-fumaca mt-2 mb-6">Configure a origem, a tarifa por unidade e simule trajetos. No delivery próprio, calcule o frete ao montar o pedido.</p>
       <label className="text-sm">Unidade
         <select aria-label="Unidade" value={lojaId} disabled={salvando || carregando} onChange={e => setLojaId(e.target.value)} className={input}>
           {!lojas.length && <option value="">Nenhuma unidade disponível</option>}

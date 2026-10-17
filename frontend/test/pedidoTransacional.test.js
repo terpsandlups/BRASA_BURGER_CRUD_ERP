@@ -15,6 +15,22 @@ test('reenvio após resposta perdida preserva chave e conteúdo originais', asyn
   assert.equal(envio.temPendente(), false)
 })
 
+test('recarga da página recupera a mesma requisição pendente da sessão', async () => {
+  const dadosStorage = new Map()
+  const storage = { getItem: k => dadosStorage.get(k), setItem: (k,v) => dadosStorage.set(k,v), removeItem: k => dadosStorage.delete(k) }
+  const dados = { loja_id: 'loja', itens: [{ quantidade: 2 }] }
+  const primeiro = criarEnvioTransacional({ rpc: async () => { throw new Error('conexão perdida') } }, () => 'id-original', { storage })
+  await assert.rejects(primeiro.enviar(dados))
+  const recuperado = criarEnvioTransacional({ rpc: async (_, args) => {
+    assert.equal(args.p_requisicao, 'id-original')
+    assert.deepEqual(args.p_dados, dados)
+    return { data: 'pedido-confirmado' }
+  } }, () => 'nao-usar', { storage })
+  assert.equal(recuperado.temPendente(), true)
+  assert.equal(await recuperado.enviar(), 'pedido-confirmado')
+  assert.equal(dadosStorage.size, 0)
+})
+
 test('cliques simultâneos fazem uma única chamada', async () => {
   let resolver
   let chamadas = 0

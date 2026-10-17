@@ -6,6 +6,8 @@ import PageHeader from '../components/layout/PageHeader.jsx'
 import SidePanel from '../components/layout/SidePanel.jsx'
 import EmptyState from '../components/ui/EmptyState.jsx'
 import { SkeletonLinhas } from '../components/ui/Skeleton.jsx'
+import ItensPedido from '../components/ItensPedido.jsx'
+import { codigoPedido, dinheiro } from '../lib/pedidoApresentacao.js'
 
 const STATUS_LABEL = {
   recebido: 'Recebido', em_preparo: 'Em preparo', pronto: 'Pronto',
@@ -52,7 +54,7 @@ export default function Historico() {
     const relacaoCliente = busca.tipo === 'nome' ? 'clientes!inner(nome)' : 'clientes(nome)'
     let query = supabase
       .from('pedidos')
-      .select(`*, lojas(nome), ${relacaoCliente}, cancelamentos_pedido(*), itens_pedido(*, produtos(nome), itens_pedido_adicionais(*, adicionais(nome)))`, { count: 'exact' })
+      .select(`*, lojas(nome), ${relacaoCliente}, cancelamentos_pedido!cancelamentos_pedido_pedido_id_fkey(*), itens_pedido(*, produtos(nome), produto_variacoes(nome_variacao), itens_pedido_adicionais(*, adicionais(nome)))`, { count: 'exact' })
       .order('criado_em', { ascending: false })
       .order('id', { ascending: false })
 
@@ -183,8 +185,8 @@ export default function Historico() {
       ) : pedidosExibidos.length === 0 ? (
         <EmptyState titulo="Nenhum pedido encontrado" descricao="Ajuste os filtros e tente novamente." />
       ) : (
-        <div className="bg-white border border-superficie2/20">
-          <table className="w-full text-sm">
+        <div className="bg-white border border-borda rounded-xl overflow-x-auto">
+          <table className="w-full text-sm whitespace-nowrap">
             <thead>
               <tr className="text-left text-xs uppercase tracking-wide text-fumaca border-b border-superficie2/20">
                 <th className="py-2 px-3">Pedido</th>
@@ -203,7 +205,7 @@ export default function Historico() {
                   <tr key={p.id}
                     onClick={() => setExpandido(p.id)}
                     className="border-b border-superficie2/10 cursor-pointer hover:bg-osso/60">
-                    <td className="py-2 px-3 font-medium">#{p.id}</td>
+                    <td className="py-2 px-3 font-medium"><button type="button" title={p.id} onClick={() => setExpandido(p.id)} className="text-ambar underline underline-offset-4">#{codigoPedido(p.id)}</button></td>
                     <td className="py-2 px-3">{new Date(p.criado_em).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</td>
                     <td className="py-2 px-3">{p.clientes?.nome || formatarCPF(p.cliente_cpf)}</td>
                     <td className="py-2 px-3">{p.lojas?.nome}</td>
@@ -212,8 +214,8 @@ export default function Historico() {
                       <span className={p.status === 'cancelado' ? 'text-brasa' : ''}>{STATUS_LABEL[p.status]}</span>
                     </td>
                     <td className="py-2 px-3">{PAGAMENTO_LABEL[p.forma_pagamento] || '—'}</td>
-                    <td className="py-2 px-3">{p.cotacao_entrega_id ? `R$ ${Number(p.taxa_entrega).toFixed(2)}` : '—'}</td>
-                    <td className="py-2 px-3 font-medium">{p.status === 'cancelado' ? 'R$ 0,00' : `R$ ${Number(p.valor_total).toFixed(2)}`}</td>
+                    <td className="py-2 px-3">{p.cotacao_entrega_id ? dinheiro(p.taxa_entrega) : '—'}</td>
+                    <td className="py-2 px-3 font-medium">{dinheiro(p.status === 'cancelado' ? 0 : p.valor_total)}</td>
                   </tr>
               ))}
             </tbody>
@@ -224,13 +226,14 @@ export default function Historico() {
       <SidePanel
         aberto={pedidosExibidos.some(p => p.id === expandido)}
         onFechar={() => setExpandido(null)}
-        titulo={expandido ? `Pedido #${expandido}` : ''}
+        titulo={expandido ? `Pedido #${codigoPedido(expandido)}` : ''}
       >
         {(() => {
           const p = pedidosExibidos.find((ped) => ped.id === expandido)
           if (!p) return null
           return (
             <div>
+              <p className="text-xs text-fumaca break-all mb-4">Identificador completo: {p.id}</p>
               <div className="grid grid-cols-2 gap-3 text-sm mb-5">
                 <div>
                   <p className="text-xs uppercase text-fumaca">Cliente</p>
@@ -251,21 +254,7 @@ export default function Historico() {
               </div>
 
               <p className="text-xs uppercase text-fumaca mb-2">Itens do pedido</p>
-              <ul className="space-y-2 mb-4">
-                {p.itens_pedido?.map((item) => (
-                  <li key={item.id} className="text-sm flex justify-between border-b border-borda pb-2">
-                    <span>
-                      {item.quantidade}x {item.produtos?.nome}
-                      {item.itens_pedido_adicionais?.length > 0 && (
-                        <span className="text-fumaca text-xs">
-                          {' '}(+ {item.itens_pedido_adicionais.map((a) => a.adicionais?.nome).join(', ')})
-                        </span>
-                      )}
-                    </span>
-                    <span>R$ {Number(item.preco_unitario * item.quantidade).toFixed(2)}</span>
-                  </li>
-                ))}
-              </ul>
+              <div className="mb-4"><ItensPedido itens={p.itens_pedido} /></div>
               {p.endereco_entrega && <div className="text-sm mb-4">
                 <p className="text-xs uppercase text-fumaca">Destino da entrega</p>
                 <p>{p.endereco_entrega.endereco}, {p.endereco_entrega.numero} — {p.endereco_entrega.bairro}, {p.endereco_entrega.cidade}/{p.endereco_entrega.estado} · CEP {p.endereco_entrega.cep}</p>

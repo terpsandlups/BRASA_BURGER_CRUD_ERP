@@ -10,6 +10,24 @@ A evolução prevista é configurar identidade visual e operação por estabelec
 
 O protótipo atual já oferece dashboard e portal de análises, operação de pedidos, cadastros, estoque e frete por rota. O CEP preenche dados postais; quando o serviço gratuito não localiza um número, o operador pode buscar a região no mapa e confirmar o imóvel. No delivery próprio, uma cotação válida entra no total do pedido; marketplaces não recebem cobrança duplicada de frete. Consulte [roadmap](ROADMAP_EXECUCAO.md) e [configuração do MVP gratuito](MVP_GRATUITO_SETUP.md).
 
+**Revisão de 17/10/2026:** operação responsiva, pesquisa de cardápio, quantidades
+editáveis, cálculo decimal de markup, recuperação de envio, reposição atômica
+e controle de acesso por perfil/unidade. Foram executados 68 testes locais,
+incluindo 15 de PostgreSQL isolado. Veja os [casos de uso](CASOS_USO_VAREJO.md)
+e o [registro de validação](VALIDACAO.md). O produto continua em piloto; canais
+Goomer/iFood são lançados manualmente, sem integração comercial nesta etapa.
+
+Para reproduzir as verificações, use Node.js 24 no diretório `frontend`:
+
+```powershell
+npm ci
+npm test
+npm run build
+```
+
+Os testes de banco usam PostgreSQL em memória e não precisam de credenciais do
+Supabase. O workflow de validação repete testes, build e auditoria no GitHub.
+
 ## Mapas e entregas no MVP em testes
 
 Nesta fase inicial, usamos **OpenStreetMap com Leaflet** para exibir o mapa e **openrouteservice/HeiGIT no plano gratuito** para buscar endereços e calcular rotas. O uso de dados cartográficos abertos ajuda a testar e iniciar o produto sem contratar a Google Maps API. O plano gratuito do serviço de rotas tem cotas e cobertura próprias; não significa uso ilimitado.

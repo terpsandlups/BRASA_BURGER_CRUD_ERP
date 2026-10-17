@@ -8,7 +8,7 @@ const VARIANTES = {
 export default function Button({ variant = 'primary', className = '', children, ...props }) {
   return (
     <button
-      className={`px-4 py-2.5 text-sm font-medium transition-colors ${VARIANTES[variant]} ${className}`}
+      className={`rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${VARIANTES[variant]} ${className}`}
       {...props}
     >
       {children}

@@ -1,5 +1,36 @@
 # Continuidade de execução
 
+## Revisão mais recente — 17/10/2026
+
+Aplicadas melhorias de operação e segurança seguindo os casos de uso de
+`CASOS_USO_VAREJO.md`, inspirados na documentação pública da Goomer e do iFood.
+O estado continua sendo piloto funcional; o registro detalhado de evidências e
+limites está em `VALIDACAO.md`.
+
+- Pedidos: pesquisa no cardápio, preço por canal, quantidades editáveis,
+  agrupamento de itens-base iguais, detalhes de adicionais/variações, filtros
+  por etapa, identificador curto e mensagens de operação. Corrigido o centavo
+  divergente de markup entre JavaScript e PostgreSQL. Pendência de envio pode
+  ser recuperada após recarga da sessão, mantendo a chave contra duplicação.
+- Estoque: reposição atômica e idempotente, precisão de três casas e bloqueio
+  de venda sem insumos. Reaproveitamento também compara a composição registrada
+  e recusa fichas alteradas. Custo ausente fica indisponível, em vez de zero.
+- Acesso: perfis/permissões não aceitam escrita direta; RLS considera usuário
+  ativo, módulo e unidade. Menu e ações acompanham o perfil. As oito views
+  antigas passaram a respeitar o usuário; zero erros no Advisor de segurança.
+- Interface/desempenho: menu móvel, painéis com teclado, tabelas com rolagem
+  interna, páginas sob demanda e catálogo carregado em paralelo. Entrada JS
+  aproximadamente 61% menor. Dependências auditadas sem vulnerabilidades.
+- Verificação: 68 testes locais, dos quais 15 executam PostgreSQL isolado,
+  build e conferência conectada no navegador. Migrações aplicadas no Supabase,
+  sem pedidos ou reposições sintéticos persistidos. CI preparado para o GitHub.
+
+Próximo fechamento: homologação com duas conexões e perfis reais de teste,
+conciliação de estoque/caixa e checklist de instalação/recuperação. Depois,
+cupons de influenciadores/frete grátis e a personalização multi-marca, conforme
+as regras ainda pendentes dessas etapas. Integrações comerciais de Goomer e
+iFood, impressão de cozinha e caixa não devem ser considerados prontos.
+
 ## Situação do MVP Brasa Burguer — 08/10/2026 (horário de Brasília)
 
 O produto está em **piloto funcional**, não homologado como MVP final. A base de

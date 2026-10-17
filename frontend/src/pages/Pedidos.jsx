@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabaseClient.js'
+import { useAuth } from '../lib/AuthContext.jsx'
 import CamposEndereco from '../components/CamposEndereco.jsx'
 import { formatarCPF, apenasDigitos, validarCPF, formatarTelefone } from '../lib/format.js'
 import PageHeader from '../components/layout/PageHeader.jsx'
@@ -8,7 +9,9 @@ import Button from '../components/ui/Button.jsx'
 import SidePanel from '../components/layout/SidePanel.jsx'
 import StatusBadge from '../components/ui/StatusBadge.jsx'
 import ConsultaEntrega from '../components/ConsultaEntrega.jsx'
-import { criarEnvioTransacional, montarPedidoTransacional } from '../lib/pedidoTransacional.js'
+import ItensPedido from '../components/ItensPedido.jsx'
+import { codigoPedido, dinheiro, quantidadeItens, esperaPedido } from '../lib/pedidoApresentacao.js'
+import { criarEnvioTransacional, montarPedidoTransacional, calcularPrecoCanal } from '../lib/pedidoTransacional.js'
 import { exigeFreteProprio, cotacaoPedidoValida, totalComFrete } from '../lib/entrega.js'
 import { carregarTodasPaginas, intervaloDashboard } from '../lib/dashboard.js'
 import { filtrarPedidosOperacao, indicadoresOperacao, criarAtualizadorStatus, destinosReaproveitamento, cancelarPedidoTransacional } from '../lib/operacaoPedidos.js'
@@ -59,47 +62,51 @@ function CardPedido({ pedido, agora, onAvancar, onCancelar, onAbrirDetalhe, atua
   const acao = rotuloAcao(pedido)
 
   return (
-    <div className="bg-white border border-superficie2/20 p-4 mb-3">
+    <article aria-label={`Pedido #${codigoPedido(pedido.id)}`} className="bg-branco border border-borda rounded-xl p-4 mb-3 shadow-sm">
       <div className="flex items-start justify-between">
-        <div>
-          <p className="text-xs text-fumaca">
-            #{pedido.id} · {pedido.lojas?.nome}
+        <div className="min-w-0">
+          <p className="text-xs text-fumaca" title={pedido.id}>
+            <strong className="text-texto text-sm">#{codigoPedido(pedido.id)}</strong>
             {pedido.canal_venda && pedido.canal_venda !== 'proprio' && (
               <StatusBadge estado="neutro">{CANAL_LABEL[pedido.canal_venda]}</StatusBadge>
             )}
           </p>
           <p className="font-medium">{pedido.clientes?.nome || formatarCPF(pedido.cliente_cpf)}</p>
+          <p className="text-xs text-fumaca mt-1">{pedido.lojas?.nome}</p>
         </div>
-        <span className={`text-xs font-medium flex items-center gap-1.5 ${cor.texto}`}>
+        <span className={`text-xs font-medium flex items-center gap-1.5 shrink-0 ml-2 rounded-full bg-osso px-2 py-1 ${cor.texto}`}>
           <span className={`w-2 h-2 rounded-full ${cor.ponto}`} />
-          {min} min
+          {esperaPedido(min)}
         </span>
       </div>
 
-      <button onClick={() => onAbrirDetalhe(pedido)} className="text-xs text-ambar mt-2">
-        {pedido.itens_pedido?.length || 0} item(ns) — ver detalhes
+      <div className="text-xs mt-3 space-y-1">
+        {pedido.itens_pedido?.slice(0, 2).map(item => <p key={item.id} className="truncate">{item.quantidade}× {item.produtos?.nome}{item.produto_variacoes?.nome_variacao ? ` · ${item.produto_variacoes.nome_variacao}` : ''}</p>)}
+      </div>
+      <button onClick={() => onAbrirDetalhe(pedido)} className="text-sm text-ambar mt-2 py-2 underline underline-offset-4">
+        Ver {quantidadeItens(pedido)} itens e adicionais
       </button>
 
       <div className="flex items-center justify-between mt-3 pt-3 border-t border-superficie2/20">
-        <span className="font-medium text-sm">R$ {Number(pedido.valor_total).toFixed(2)}{Number(pedido.taxa_entrega) > 0 && <span className="text-xs text-fumaca ml-2">(inclui frete)</span>}</span>
+        <span className="font-medium text-sm tabular-nums">{dinheiro(pedido.valor_total)}{Number(pedido.taxa_entrega) > 0 && <span className="text-xs text-fumaca ml-2">com frete</span>}</span>
         <span className="text-xs uppercase text-fumaca">{pedido.tipo_atendimento}</span>
       </div>
 
-      {acao && (
+      {acao && onAvancar && (
         <button
           disabled={atualizando} onClick={() => onAvancar(pedido)}
-          className="w-full mt-3 bg-ambar text-carvao text-sm font-medium py-2 hover:bg-carvao hover:text-osso transition-colors"
+          className="w-full rounded-lg mt-3 bg-ambar text-carvao text-sm font-medium py-3 hover:bg-carvao hover:text-osso transition-colors"
         >
-          {acao}
+          {atualizando ? 'Atualizando…' : acao}
         </button>
       )}
-      <button
+      {onCancelar && <button
         disabled={atualizando} onClick={() => onCancelar(pedido)}
         className="w-full mt-1.5 text-xs text-brasa/70 hover:text-brasa py-1"
       >
         Cancelar pedido
-      </button>
-    </div>
+      </button>}
+    </article>
   )
 }
 
@@ -107,6 +114,7 @@ function DetalhePedido({ pedido, onAvancar, onCancelar, atualizando }) {
   const acao = rotuloAcao(pedido)
   return (
     <div className="space-y-5">
+      <p className="text-xs text-fumaca break-all">Identificador completo: {pedido.id}</p>
       <div>
         <p className="text-xs uppercase text-fumaca">Cliente</p>
         <p className="font-medium text-lg">{pedido.clientes?.nome || formatarCPF(pedido.cliente_cpf)}</p>
@@ -134,28 +142,14 @@ function DetalhePedido({ pedido, onAvancar, onCancelar, atualizando }) {
 
       {pedido.forma_pagamento === 'dinheiro' && pedido.troco_para && (
         <div className="bg-osso p-3 text-sm">
-          Troco para R$ {Number(pedido.troco_para).toFixed(2)}
-          {' '}— troco: <strong>R$ {(Number(pedido.troco_para) - Number(pedido.valor_total)).toFixed(2)}</strong>
+          Troco para {dinheiro(pedido.troco_para)}
+          {' '}— troco: <strong>{dinheiro(Number(pedido.troco_para) - Number(pedido.valor_total))}</strong>
         </div>
       )}
 
       <div>
         <p className="text-xs uppercase text-fumaca mb-2">Itens do pedido</p>
-        <ul className="space-y-2">
-          {pedido.itens_pedido?.map((item) => (
-            <li key={item.id} className="flex items-center justify-between text-sm border-b border-borda pb-2">
-              <span>
-                {item.quantidade}x {item.produtos?.nome}
-                {item.produtos?.categorias?.nome && (
-                  <span className="text-[10px] uppercase text-fumaca border border-fumaca/30 px-1.5 ml-1.5">
-                    {item.produtos.categorias.nome}
-                  </span>
-                )}
-              </span>
-              <span>R$ {Number(item.preco_unitario * item.quantidade).toFixed(2)}</span>
-            </li>
-          ))}
-        </ul>
+        <ItensPedido itens={pedido.itens_pedido} />
       </div>
 
       {pedido.observacoes && (
@@ -172,28 +166,30 @@ function DetalhePedido({ pedido, onAvancar, onCancelar, atualizando }) {
       </div>}
 
       {pedido.cotacao_entrega_id && <div className="text-sm space-y-1">
-        <div className="flex justify-between"><span>Itens</span><span>R$ {Number(pedido.subtotal_itens).toFixed(2)}</span></div>
-        <div className="flex justify-between"><span>Frete ({(Number(pedido.distancia_entrega_metros) / 1000).toFixed(2)} km)</span><span>R$ {Number(pedido.taxa_entrega).toFixed(2)}</span></div>
+        <div className="flex justify-between"><span>Itens</span><span>{dinheiro(pedido.subtotal_itens)}</span></div>
+        <div className="flex justify-between"><span>Frete ({(Number(pedido.distancia_entrega_metros) / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} km)</span><span>{dinheiro(pedido.taxa_entrega)}</span></div>
       </div>}
 
       <div className="flex justify-between font-medium pt-3 border-t border-borda">
         <span>Total</span>
-        <span>R$ {Number(pedido.valor_total).toFixed(2)}</span>
+        <span>{dinheiro(pedido.valor_total)}</span>
       </div>
 
-      {acao && (
+      {acao && onAvancar && (
         <Button variant="primary" className="w-full" disabled={atualizando} onClick={() => onAvancar(pedido)}>
           {acao}
         </Button>
       )}
-      <Button variant="danger" className="w-full" disabled={atualizando} onClick={() => onCancelar(pedido)}>
+      {onCancelar && <Button variant="danger" className="w-full" disabled={atualizando} onClick={() => onCancelar(pedido)}>
         Cancelar pedido
-      </Button>
+      </Button>}
     </div>
   )
 }
 
 export default function Pedidos() {
+  const { session, podeOperar } = useAuth()
+  const podeAvancar = podeOperar('vendas','criar') || podeOperar('vendas','editar')
   const [lojas, setLojas] = useState([])
   const [produtos, setProdutos] = useState([])
   const [variacoes, setVariacoes] = useState([])
@@ -203,6 +199,16 @@ export default function Pedidos() {
   const [pedidosAtivos, setPedidosAtivos] = useState([])
   const [pedidosHoje, setPedidosHoje] = useState([])
   const [erroPedidos, setErroPedidos] = useState('')
+  const [erroCatalogo, setErroCatalogo] = useState('')
+  const [mensagemOperacao, setMensagemOperacao] = useState(null)
+  const [erroFormulario, setErroFormulario] = useState('')
+  const [atualizandoPedidos, setAtualizandoPedidos] = useState(false)
+  const [carregandoPedidos, setCarregandoPedidos] = useState(true)
+  const [ultimaAtualizacao, setUltimaAtualizacao] = useState(null)
+  const [filtroStatus, setFiltroStatus] = useState('todos')
+  const cargaEmCursoRef = useRef(false)
+  const recargaPendenteRef = useRef(false)
+  const montadoRef = useRef(false)
   const consultaPedidosRef = useRef(0)
   const statusEmCursoRef = useRef(new Set())
   const atualizarStatusRef = useRef(null)
@@ -220,6 +226,7 @@ export default function Pedidos() {
   const [erroCancelamento, setErroCancelamento] = useState('')
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
   const [categoriaSelecionada, setCategoriaSelecionada] = useState('todas')
+  const [buscaProduto, setBuscaProduto] = useState('')
 
   // ----- formulário de novo pedido (mesma lógica de antes) -----
   const [lojaId, setLojaId] = useState('')
@@ -247,12 +254,14 @@ export default function Pedidos() {
   const [novoClienteEndereco, setNovoClienteEndereco] = useState({})
   const [formaPagamento, setFormaPagamento] = useState('')
   const [cadastrandoCliente, setCadastrandoCliente] = useState(false)
+  const cadastroRapidoRef = useRef(false)
+  const [tentativaCliente, setTentativaCliente] = useState(0)
   const [tipoAtendimento, setTipoAtendimento] = useState('delivery')
   const [itens, setItens] = useState([])
   const [enviando, setEnviando] = useState(false)
   const envioEmCursoRef = useRef(false)
   const transacaoRef = useRef(null)
-  if (!transacaoRef.current) transacaoRef.current = criarEnvioTransacional(supabase)
+  if (!transacaoRef.current) transacaoRef.current = criarEnvioTransacional(supabase, undefined, { storage: window.sessionStorage, chave: `brasa.pedido.pendente.${session.user.id}` })
   const [confirmacaoPendente, setConfirmacaoPendente] = useState(false)
   const [pedidosEmAtualizacao, setPedidosEmAtualizacao] = useState(() => new Set())
   const [canalVenda, setCanalVenda] = useState('proprio')
@@ -263,27 +272,35 @@ export default function Pedidos() {
   const [selecionandoAdicionaisPara, setSelecionandoAdicionaisPara] = useState(null)
 
   useEffect(() => {
+    if (transacaoRef.current.temPendente()) { setConfirmacaoPendente(true); setMostrarFormulario(true) }
+  }, [])
+
+  useEffect(() => {
     if (confirmacaoPendente || enviando) return
     const config = configCanais.find((c) => c.canal_venda === canalVenda)
     if (!config) return
     setItens((atuais) => atuais.map((item) => {
       const variacao = variacoes.find((v) => v.id === item.variacao_id)
       if (!variacao) return item
-      const preco = Math.round((Number(variacao.preco_venda) * (1 + Number(config.markup_preco_percentual) / 100) + Number.EPSILON) * 100) / 100
+      const preco = calcularPrecoCanal(variacao.preco_venda, config.markup_preco_percentual)
       return { ...item, preco_unitario: preco }
     }))
   }, [canalVenda, configCanais, variacoes, confirmacaoPendente, enviando])
 
   async function carregarCatalogo() {
-    const [{ data: l }, { data: p }, { data: v }, { data: cat }, { data: pad }, { data: ad }, { data: canais }] = await Promise.all([
+    try {
+    const resultados = await Promise.all([
       supabase.from('lojas').select('*').eq('ativo', true),
       supabase.from('produtos').select('*, categorias(nome)').eq('ativo', true),
       supabase.from('produto_variacoes').select('*'),
       supabase.from('categorias').select('*').order('ordem'),
       supabase.from('produto_adicionais_disponiveis').select('*'),
-      supabase.from('adicionais').select('*'),
+      supabase.from('adicionais').select('*').eq('ativo', true),
       supabase.from('configuracoes_canal').select('*'),
     ])
+    const falha = resultados.find(r => r.error)
+    if (falha) throw falha.error
+    const [{ data: l }, { data: p }, { data: v }, { data: cat }, { data: pad }, { data: ad }, { data: canais }] = resultados
     if (l) setLojas(l)
     if (p) setProdutos(p)
     if (v) setVariacoes(v)
@@ -291,15 +308,20 @@ export default function Pedidos() {
     if (pad) setAdicionaisDisponiveis(pad)
     if (ad) setAdicionais(ad)
     if (canais) setConfigCanais(canais)
+    setErroCatalogo('')
+    } catch (error) { setErroCatalogo('Não foi possível carregar o catálogo: ' + error.message) }
   }
 
   async function carregarPedidos() {
+    if (cargaEmCursoRef.current) { recargaPendenteRef.current = true; return }
+    cargaEmCursoRef.current = true
+    setAtualizandoPedidos(true)
     const consulta = ++consultaPedidosRef.current
     const { inicio, fim } = intervaloDashboard(1)
     try {
       const [ativos, hoje] = await Promise.all([
         carregarTodasPaginas(() => supabase.from('pedidos')
-          .select('*, lojas(nome), clientes(nome), itens_pedido(*, produtos(nome, categorias(nome)), itens_pedido_adicionais(*))')
+          .select('*, lojas(nome), clientes(nome), itens_pedido(*, produtos(nome, categorias(nome)), produto_variacoes(nome_variacao), itens_pedido_adicionais(*, adicionais(nome)))')
           .in('status', ['recebido', 'em_preparo', 'pronto', 'saiu_entrega'])
           .order('criado_em', { ascending: true }).order('id', { ascending: true })),
         carregarTodasPaginas(() => supabase.from('pedidos').select('id, loja_id, valor_total, status')
@@ -309,25 +331,42 @@ export default function Pedidos() {
       setPedidosAtivos(ativos)
       setPedidosHoje(hoje)
       setErroPedidos('')
+      setUltimaAtualizacao(new Date())
     } catch (error) {
       if (consulta === consultaPedidosRef.current) setErroPedidos('Não foi possível atualizar os pedidos. Os dados exibidos podem estar desatualizados. ' + error.message)
+    } finally {
+      cargaEmCursoRef.current = false
+      if (consulta === consultaPedidosRef.current) {
+        setAtualizandoPedidos(false)
+        setCarregandoPedidos(false)
+      }
+      if (recargaPendenteRef.current && montadoRef.current) { recargaPendenteRef.current = false; void carregarPedidos() }
     }
   }
 
   useEffect(() => {
+    montadoRef.current = true
     carregarCatalogo()
     carregarPedidos()
     const intervaloTempo = setInterval(() => setAgora(new Date()), 30000)
-    const intervaloDados = setInterval(carregarPedidos, 60000)
+    let atualizacaoAgendada
+    const agendar = () => { clearTimeout(atualizacaoAgendada); atualizacaoAgendada = setTimeout(carregarPedidos, 300) }
+    const aoVoltar = () => { if (document.visibilityState === 'visible') agendar() }
+    const intervaloDados = setInterval(() => { if (document.visibilityState === 'visible') agendar() }, 30000)
+    document.addEventListener('visibilitychange', aoVoltar)
     const canalRealtime = supabase
       .channel('pedidos-operacao')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos' }, carregarPedidos)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'itens_pedido' }, carregarPedidos)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos' }, agendar)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'itens_pedido' }, agendar)
       .subscribe()
     return () => {
+      montadoRef.current = false
+      recargaPendenteRef.current = false
       consultaPedidosRef.current += 1
       clearInterval(intervaloTempo)
       clearInterval(intervaloDados)
+      clearTimeout(atualizacaoAgendada)
+      document.removeEventListener('visibilitychange', aoVoltar)
       supabase.removeChannel(canalRealtime)
     }
   }, [])
@@ -351,8 +390,9 @@ export default function Pedidos() {
     marcarPedidoEmAtualizacao(pedido.id, true)
     try {
       await atualizarStatusRef.current(pedido)
+      setMensagemOperacao({ tipo: 'sucesso', texto: `Pedido #${codigoPedido(pedido.id)} atualizado.` })
     } catch (error) {
-      alert('Não foi possível atualizar o pedido: ' + error.message)
+      setMensagemOperacao({ tipo: 'erro', texto: 'Não foi possível atualizar o pedido: ' + error.message })
     } finally {
       statusEmCursoRef.current.delete(pedido.id)
       marcarPedidoEmAtualizacao(pedido.id, false)
@@ -386,6 +426,7 @@ export default function Pedidos() {
       await cancelarPedidoTransacional(supabase, cancelamento, {
         motivo: motivoCancelamento, destino: destinoCancelamento, pedidoDestinoId,
       })
+      setMensagemOperacao({ tipo: 'sucesso', texto: `Pedido #${codigoPedido(cancelamento.id)} cancelado. ${dinheiro(cancelamento.valor_total)} estornados no ERP.` })
       setCancelamento(null)
     } catch (error) {
       setErroCancelamento(error.message)
@@ -414,28 +455,36 @@ export default function Pedidos() {
     }
 
     setStatusCliente('buscando')
+    let ativa = true
     const timeout = setTimeout(async () => {
-      const { data } = await supabase.from('clientes').select('*').eq('cpf', digitos).maybeSingle()
+      try {
+      const { data, error } = await supabase.from('clientes').select('*').eq('cpf', digitos).maybeSingle()
+      if (!ativa) return
+      if (error) throw error
       if (data) {
         setClienteEncontrado(data)
         setStatusCliente('encontrado')
       } else {
         setStatusCliente('nao_encontrado')
       }
+      } catch { if (ativa) setStatusCliente('erro') }
     }, 300)
-    return () => clearTimeout(timeout)
-  }, [cpfCliente])
+    return () => { ativa = false; clearTimeout(timeout) }
+  }, [cpfCliente, tentativaCliente])
 
   async function cadastrarClienteRapido() {
+    if (cadastroRapidoRef.current) return
     if (!novoClienteNome || apenasDigitos(novoClienteTelefone).length < 10) {
-      alert('Informe nome e telefone válidos (com DDD).')
+      setErroFormulario('Informe nome e telefone válidos (com DDD).')
       return
     }
     if (tipoAtendimento === 'delivery' && !novoClienteEndereco.cep) {
-      alert('Pedido delivery precisa de endereço — informe ao menos o CEP.')
+      setErroFormulario('Pedido delivery precisa de endereço — informe ao menos o CEP.')
       return
     }
     setCadastrandoCliente(true)
+    cadastroRapidoRef.current = true
+    try {
     const { data, error } = await supabase
       .from('clientes')
       .insert({
@@ -446,17 +495,16 @@ export default function Pedidos() {
       })
       .select()
       .single()
-    setCadastrandoCliente(false)
-    if (error) {
-      alert('Erro ao cadastrar cliente: ' + error.message)
-      return
-    }
+    if (error) throw error
     setClienteEncontrado(data)
     setCotacaoEntrega(null)
     setStatusCliente('encontrado')
     setNovoClienteNome('')
     setNovoClienteTelefone('')
     setNovoClienteEndereco({})
+    setErroFormulario('')
+    } catch (error) { setErroFormulario('Erro ao cadastrar cliente: ' + error.message) }
+    finally { setCadastrandoCliente(false); cadastroRapidoRef.current = false }
   }
 
   const adicionaisDoProduto = (sku) => {
@@ -467,9 +515,12 @@ export default function Pedidos() {
   function adicionarItem(variacao) {
     const produto = produtos.find((p) => p.sku === variacao.produto_sku)
     const config = configCanais.find((c) => c.canal_venda === canalVenda)
-    const markup = config ? Number(config.markup_preco_percentual) / 100 : 0
-    const precoComMarkup = Math.round((variacao.preco_venda * (1 + markup) + Number.EPSILON) * 100) / 100
-    setItens([...itens, {
+    const precoComMarkup = calcularPrecoCanal(variacao.preco_venda, config?.markup_preco_percentual || 0)
+    setItens(atuais => {
+      const existente = atuais.findIndex(item => item.variacao_id === variacao.id && item.adicionaisSelecionados.length === 0 && Number(item.quantidade) < 9999)
+      if (existente >= 0) return atuais.map((item, i) => i === existente ? { ...item, quantidade: Number(item.quantidade) + 1 } : item)
+      return [...atuais, {
+      chave: crypto.randomUUID(),
       produto_sku: variacao.produto_sku,
       nome: `${produto.nome} — ${variacao.nome_variacao}`,
       variacao_id: variacao.id,
@@ -477,15 +528,17 @@ export default function Pedidos() {
       preco_unitario: precoComMarkup,
       permiteAdicionais: produto.permite_adicionais,
       adicionaisSelecionados: [],
-    }])
+    }]
+    })
   }
 
   function removerItem(index) {
-    setItens(itens.filter((_, i) => i !== index))
+    setItens(atuais => atuais.filter((_, i) => i !== index))
+    setSelecionandoAdicionaisPara(null)
   }
 
   function alternarAdicional(indexItem, adicional) {
-    setItens(itens.map((item, i) => {
+    setItens(atuais => atuais.map((item, i) => {
       if (i !== indexItem) return item
       const jaTem = item.adicionaisSelecionados.some((a) => a.id === adicional.id)
       return {
@@ -509,21 +562,29 @@ export default function Pedidos() {
   async function finalizarPedido() {
     if (envioEmCursoRef.current) return
     if (!confirmacaoPendente && (!lojaId || !clienteEncontrado || itens.length === 0 || !formaPagamento)) {
-      alert('Selecione a loja, confirme o cliente, adicione ao menos um item e escolha a forma de pagamento.')
+      setErroFormulario('Selecione a loja, confirme o cliente, adicione ao menos um item e escolha a forma de pagamento.')
       return
     }
     if (!confirmacaoPendente && freteObrigatorio && !cotacaoPedidoValida(cotacaoEntrega, lojaId, clienteEncontrado.cpf)) {
-      alert('Calcule e confirme o frete desta entrega antes de finalizar. Se a cotação expirou, calcule novamente.')
+      setErroFormulario('Calcule e confirme o frete desta entrega antes de finalizar. Se a cotação expirou, calcule novamente.')
       return
+    }
+    if (!confirmacaoPendente && itens.some(item => !Number.isInteger(Number(item.quantidade)) || Number(item.quantidade) < 1 || Number(item.quantidade) > 9999)) {
+      setErroFormulario('Cada item precisa ter quantidade inteira entre 1 e 9999.'); return
+    }
+    if (!confirmacaoPendente && formaPagamento === 'dinheiro' && trocoPara !== '' && (!Number.isFinite(Number(trocoPara)) || Number(trocoPara) < valorTotal)) {
+      setErroFormulario('O valor recebido em dinheiro precisa cobrir o total do pedido com frete.'); return
     }
     envioEmCursoRef.current = true
     setEnviando(true)
+    setErroFormulario('')
     try {
-      await transacaoRef.current.enviar(confirmacaoPendente ? undefined : montarPedidoTransacional({
+      const pedidoId = await transacaoRef.current.enviar(confirmacaoPendente ? undefined : montarPedidoTransacional({
           lojaId, clienteCpf: clienteEncontrado.cpf, tipoAtendimento, formaPagamento,
-          canalVenda, observacoes, trocoPara, itens, cotacaoId: cotacaoEntrega?.cotacao_id,
+          canalVenda, observacoes, trocoPara: trocoPara === '' ? valorTotal : trocoPara, itens, cotacaoId: cotacaoEntrega?.cotacao_id,
         }))
       setConfirmacaoPendente(false)
+      setMensagemOperacao({ tipo: 'sucesso', texto: `Pedido #${codigoPedido(pedidoId)} recebido pela cozinha.` })
 
       setItens([])
       setCpfCliente('')
@@ -538,7 +599,7 @@ export default function Pedidos() {
     } catch (erro) {
       const pendente = transacaoRef.current.temPendente()
       setConfirmacaoPendente(pendente)
-      alert(pendente
+      setErroFormulario(pendente
         ? 'Não foi possível confirmar a resposta. Use Confirmar envio anterior sem fechar esta página; o mesmo pedido será recuperado sem duplicação.'
         : 'Pedido não gravado: ' + (erro?.code === 'PGRST202' ? 'A função de pedidos ainda precisa ser instalada no Supabase.' : erro?.message || 'Confira os dados.'))
     } finally {
@@ -551,29 +612,37 @@ export default function Pedidos() {
   return (
     <div>
       <PageHeader
-        titulo="Pedidos"
-        descricao="Gerencie e acompanhe os pedidos da sua rede em tempo real."
+        titulo="Operação de pedidos"
+        descricao="Da confirmação à entrega, acompanhe cada etapa da sua cozinha."
+        acoesSecundarias={<Button variant="secondary" disabled={atualizandoPedidos} onClick={carregarPedidos}>{atualizandoPedidos ? 'Atualizando…' : 'Atualizar'}</Button>}
         acaoPrincipal={
-          <Button variant="primary" disabled={enviando || confirmacaoPendente} onClick={() => setMostrarFormulario(!mostrarFormulario)}>
-            + Novo Pedido
+          <Button variant="primary" disabled={!podeOperar('vendas','criar') || enviando || confirmacaoPendente} onClick={() => setMostrarFormulario(!mostrarFormulario)}>
+            {mostrarFormulario ? 'Fechar formulário' : '+ Novo Pedido'}
           </Button>
         }
       />
 
+      {mensagemOperacao && <div role={mensagemOperacao.tipo === 'erro' ? 'alert' : 'status'} className={`rounded-lg border p-3 mb-4 flex justify-between gap-3 text-sm ${mensagemOperacao.tipo === 'erro' ? 'border-brasa text-brasa bg-brasa/5' : 'border-oliva text-oliva bg-oliva/5'}`}>
+        <p>{mensagemOperacao.texto}</p><button type="button" onClick={() => setMensagemOperacao(null)} aria-label="Fechar mensagem">×</button>
+      </div>}
+      {erroCatalogo && <p role="alert" className="text-brasa text-sm mb-3">{erroCatalogo} <button onClick={carregarCatalogo} className="underline">Recarregar catálogo</button></p>}
+
       {/* KPIs */}
       {erroPedidos && <p role="alert" className="text-brasa text-sm mb-3">{erroPedidos} <button onClick={carregarPedidos} className="underline">Tentar novamente</button></p>}
       <p className="text-xs text-fumaca mb-3">Indicadores da unidade selecionada. A busca por cliente ou pedido filtra somente os cartões. Hoje considera o horário de São Paulo.</p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3 mb-6">
-        <KPICard titulo="Pedidos hoje" valor={kpis.pedidosHoje} />
-        <KPICard titulo="Em preparo" valor={kpis.emPreparo} />
-        <KPICard titulo="Em entrega" valor={kpis.emEntrega} />
-        <KPICard titulo="Atrasados" valor={kpis.atrasados} variacao={kpis.atrasados > 0 ? { positiva: false, texto: 'requer atenção' } : undefined} />
-        <KPICard titulo="Faturamento hoje" valor={`R$ ${kpis.faturamentoHoje.toFixed(2)}`} />
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 mb-6">
+        <KPICard titulo="Pedidos hoje" valor={carregandoPedidos ? '—' : kpis.pedidosHoje} />
+        <KPICard titulo="Em preparo" valor={carregandoPedidos ? '—' : kpis.emPreparo} />
+        <KPICard titulo="Em entrega" valor={carregandoPedidos ? '—' : kpis.emEntrega} />
+        <KPICard titulo="Atrasados" valor={carregandoPedidos ? '—' : kpis.atrasados} variacao={!carregandoPedidos && kpis.atrasados > 0 ? { positiva: false, texto: 'requer atenção' } : undefined} />
+        <div className="col-span-2 md:col-span-1"><KPICard titulo="Faturamento hoje" valor={carregandoPedidos ? '—' : dinheiro(kpis.faturamentoHoje)} /></div>
       </div>
 
       {/* Formulário de novo pedido (colapsável) */}
       {mostrarFormulario && (
-        <div className="bg-superficie text-osso p-6 mb-8 space-y-4">
+        <div className="bg-superficie text-osso rounded-xl p-4 sm:p-6 mb-8 space-y-4">
+          <h2 className="text-2xl">Novo pedido</h2>
+          {erroFormulario && <p role="alert" className="border border-ambar text-ambar p-3 rounded-lg">{erroFormulario}</p>}
           {confirmacaoPendente && <div role="alert">
             <p>Envio aguardando confirmação. Confirme antes de fechar esta página ou iniciar outro pedido.</p>
             <Button onClick={finalizarPedido} disabled={enviando}>Confirmar envio anterior</Button>
@@ -581,7 +650,7 @@ export default function Pedidos() {
           <fieldset disabled={enviando || confirmacaoPendente} className="space-y-4">
           <div>
             <label className="text-xs uppercase tracking-wide text-fumaca">Canal de venda</label>
-            <div className="flex gap-2 mt-1">
+            <div className="flex flex-wrap gap-2 mt-1">
               {configCanais.map((c) => (
                 <button
                   key={c.canal_venda}
@@ -603,7 +672,7 @@ export default function Pedidos() {
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="text-xs uppercase tracking-wide text-fumaca">Unidade</label>
               <select
@@ -619,6 +688,7 @@ export default function Pedidos() {
               <label className="text-xs uppercase tracking-wide text-fumaca">CPF do cliente</label>
               <input
                 ref={cpfClienteInputRef}
+                disabled={cadastrandoCliente} aria-label="CPF do cliente"
                 value={cpfCliente}
                 onChange={(e) => { setCpfCliente(formatarCPF(e.target.value)); setCotacaoEntrega(null) }}
                 placeholder="000.000.000-00"
@@ -632,6 +702,7 @@ export default function Pedidos() {
               {statusCliente === 'buscando' && (
                 <p className="text-xs text-fumaca mt-1">Buscando...</p>
               )}
+              {statusCliente === 'erro' && <p role="alert" className="text-xs text-ambar mt-2">Não foi possível consultar o cliente. <button type="button" onClick={() => setTentativaCliente(n => n + 1)} className="underline">Tentar novamente</button></p>}
               {statusCliente === 'encontrado' && (
                 <p className="text-xs text-oliva mt-1">✓ Cliente: {clienteEncontrado?.nome}</p>
               )}
@@ -702,6 +773,8 @@ export default function Pedidos() {
 
           <div>
             <label className="text-xs uppercase tracking-wide text-fumaca">Adicionar item</label>
+            <input aria-label="Buscar produto no cardápio" placeholder="Buscar produto, nome ou SKU…" value={buscaProduto}
+              onChange={e => setBuscaProduto(e.target.value)} className="w-full mt-2 px-3 py-3 bg-carvao border border-superficie2 rounded-lg text-sm" />
             <div className="flex flex-wrap gap-2 mt-2 mb-3">
               <button
                 onClick={() => setCategoriaSelecionada('todas')}
@@ -720,10 +793,13 @@ export default function Pedidos() {
               ))}
             </div>
 
-            {categorias
+            <div className="max-h-96 overflow-y-auto pr-1">{categorias
               .filter((cat) => categoriaSelecionada === 'todas' || categoriaSelecionada === cat.nome)
               .map((cat) => {
-                const produtosDaCategoria = produtos.filter((p) => p.categorias?.nome === cat.nome)
+                const termo = buscaProduto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+                const produtosDaCategoria = produtos.filter(p => p.categorias?.nome === cat.nome &&
+                  (tipoAtendimento === 'delivery' ? p.disponivel_delivery : p.disponivel_presencial) &&
+                  `${p.nome} ${p.nome_comercial || ''} ${p.sku}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes(termo))
                 if (produtosDaCategoria.length === 0) return null
                 return (
                   <div key={cat.id} className="mb-3">
@@ -736,28 +812,40 @@ export default function Pedidos() {
                             <button
                               key={v.id}
                               onClick={() => adicionarItem(v)}
-                              className="px-3 py-1.5 text-xs bg-carvao border border-superficie2 hover:border-ambar"
+                              className="px-3 py-3 rounded-lg text-left text-xs bg-carvao border border-superficie2 hover:border-ambar"
                             >
                               {produto.nome} · {v.nome_variacao}
+                              <span className="block text-ambar mt-1 font-medium">{dinheiro(calcularPrecoCanal(v.preco_venda, configCanais.find(c => c.canal_venda === canalVenda)?.markup_preco_percentual || 0))}</span>
                             </button>
                           ))
                       )}
                     </div>
                   </div>
                 )
-              })}
+              })}</div>
           </div>
 
           {itens.length > 0 && (
             <div className="border-t border-superficie2 pt-3">
               {itens.map((i, idx) => (
-                <div key={idx} className="py-2 border-b border-superficie2/50 last:border-0">
-                  <div className="flex justify-between text-sm">
+                <div key={i.chave || idx} className="py-3 border-b border-superficie2/50 last:border-0">
+                  <div className="flex flex-wrap justify-between gap-2 text-sm">
                     <span>{i.nome}</span>
                     <span className="flex items-center gap-3">
-                      R$ {valorItem(i).toFixed(2)}
+                      {dinheiro(valorItem(i))}
                       <button onClick={() => removerItem(idx)} className="text-brasa text-xs">remover</button>
                     </span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-2">
+                    <button type="button" aria-label={`Diminuir quantidade de ${i.nome}`} disabled={Number(i.quantidade) <= 1}
+                      onClick={() => setItens(atuais => atuais.map((item, j) => j === idx ? { ...item, quantidade: Math.max(1, Number(item.quantidade) - 1) } : item))}
+                      className="w-11 h-11 rounded-lg border border-superficie2">−</button>
+                    <input type="number" min="1" max="9999" step="1" aria-label={`Quantidade de ${i.nome}`} value={i.quantidade}
+                      onChange={e => { const qtd = e.target.value; setItens(atuais => atuais.map((item, j) => j === idx ? { ...item, quantidade: qtd } : item)) }}
+                      className="w-20 text-center py-2 bg-carvao rounded-lg border border-superficie2" />
+                    <button type="button" aria-label={`Aumentar quantidade de ${i.nome}`} disabled={Number(i.quantidade) >= 9999}
+                      onClick={() => setItens(atuais => atuais.map((item, j) => j === idx ? { ...item, quantidade: (Number(item.quantidade) || 0) + 1 } : item))}
+                      className="w-11 h-11 rounded-lg border border-superficie2">+</button>
                   </div>
                   {i.permiteAdicionais && (
                     <div className="mt-1">
@@ -782,9 +870,9 @@ export default function Pedidos() {
                 </div>
               ))}
               <div className="space-y-1 mt-2 pt-2 border-t border-superficie2 text-sm">
-                <div className="flex justify-between"><span>Itens</span><span>R$ {subtotalItens.toFixed(2)}</span></div>
-                {freteObrigatorio && <div className="flex justify-between"><span>Frete</span><span>{cotacaoAtiva ? `R$ ${valorFrete.toFixed(2)}` : 'Calcule a rota'}</span></div>}
-                <div className="flex justify-between font-medium pt-1"><span>Total</span><span>{freteObrigatorio && !cotacaoAtiva ? 'Aguardando frete' : `R$ ${valorTotal.toFixed(2)}`}</span></div>
+                <div className="flex justify-between"><span>Itens</span><span>{dinheiro(subtotalItens)}</span></div>
+                {freteObrigatorio && <div className="flex justify-between"><span>Frete</span><span>{cotacaoAtiva ? dinheiro(valorFrete) : 'Calcule a rota'}</span></div>}
+                <div className="flex justify-between font-medium pt-1"><span>Total</span><span>{freteObrigatorio && !cotacaoAtiva ? 'Aguardando frete' : dinheiro(valorTotal)}</span></div>
               </div>
             </div>
           )}
@@ -811,7 +899,7 @@ export default function Pedidos() {
 
             {formaPagamento === 'dinheiro' && (
               <div className="mt-2">
-                <label className="text-xs uppercase tracking-wide text-fumaca">Troco para quanto?</label>
+                <label className="text-xs uppercase tracking-wide text-fumaca">Valor recebido (deixe vazio para valor exato)</label>
                 <input
                   type="number"
                   step="0.01"
@@ -863,58 +951,67 @@ export default function Pedidos() {
           placeholder="Buscar por pedido, cliente ou CPF..."
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
-          className="flex-1 min-w-[220px] px-3 py-2 border border-superficie2/40 focus:outline-none focus:border-ambar text-sm"
+          aria-label="Buscar pedido ou cliente" className="flex-1 basis-full sm:basis-0 min-w-0 sm:min-w-[220px] px-3 py-3 rounded-lg border border-borda focus:outline-none focus:border-ambar text-sm"
         />
-        <select value={filtroLoja} onChange={(e) => setFiltroLoja(e.target.value)}
-          className="px-3 py-2 border border-superficie2/40 text-sm">
+        <select aria-label="Filtrar unidade dos pedidos" value={filtroLoja} onChange={(e) => setFiltroLoja(e.target.value)}
+          className="w-full sm:w-auto max-w-full px-3 py-3 rounded-lg border border-borda text-sm">
           <option value="todas">Todas as unidades</option>
           {lojas.map((l) => <option key={l.id} value={l.id}>{l.nome}</option>)}
         </select>
       </div>
+      <div className="flex flex-wrap items-center gap-2 mb-4" aria-label="Etapas dos pedidos">
+        {[{ status: 'todos', titulo: 'Todos' }, ...COLUNAS].map(coluna => <button type="button" key={coluna.status}
+          onClick={() => setFiltroStatus(coluna.status)} aria-pressed={filtroStatus === coluna.status}
+          className={`px-3 py-2 rounded-full text-xs border ${filtroStatus === coluna.status ? 'bg-carvao text-osso border-carvao' : 'bg-branco border-borda'}`}>
+          {coluna.titulo} · {pedidosFiltrados.filter(p => coluna.status === 'todos' || p.status === coluna.status).length}
+        </button>)}
+        <span className="text-xs text-fumaca ml-auto">{ultimaAtualizacao ? `Atualizado às ${ultimaAtualizacao.toLocaleTimeString('pt-BR')}` : 'Carregando pedidos…'}</span>
+      </div>
 
       {/* Kanban */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-        {COLUNAS.map((coluna) => {
+      {carregandoPedidos && <p role="status" className="text-fumaca p-6">Buscando pedidos da operação…</p>}
+      <div className={filtroStatus === 'todos' ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4' : 'max-w-3xl'}>
+        {COLUNAS.filter(c => filtroStatus === 'todos' || c.status === filtroStatus).map((coluna) => {
           const pedidosColuna = pedidosFiltrados.filter((p) => p.status === coluna.status)
           return (
-            <div key={coluna.status}>
+            <section key={coluna.status} aria-label={coluna.titulo} className="min-w-0 bg-borda/20 rounded-xl p-3">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-display text-sm uppercase tracking-wide text-fumaca">{coluna.titulo}</h3>
                 <span className="text-xs bg-superficie2/20 px-2 py-0.5">{pedidosColuna.length}</span>
               </div>
               <div className="min-h-[100px]">
                 {pedidosColuna.length === 0 && (
-                  <p className="text-xs text-fumaca/60 italic">Nenhum pedido aqui</p>
+                  <p className="text-xs text-fumaca/60 italic">{carregandoPedidos ? 'Carregando…' : 'Nenhum pedido aqui'}</p>
                 )}
                 {pedidosColuna.map((pedido) => (
                   <CardPedido
                     key={pedido.id}
                     pedido={pedido}
                     agora={agora}
-                    onAvancar={avancarStatus}
-                    onCancelar={cancelarPedido}
+                    onAvancar={podeAvancar ? avancarStatus : null}
+                    onCancelar={podeOperar('vendas','editar') ? cancelarPedido : null}
                     atualizando={pedidosEmAtualizacao.has(pedido.id)}
                     onAbrirDetalhe={pedido => setExpandidoId(pedido.id)}
                   />
                 ))}
               </div>
-            </div>
+            </section>
           )
         })}
       </div>
       <SidePanel
         aberto={!!pedidoDetalhe}
         onFechar={() => setExpandidoId(null)}
-        titulo={pedidoDetalhe ? `Pedido #${pedidoDetalhe.id}` : ''}
+        titulo={pedidoDetalhe ? `Pedido #${codigoPedido(pedidoDetalhe.id)}` : ''}
       >
         {pedidoDetalhe && (
-          <DetalhePedido pedido={pedidoDetalhe} onAvancar={avancarStatus} onCancelar={cancelarPedido} atualizando={pedidosEmAtualizacao.has(pedidoDetalhe.id)} />
+          <DetalhePedido pedido={pedidoDetalhe} onAvancar={podeAvancar ? avancarStatus : null} onCancelar={podeOperar('vendas','editar') ? cancelarPedido : null} atualizando={pedidosEmAtualizacao.has(pedidoDetalhe.id)} />
         )}
       </SidePanel>
       <SidePanel aberto={!!cancelamento} onFechar={() => setCancelamento(null)}
-        titulo={cancelamento ? `Cancelar pedido #${cancelamento.id}` : ''}>
+        titulo={cancelamento ? `Cancelar pedido #${codigoPedido(cancelamento.id)}` : ''}>
         {cancelamento && <form onSubmit={confirmarCancelamento} className="space-y-5 text-sm">
-          <p className="text-fumaca">O total de R$ {Number(cancelamento.valor_total).toFixed(2)} será estornado no ERP e deixará de compor o faturamento. O sistema não devolve dinheiro automaticamente via Pix ou cartão.</p>
+          <p className="text-fumaca">O total de {dinheiro(cancelamento.valor_total)} será estornado no ERP e deixará de compor o faturamento. O sistema não devolve dinheiro automaticamente via Pix ou cartão.</p>
           <div>
             <label className="block text-xs uppercase text-fumaca mb-1" htmlFor="motivo-cancelamento">Motivo obrigatório</label>
             <textarea id="motivo-cancelamento" required minLength={3} maxLength={500}

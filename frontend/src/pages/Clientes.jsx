@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabaseClient.js'
+import { useAuth } from '../lib/AuthContext.jsx'
 import { formatarCPF, apenasDigitos, validarCPF, formatarTelefone } from '../lib/format.js'
 import CamposEndereco from '../components/CamposEndereco.jsx'
 import PageHeader from '../components/layout/PageHeader.jsx'
@@ -14,6 +15,7 @@ const vazio = {
 }
 
 export default function Clientes() {
+  const { podeOperar } = useAuth()
   const [clientes, setClientes] = useState([])
   const [form, setForm] = useState(vazio)
   const cpfInputRef = useRef(null)
@@ -152,7 +154,7 @@ export default function Clientes() {
       <PageHeader titulo="Clientes" descricao="Cadastro robusto com busca de CEP, validação de CPF e perfil CRM." />
       {erroLista && <p role="alert" className="text-sm text-brasa mb-3">{erroLista} <button onClick={carregar} className="underline">Tentar novamente</button></p>}
 
-      <form onSubmit={salvar} className="bg-superficie text-osso p-6 mb-8 grid grid-cols-2 gap-4">
+      {podeOperar('clientes','criar') && <form onSubmit={salvar} className="bg-superficie text-osso rounded-xl p-4 sm:p-6 mb-8 grid grid-cols-2 gap-4">
         <div className="col-span-2">
           <label className="text-xs uppercase tracking-wide text-fumaca">CPF (identificador)</label>
           <input
@@ -205,7 +207,7 @@ export default function Clientes() {
             {salvando ? 'Salvando...' : 'Cadastrar cliente'}
           </Button>
         </div>
-      </form>
+      </form>}
 
       <input
         placeholder="Buscar por nome ou CPF..."
@@ -214,7 +216,7 @@ export default function Clientes() {
         className="w-full mb-4 px-3 py-2 border border-superficie2/40 focus:outline-none focus:border-ambar"
       />
 
-      <table className="w-full text-sm bg-white">
+      <div className="overflow-x-auto border border-borda rounded-xl"><table className="w-full min-w-[600px] text-sm bg-white">
         <thead>
           <tr className="text-left text-xs uppercase tracking-wide text-fumaca">
             <th className="py-2">CPF</th>
@@ -227,13 +229,13 @@ export default function Clientes() {
           {clientesFiltrados.map((c) => (
             <tr key={c.cpf} onClick={() => abrirPerfil(c.cpf)} className="cursor-pointer hover:bg-osso/60">
               <td className="py-2">{formatarCPF(c.cpf)}</td>
-              <td className="py-2">{c.nome}</td>
+              <td className="py-2"><button type="button" onClick={event => { event.stopPropagation(); abrirPerfil(c.cpf) }} className="text-left underline underline-offset-4">{c.nome}</button></td>
               <td className="py-2">{formatarTelefone(c.telefone)}</td>
               <td className="py-2">{new Date(c.data_cadastro).toLocaleDateString('pt-BR')}</td>
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></div>
 
       <SidePanel
         aberto={!!expandidoCpf}

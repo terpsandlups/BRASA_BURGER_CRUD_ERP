@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useAuth } from '../lib/AuthContext.jsx'
 
 export default function Login() {
@@ -7,14 +7,19 @@ export default function Login() {
   const [senha, setSenha] = useState('')
   const [erro, setErro] = useState('')
   const [enviando, setEnviando] = useState(false)
+  const emCurso = useRef(false)
 
   async function handleSubmit(e) {
     e.preventDefault()
+    if (emCurso.current) return
+    emCurso.current = true
     setErro('')
     setEnviando(true)
-    const { error } = await entrar(email, senha)
-    setEnviando(false)
-    if (error) setErro('E-mail ou senha inválidos.')
+    try {
+      const { error } = await entrar(email, senha)
+      if (error) setErro(error.status === 400 ? 'E-mail ou senha inválidos.' : 'Não foi possível entrar. Confira sua conexão e tente novamente.')
+    } catch { setErro('Não foi possível conectar. Tente novamente.') }
+    finally { emCurso.current = false; setEnviando(false) }
   }
 
   return (
@@ -23,18 +28,20 @@ export default function Login() {
         <h1 className="font-display text-2xl font-semibold text-ambar mb-1">Brasa Burguer</h1>
         <p className="text-xs text-fumaca mb-6">Painel de Gestão</p>
 
-        <label className="text-xs uppercase tracking-wide text-fumaca">E-mail</label>
+        <label htmlFor="login-email" className="text-xs uppercase tracking-wide text-fumaca">E-mail</label>
         <input
           type="email"
+          id="login-email" autoComplete="username"
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="w-full mt-1 mb-4 px-3 py-2 bg-carvao border border-superficie2 text-osso focus:outline-none focus:border-ambar"
         />
 
-        <label className="text-xs uppercase tracking-wide text-fumaca">Senha</label>
+        <label htmlFor="login-senha" className="text-xs uppercase tracking-wide text-fumaca">Senha</label>
         <input
           type="password"
+          id="login-senha" autoComplete="current-password"
           required
           value={senha}
           onChange={(e) => setSenha(e.target.value)}

@@ -26,10 +26,10 @@ export default function SidePanel({ aberto, onFechar, titulo, children }) {
         const rect = event.currentTarget.getBoundingClientRect()
         if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) onFechar()
       }}
-      className="fixed inset-y-0 left-auto right-0 m-0 h-dvh max-h-none w-full max-w-md p-0 bg-branco text-texto border-l border-borda backdrop:bg-carvao/40">
-      <div className="flex items-center justify-between px-6 py-5 border-b border-borda">
+      className="fixed inset-y-0 left-auto right-0 m-0 h-dvh max-h-none w-full max-w-lg p-0 bg-branco text-texto border-l border-borda backdrop:bg-carvao/40 overflow-y-auto">
+      <div className="sticky top-0 z-10 bg-branco flex items-center justify-between px-5 py-4 border-b border-borda">
         <h3 id={tituloId} className="font-display text-xl text-texto break-all">{titulo}</h3>
-        <button type="button" autoFocus onClick={onFechar} aria-label="Fechar painel" className="text-fumaca hover:text-texto text-2xl leading-none ml-3">×</button>
+        <button type="button" autoFocus onClick={onFechar} aria-label="Fechar painel" className="text-fumaca hover:text-texto text-2xl leading-none ml-3 w-11 h-11 shrink-0 rounded-lg">×</button>
       </div>
       <div className="p-6 overflow-y-auto">{aberto && children}</div>
     </dialog>
