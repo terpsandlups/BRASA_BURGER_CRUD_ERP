@@ -15,6 +15,9 @@ const Historico = lazy(() => import('./pages/Historico.jsx'))
 const Estoque = lazy(() => import('./pages/Estoque.jsx'))
 const Analytics = lazy(() => import('./pages/Analytics.jsx'))
 const Entregas = lazy(() => import('./pages/Entregas.jsx'))
+const PortalCliente = lazy(() => import('./pages/PortalCliente.jsx'))
+const SolicitacoesMobile = lazy(() => import('./pages/SolicitacoesMobile.jsx'))
+const Integracoes = lazy(() => import('./pages/Integracoes.jsx'))
 
 function Acesso({ modulo, children }) {
   const { podeOperar } = useAuth()
@@ -42,6 +45,7 @@ function AreaProtegida() {
       <p>{erroUsuario || 'Carregue novamente seu perfil para continuar.'}</p>
       <button className="bg-ambar rounded-lg px-4 py-3 mr-3" onClick={recarregarUsuario}>Tentar novamente</button>
       <button className="underline" onClick={() => sair().catch(() => window.location.reload())}>Voltar ao login</button>
+      <a href="/pedir" className="block underline">Portal do cliente</a>
     </div>
   </div>
 
@@ -62,13 +66,15 @@ function AreaProtegida() {
             <Route path="/estoque" element={<Acesso modulo="estoque"><Estoque /></Acesso>} />
             <Route path="/analytics" element={<Acesso modulo="vendas"><Analytics /></Acesso>} />
             <Route path="/entregas" element={<Acesso modulo="vendas"><Entregas /></Acesso>} />
+            <Route path="/solicitacoes" element={<Acesso modulo="vendas"><SolicitacoesMobile /></Acesso>} />
+            <Route path="/integracoes" element={<Acesso modulo="vendas"><Integracoes /></Acesso>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
           </Suspense>
           </ErrorBoundary>
         </main>
       </div>
-      <SidePanel aberto={menuAberto} onFechar={() => setMenuAberto(false)} titulo="Brasa Burguer">
+      <SidePanel aberto={menuAberto} onFechar={() => setMenuAberto(false)} titulo="Convivium">
         <Navegacao onNavegar={() => setMenuAberto(false)} />
       </SidePanel>
     </div>
@@ -77,8 +83,9 @@ function AreaProtegida() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AreaProtegida />
-    </AuthProvider>
+    <Routes>
+      <Route path="/pedir" element={<ErrorBoundary><Suspense fallback={<p role="status" className="p-8">Carregando cardápio…</p>}><PortalCliente /></Suspense></ErrorBoundary>} />
+      <Route path="*" element={<AuthProvider><AreaProtegida /></AuthProvider>} />
+    </Routes>
   )
 }

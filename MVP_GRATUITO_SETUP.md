@@ -1,5 +1,20 @@
 # MVP sem contratação de serviços pagos
 
+## Convivium e pedidos móveis — 24/10/2026
+
+O frontend agora usa a identidade Convivium Management System. O portal do
+cliente fica em `/pedir`; a equipe confirma em `/solicitacoes`. A migração
+`20261025000912_portal_clientes_convivium.sql` foi aplicada no projeto existente.
+Pagamento permanece presencial. O delivery é cotado pela equipe antes do aceite;
+o portal não chama a API de rotas como cliente.
+
+Para disponibilizar fora do computador local, publicar o frontend em uma origem
+HTTPS, permitir essa origem no Auth com retorno para `/pedir` e no
+`ALLOWED_ORIGINS` da função de entregas. O build inclui `_redirects` e `_headers`
+para hospedagem Netlify, com fallback de SPA e cabeçalhos básicos de segurança.
+Não foi criada uma hospedagem nova nem contratado plano pago. Instruções de
+operação, recuperação e limites em `CONVIVIUM_EXECUCAO.md`.
+
 O Brasa Burguer está em fase de testes. O mapa usa Leaflet e a base aberta do
 OpenStreetMap; busca de endereços e rotas usam openrouteservice/HeiGIT no plano
 gratuito. Google Maps API **não está ativo** nesta versão.

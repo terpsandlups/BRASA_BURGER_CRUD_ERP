@@ -1,5 +1,18 @@
 # Continuidade de execução
 
+## Convivium e portal móvel — 24/10/2026
+
+Identidade Convivium aplicada, portal `/pedir` e fila `/solicitacoes`
+implementados, migração publicada no Supabase. Cadastro público separado da
+equipe; aceite transacional, acompanhamento por titular, cotação conferida
+pelo operador para delivery e pagamento presencial. Página `/integracoes`
+explicita os canais manuais e integrações futuras.
+
+O estado dos oito pedidos, a auditoria e os limites de homologação estão em
+`CONVIVIUM_EXECUCAO.md`. A pesquisa de concorrentes continua pendente das
+ferramentas Exa. O registro abaixo é histórico; não representa o estado atual
+de acesso, identidade ou portal.
+
 ## Padronização visual do ERP — 17/10/2026
 
 Tema de Pedidos estendido às outras sete abas, com base de tokens compartilhada,

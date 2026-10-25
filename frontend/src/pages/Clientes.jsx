@@ -157,7 +157,7 @@ export default function Clientes() {
       {erroLista && <p role="alert" className="text-sm text-brasa mb-3">{erroLista} <button onClick={carregar} className="underline">Tentar novamente</button></p>}
 
       {podeOperar('clientes','criar') && mostrarCadastro && <form onSubmit={salvar} className="ui-form ui-form-responsive mb-6 grid grid-cols-2 gap-4">
-        <div className="col-span-2"><h2 className="ui-form-title">Dados do cliente</h2><p className="ui-form-description">Informe o CPF e os contatos. O CEP ajuda a preencher o endereço.</p></div>
+        <div className="col-span-2"><h2 className="ui-form-title">Dados do cliente</h2></div>
         <div className="col-span-2">
           <label htmlFor="cadastro-cliente-cpf" className="text-xs uppercase tracking-wide text-fumaca">CPF (identificador)</label>
           <input

@@ -42,8 +42,9 @@ export function AuthProvider({ children }) {
     setErroUsuario('')
     ;(async () => {
       try {
-        const { data, error } = await supabase.from('usuarios').select('*, perfis(nome), lojas(nome)').eq('id', userId).single()
+        const { data, error } = await supabase.from('usuarios').select('*, perfis(nome), lojas(nome)').eq('id', userId).maybeSingle()
         if (error) throw error
+        if (!data) throw new Error('Sua conta não tem acesso à equipe. Para fazer pedidos, abra o portal do cliente.')
         if (!data.ativo) throw new Error('Seu usuário está inativo. Solicite a liberação ao administrador.')
         const { data: regras, error: erroRegras } = await supabase.from('permissoes').select('*').eq('perfil_id', data.perfil_id)
         if (erroRegras) throw erroRegras
@@ -65,8 +66,6 @@ export function AuthProvider({ children }) {
     if (error) throw error
   }
 
-  // Verifica permissão de um módulo. Administrador/Gerente sempre passam
-  // (ajuste a regra fina ao integrar a tabela `permissoes` nas próximas fases).
   function podeAcessar(perfisPermitidos) {
     if (!usuario) return false
     return perfisPermitidos.includes(usuario.perfis?.nome)

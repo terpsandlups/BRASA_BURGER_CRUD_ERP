@@ -1,4 +1,18 @@
-# Brasa Burguer — ERP de varejo alimentar com identidade de marca
+# Convivium Management System
+
+ERP para operações de alimentação, demonstrado pela Brasa Burguer. A revisão de
+24/10/2026 adiciona o portal de pedidos em `/pedir`, a fila da equipe em
+`/solicitacoes` e os canais em `/integracoes`. Pagamento presencial; delivery
+com frete calculado e confirmado pela loja antes do aceite. Clientes do portal
+não recebem acesso ao ERP.
+
+Consulte o [estado dos oito pedidos de melhoria](CONVIVIUM_EXECUCAO.md), os
+[contratos futuros de integração](INTEGRACOES_FUTURAS.md) e o
+[registro de validação](VALIDACAO.md). A pesquisa aprofundada de concorrentes
+continua dependente da conexão Exa. O produto segue em piloto, com os limites
+de homologação explicitados nesses registros.
+
+## Contexto original e evolução
 
 Projeto acadêmico e de portfólio de um ERP de varejo alimentar em desenvolvimento, demonstrado pela rede fictícia Brasa Burguer, em Jundiaí/SP. Integra atendimento, clientes, pedidos, cardápio, fichas técnicas, estoque, entregas e análises gerenciais.
 

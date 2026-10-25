@@ -24,7 +24,7 @@ export function montarPedidoTransacional({ lojaId, clienteCpf, tipoAtendimento, 
   }
 }
 
-export function criarEnvioTransacional(client, gerarId = () => crypto.randomUUID(), { storage = null, chave = 'brasa.pedido.pendente' } = {}) {
+export function criarEnvioTransacional(client, gerarId = () => crypto.randomUUID(), { storage = null, chave = 'brasa.pedido.pendente', funcao = 'criar_pedido_transacional' } = {}) {
   let pendente = null
   try {
     const salvo = JSON.parse(storage?.getItem(chave) || 'null')
@@ -41,7 +41,7 @@ export function criarEnvioTransacional(client, gerarId = () => crypto.randomUUID
       if (!pendente) { pendente = { id: gerarId(), dados: JSON.parse(JSON.stringify(dados)) }; salvar() }
       const requisicao = pendente
       emCurso = (async () => {
-        const { data, error } = await client.rpc('criar_pedido_transacional', {
+        const { data, error } = await client.rpc(funcao, {
           p_requisicao: requisicao.id, p_dados: requisicao.dados,
         })
         if (error) {

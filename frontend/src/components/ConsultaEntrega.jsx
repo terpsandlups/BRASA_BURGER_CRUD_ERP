@@ -73,7 +73,7 @@ export default function ConsultaEntrega({ lojaId, pontoSalvo, origemPendente, mo
           ...(ponto ? { latitude: ponto.latitude, longitude: ponto.longitude } : {}) } },
       })
       if (error) {
-        let mensagem = 'Não foi possível consultar. Confira se a função calcular-entrega foi publicada e configurada no Supabase.'
+        let mensagem = 'Não foi possível consultar a entrega. Tente novamente ou contate o responsável pela unidade.'
         try { mensagem = (await error.context?.json())?.error || mensagem } catch { /* erro de rede ou resposta não JSON */ }
         throw new Error(mensagem)
       }
@@ -94,10 +94,9 @@ export default function ConsultaEntrega({ lojaId, pontoSalvo, origemPendente, mo
 
   return (
     <section className="ui-form delivery-quote">
-      <h2 className="font-display text-xl">{modoPedido ? 'Frete deste pedido — plano gratuito' : 'Calcular pelas ruas — plano gratuito'}</h2>
-      <p className="text-sm text-fumaca my-3">Para entregas próprias. O CEP preenche rua e cidade, mas não identifica o imóvel no mapa. Usamos a origem e a tarifa já salvas da loja.</p>
-      <p className="text-xs text-fumaca mb-3">Sem ponto marcado, tentamos localizar cada endereço completo. Se houver ponto, a rota usa sua posição — não o endereço digitado — daquele lado do trajeto.</p>
-      {pontoSalvo && <p className="text-xs text-ambar mb-3">A origem desta loja está marcada no mapa e será usada no cálculo. Confira o endereço salvo da loja antes de simular.</p>}
+      <h2 className="font-display text-xl">{modoPedido ? 'Frete do pedido' : 'Consultar entrega'}</h2>
+      <p className="text-sm text-fumaca my-3">Tarifa da unidade e distância pela rota de carro. Confirme o imóvel no mapa quando necessário.</p>
+      {pontoSalvo && <p className="text-xs text-ambar mb-3">Origem: ponto salvo da unidade.</p>}
       <form onSubmit={consultar}>
         <fieldset disabled={consultando || buscandoMapa}>
           <legend className="text-sm mb-3">Endereço de destino</legend>
@@ -117,7 +116,7 @@ export default function ConsultaEntrega({ lojaId, pontoSalvo, origemPendente, mo
             <input type="checkbox" checked={pontoConfirmado} onChange={e => setPontoConfirmado(e.target.checked)} />
             Confirmo que o ponto marcado é o imóvel de entrega informado. Sei que o ponto, não o CEP, será usado na distância.
           </label>}
-          <p className="text-xs text-fumaca mt-3">O openrouteservice recebe os endereços que precisar localizar e as coordenadas dos pontos marcados. Não enviamos nome, CPF, telefone ou complemento. Sujeito às cotas gratuitas.</p>
+          <p className="text-xs text-fumaca mt-3">A consulta de rota compartilha endereço e coordenadas com openrouteservice. Nome, CPF, telefone e complemento não são enviados.</p>
           {origemPendente && <p className="text-xs text-ambar mt-3">Salve as alterações da loja acima antes de consultar a rota.</p>}
           <button type="submit" disabled={origemPendente || (ponto && !pontoConfirmado)} className="bg-ambar text-carvao px-4 py-2 mt-4 disabled:opacity-50">{consultando ? 'Consultando rota...' : modoPedido ? 'Calcular frete do pedido' : 'Calcular distância e taxa'}</button>
         </fieldset>
@@ -140,7 +139,7 @@ export default function ConsultaEntrega({ lojaId, pontoSalvo, origemPendente, mo
           </div>
           <p className="text-xl text-ambar mt-3">Taxa calculada pela loja: {resultado.taxa.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
           <p className="text-sm">Tarifa aplicada: {resultado.valor_km.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/km</p>
-          <p className="text-xs text-fumaca mt-2">Rota de carro, somente ida, sem trânsito em tempo real. Pode diferir do percurso de moto. {modoPedido ? 'Cotação válida por 15 minutos; o frete entra no total ao finalizar este pedido.' : 'Simulação: não adicionada ao pedido.'}</p>
+          <p className="text-xs text-fumaca mt-2">Rota de carro, somente ida, sem trânsito em tempo real. {modoPedido ? 'Cotação válida por 15 minutos.' : 'Consulta sem lançamento no pedido.'}</p>
           {resultado.provedor === 'openrouteservice' && <p className="text-xs mt-3">Rotas: <a className="underline" href="https://openrouteservice.org/" target="_blank" rel="noreferrer">© openrouteservice / HeiGIT</a> · Dados: <a className="underline" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap contributors</a></p>}
         </div>
       )}

@@ -6,7 +6,9 @@ const links = [
   { to: '/', label: 'Painel', end: true, modulo: 'vendas', icone: 'painel' },
   { to: '/analytics', label: 'Analytics', modulo: 'vendas', icone: 'analytics' },
   { to: '/entregas', label: 'Entregas', modulo: 'vendas', icone: 'entrega' },
+  { to: '/integracoes', label: 'Canais de venda', modulo: 'vendas', icone: 'ajuste' },
   { to: '/pedidos', label: 'Pedidos', modulo: 'vendas', icone: 'pedido' },
+  { to: '/solicitacoes', label: 'Pedidos do celular', modulo: 'vendas', icone: 'sacola' },
   { to: '/historico', label: 'Histórico', modulo: 'vendas', icone: 'historico' },
   { to: '/clientes', label: 'Clientes', modulo: 'clientes', icone: 'clientes' },
   { to: '/produtos', label: 'Produtos & Fichas Técnicas', modulo: 'produtos', icone: 'produto' },
@@ -30,12 +32,13 @@ export default function Sidebar() {
     <aside className="app-sidebar hidden lg:flex w-60 xl:w-64 shrink-0 bg-carvao text-osso h-dvh sticky top-0 flex-col overflow-y-auto">
       <div className="px-6 py-8 border-b border-superficie2">
         <h1 className="font-display text-2xl font-semibold tracking-wide text-ambar">
-          Brasa Burguer
+          Convivium
         </h1>
-        <p className="text-xs text-fumaca mt-1">Painel de Gestão · Rede de Unidades</p>
+        <p className="text-xs text-fumaca mt-1">Management System</p>
       </div>
 
       <div className="flex-1 px-3 py-6"><Navegacao escuro /></div>
+      <a href="/pedir" target="_blank" rel="noreferrer" className="px-6 pb-4 text-sm text-ambar underline">Abrir portal do cliente</a>
       <p className="px-6 pb-6 text-xs text-osso/50">Operação · Gestão · Resultados</p>
     </aside>
   )

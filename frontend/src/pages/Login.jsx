@@ -25,8 +25,8 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-carvao">
       <form onSubmit={handleSubmit} className="bg-superficie text-osso p-8 w-full max-w-sm">
-        <h1 className="font-display text-2xl font-semibold text-ambar mb-1">Brasa Burguer</h1>
-        <p className="text-xs text-fumaca mb-6">Painel de Gestão</p>
+        <h1 className="font-display text-2xl font-semibold text-ambar mb-1">Convivium</h1>
+        <p className="text-xs text-fumaca mb-6">Management System · Acesso da equipe</p>
 
         <label htmlFor="login-email" className="text-xs uppercase tracking-wide text-fumaca">E-mail</label>
         <input
@@ -56,6 +56,7 @@ export default function Login() {
         >
           {enviando ? 'Entrando...' : 'Entrar'}
         </button>
+        <a href="/pedir" className="block text-center text-sm text-ambar underline mt-5">Fazer um pedido</a>
       </form>
     </div>
   )

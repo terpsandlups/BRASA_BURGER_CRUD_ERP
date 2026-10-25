@@ -629,7 +629,7 @@ export default function Pedidos() {
 
       {/* KPIs */}
       {erroPedidos && <p role="alert" className="text-brasa text-sm mb-3">{erroPedidos} <button onClick={carregarPedidos} className="underline">Tentar novamente</button></p>}
-      <p className="text-xs text-fumaca mb-3">Indicadores da unidade selecionada. A busca por cliente ou pedido filtra somente os cartões. Hoje considera o horário de São Paulo.</p>
+      <p className="text-xs text-fumaca mb-3">Indicadores por unidade · Hoje, horário de São Paulo</p>
       <dl className="operation-kpis" aria-label="Indicadores da operação">
         {[
           { titulo: 'Pedidos hoje', valor: kpis.pedidosHoje, icone: 'pedido' },

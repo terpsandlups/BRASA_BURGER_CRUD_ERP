@@ -1,4 +1,30 @@
-# Registro de validação — Brasa Burguer
+# Registro de validação — Convivium / Brasa Burguer
+
+## Portal móvel e segurança — 24/10/2026
+
+| Cenário | Evidência | Resultado |
+|---|---|---|
+| Regressão | `npm test`: 92 aprovados, zero falhas; 25 testes de PostgreSQL efêmero | Aprovado nos cenários automatizados |
+| Build | `npm run build`, 753 módulos transformados | Aprovado |
+| Dependências | `npm audit --audit-level=high` com certificados confiáveis do Windows | Zero vulnerabilidades |
+| Cadastro de cliente | Teste insere usuário Auth e confere ausência em `usuarios`; catálogo público sem leitura de clientes/estoque | Aprovado em banco efêmero |
+| Idempotência e venda | Solicitação não baixa estoque; aceite repetido retorna a mesma venda; erro de estoque/preço reverte aceite | Aprovado em banco efêmero |
+| Isolamento | Cliente não consulta ERP, não lê solicitação alheia e não aceita sua solicitação; gerente de outra loja é recusado | Aprovado em banco efêmero |
+| Frete no aceite | R$ 28,00 de itens + R$ 3,75 de cotação = R$ 31,75; endereço divergente recusado | Aprovado em banco efêmero |
+| Edição de fichas | Definições recuperadas do banco, testadas com versão antiga, precisão e perfil sem permissão | Aprovado em banco efêmero |
+| Migração remota | CLI confirmou aplicação de `20261025000912`; consulta verificou RLS habilitado, 3 unidades, 44 variações e ausência de leitura anônima de clientes/envio | Aprovado no Supabase configurado |
+| Advisor remoto | Sem erros; sem `search_path` mutável ou função privilegiada pública executável por anônimo | 10 avisos remanescentes detalhados em `CONVIVIUM_EXECUCAO.md` |
+| Interface do portal | Busca por Bacon Cheese na Japy; adicionar e aumentar quantidade; R$ 26,90 → R$ 53,80 | Aprovado no navegador, sem envio |
+| Celular | Viewport 390 × 844; largura útil/rolagem 382 px; consulta ao banco real | Sem rolagem horizontal no cenário verificado |
+| Equipe | Sessão Administrador existente abriu `/solicitacoes` e identificou fila vazia | Aprovado no navegador, sem escrita operacional |
+
+Não foram criadas contas, clientes ou vendas sintéticos persistentes no banco real.
+Continuam pendentes: recebimento e confirmação de e-mail no domínio publicado,
+publicação de uma origem HTTPS para acesso externo, comparação de rotas reais,
+carga e operação simultânea com duas sessões reais. A proteção contra senhas
+vazadas está desativada na conta Supabase. A pesquisa de concorrentes depende da
+conexão Exa, indisponível nesta sessão. A migração aplicada e os testes locais
+não substituem essas homologações.
 
 ## Tema comum e padronização das abas — 17/10/2026
 

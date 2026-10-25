@@ -28,6 +28,8 @@ before(async () => {
     '../../supabase/migrations/20261009001643_corrigir_fatos_cancelados.sql',
     '../../supabase/migrations/20261017173447_operacao_estoque_segura.sql',
     '../../supabase/migrations/20261017174630_proteger_acessos_operacionais.sql',
+    '../../supabase/migrations/20261025000912_portal_clientes_convivium.sql',
+    '../../sql/edicao_fichas_vigente.sql',
   ]) await db.exec(await sql(path))
 })
 after(async () => { await db?.close() })
@@ -47,6 +49,143 @@ async function pedido(payload = dados(), chave = randomUUID()) {
   return valor('SELECT criar_pedido_transacional($1, $2::jsonb)', [chave, JSON.stringify(payload)])
 }
 const cancelar = (id, destino, alvo = null, status = 'recebido') => valor('SELECT cancelar_pedido_transacional($1,$2,$3,$4,$5)', [id, status, 'Teste isolado de cancelamento', destino, alvo])
+
+const mobileUser = '20000000-0000-0000-0000-000000000005'
+async function contaMobile() {
+  await db.query('INSERT INTO auth.users(id) VALUES($1)', [mobileUser])
+  await db.query("SELECT set_config('request.jwt.claim.sub',$1,true)", [mobileUser])
+}
+function dadosMobile() {
+  return { loja_id: loja, tipo_atendimento: 'presencial', forma_pagamento: 'pix', nome: 'Cliente Mobile',
+    cpf: '52998224725', telefone: '11999999999', observacoes: '', troco_para: null, endereco: null, itens: dados().itens }
+}
+const solicitar = (payload = dadosMobile(), chave = randomUUID()) => valor('SELECT enviar_solicitacao_mobile($1,$2::jsonb)', [chave,JSON.stringify(payload)])
+const decidirMobile = (id, acao, cotacao = null, motivo = null) => valor('SELECT decidir_solicitacao_mobile($1,$2,$3,$4)', [id,acao,motivo,cotacao])
+
+test('banco: edição vigente de ficha e variação valida perfil, precisão e versão anterior', async () => {
+  const fichaId=await valor('SELECT id FROM fichas_tecnicas LIMIT 1')
+  assert.equal(await valor('SELECT editar_quantidade_ficha($1,100,125.125)',[fichaId]),fichaId)
+  await rejeita('SELECT editar_quantidade_ficha($1,100,150)',[fichaId],/outra sessão/)
+  await rejeita('SELECT editar_quantidade_ficha($1,125.125,0)',[fichaId],/inválida/)
+  assert.equal(await valor("SELECT editar_variacao($1,'100g',25,'125g',27.9)",[variacao]),variacao)
+  await rejeita("SELECT editar_variacao($1,'100g',25,'150g',30)",[variacao],/outra sessão/)
+  await db.query("SELECT set_config('request.jwt.claim.sub',$1,true)",['20000000-0000-0000-0000-000000000002'])
+  await rejeita('SELECT editar_quantidade_ficha($1,125.125,150)',[fichaId],/Sem permissão/)
+  await rejeita("SELECT editar_variacao($1,'125g',27.9,'150g',30)",[variacao],/Sem permissão/)
+})
+
+test('mobile: cadastro público não cria colaborador e catálogo público não revela custos nem clientes', async () => {
+  await contaMobile()
+  assert.equal(Number(await valor('SELECT count(*) FROM usuarios WHERE id=$1', [mobileUser])), 0)
+  await db.exec('SET LOCAL ROLE anon')
+  const catalogo = await valor('SELECT cardapio_mobile()')
+  assert.equal(catalogo.itens.find(i => i.id === variacao).preco, 25)
+  assert.ok(!JSON.stringify(catalogo).includes('custo'))
+  await rejeita('SELECT * FROM clientes', [], /permission denied/)
+  await rejeita('SELECT * FROM solicitacoes_mobile', [], /permission denied/)
+  await rejeita('SELECT enviar_solicitacao_mobile($1,$2::jsonb)', [randomUUID(),JSON.stringify(dadosMobile())], /permission denied/)
+})
+
+test('mobile: solicitação idempotente não vende, não baixa estoque e não atualiza cadastro por CPF', async () => {
+  await contaMobile()
+  const chave = randomUUID(); const payload = dadosMobile()
+  const id = await solicitar(payload,chave)
+  assert.equal(await solicitar(payload,chave), id)
+  assert.equal(await saldo(carne), 1000)
+  assert.equal(Number(await valor('SELECT count(*) FROM pedidos')), 0)
+  assert.equal(Number(await valor('SELECT count(*) FROM clientes WHERE cpf=$1', [payload.cpf])), 0)
+  assert.equal(Number(await valor('SELECT subtotal FROM solicitacoes_mobile WHERE id=$1', [id])), 28)
+  assert.equal((await valor('SELECT resumo_itens FROM solicitacoes_mobile WHERE id=$1', [id]))[0].nome, 'Burger teste · 100g')
+  payload.nome = 'Outro nome'
+  await rejeita('SELECT enviar_solicitacao_mobile($1,$2::jsonb)', [chave,JSON.stringify(payload)], /conteúdo diferente/)
+})
+
+test('mobile: cliente não lê ERP ou solicitações de terceiros nem aceita sua própria solicitação', async () => {
+  await contaMobile(); const id = await solicitar()
+  await rejeita('SELECT decidir_solicitacao_mobile($1,$2)', [id,'aceitar'], /Sem permissão/)
+  await db.exec('SET LOCAL ROLE authenticated')
+  for (const tabela of ['usuarios','clientes','estoque_lojas','pedidos','fichas_tecnicas']) assert.equal(Number(await valor(`SELECT count(*) FROM ${tabela}`)), 0)
+  assert.equal(Number(await valor('SELECT count(*) FROM solicitacoes_mobile')), 1)
+  await rejeita("UPDATE solicitacoes_mobile SET status='aceita'", [], /permission denied/)
+  await db.query("SELECT set_config('request.jwt.claim.sub',$1,true)", ['20000000-0000-0000-0000-000000000004'])
+  assert.equal(Number(await valor('SELECT count(*) FROM solicitacoes_mobile')), 0)
+  assert.equal((await valor('SELECT acompanhar_solicitacoes_mobile()')).length, 0)
+  await rejeita('SELECT decidir_solicitacao_mobile($1,$2)', [id,'cancelar'], /Sem permissão/)
+})
+
+test('mobile: aceite transacional baixa uma vez e mantém canal próprio e acompanhamento do titular', async () => {
+  await contaMobile(); const id = await solicitar()
+  await db.query("SELECT set_config('request.jwt.claim.sub',$1,true)", [admin])
+  const pedidoId = await decidirMobile(id,'aceitar')
+  assert.equal(await decidirMobile(id,'aceitar'), pedidoId)
+  assert.equal(await saldo(carne), 900)
+  assert.equal(Number(await valor('SELECT valor_total FROM pedidos WHERE id=$1', [pedidoId])), 28)
+  assert.equal(await valor('SELECT canal_venda FROM pedidos WHERE id=$1', [pedidoId]), 'proprio')
+  await db.query("SELECT set_config('request.jwt.claim.sub',$1,true)", [mobileUser])
+  const acompanhamento = await valor('SELECT acompanhar_solicitacoes_mobile()')
+  assert.equal(acompanhamento[0].etapa,'recebido')
+  assert.equal(acompanhamento[0].total,28)
+  await rejeita('SELECT decidir_solicitacao_mobile($1,$2)', [id,'cancelar'], /outra sessão/)
+})
+
+test('mobile: preço adulterado, adicional repetido, CPF inválido e quantidade fracionária são recusados', async () => {
+  await contaMobile()
+  for (const alterar of [p => { p.itens[0].preco_unitario=0.01 }, p => { p.itens[0].adicionais.push(p.itens[0].adicionais[0]) }, p => { p.cpf='11111111111' }, p => { p.itens[0].quantidade=1.5 }]) {
+    const payload = dadosMobile(); alterar(payload)
+    await rejeita('SELECT enviar_solicitacao_mobile($1,$2::jsonb)', [randomUUID(),JSON.stringify(payload)], /Preço|Adicionais|CPF|Quantidade/)
+  }
+  assert.equal(Number(await valor('SELECT count(*) FROM solicitacoes_mobile')),0)
+})
+
+test('mobile: estoque insuficiente e preço atualizado revertem aceite e cadastro', async () => {
+  await contaMobile(); const id = await solicitar()
+  await db.query("SELECT set_config('request.jwt.claim.sub',$1,true)", [admin])
+  await db.query('UPDATE estoque_lojas SET quantidade_disponivel=10 WHERE ingrediente_id=$1', [carne])
+  await rejeita('SELECT decidir_solicitacao_mobile($1,$2)', [id,'aceitar'], /Estoque insuficiente/)
+  assert.equal(await valor('SELECT status FROM solicitacoes_mobile WHERE id=$1',[id]), 'aguardando')
+  assert.equal(Number(await valor("SELECT count(*) FROM clientes WHERE cpf='52998224725'")), 0)
+  await db.query('UPDATE estoque_lojas SET quantidade_disponivel=1000 WHERE ingrediente_id=$1', [carne])
+  await db.query('UPDATE produto_variacoes SET preco_venda=30 WHERE id=$1',[variacao])
+  await rejeita('SELECT decidir_solicitacao_mobile($1,$2)', [id,'aceitar'], /Preço alterado/)
+  assert.equal(await saldo(carne),1000)
+})
+
+test('mobile: cancelamento e recusa exigem titular/permissão, motivo e estado pendente', async () => {
+  await contaMobile(); const a = await solicitar(); const b = await solicitar()
+  await decidirMobile(a,'cancelar'); await decidirMobile(a,'cancelar')
+  await db.query("SELECT set_config('request.jwt.claim.sub',$1,true)", [admin])
+  await rejeita('SELECT decidir_solicitacao_mobile($1,$2)',[a,'aceitar'], /outra sessão/)
+  await rejeita('SELECT decidir_solicitacao_mobile($1,$2)',[b,'recusar'], /motivo/)
+  await decidirMobile(b,'recusar',null,'Loja encerrada')
+  assert.equal(await saldo(carne),1000)
+})
+
+test('mobile: limites de envio bloqueiam spam sem impedir recuperação idempotente', async () => {
+  await contaMobile(); const chave = randomUUID(); const id = await solicitar(dadosMobile(),chave)
+  for (let i=0;i<4;i++) await solicitar()
+  await rejeita('SELECT enviar_solicitacao_mobile($1,$2::jsonb)',[randomUUID(),JSON.stringify(dadosMobile())],/Limite/)
+  assert.equal(await solicitar(dadosMobile(),chave),id)
+})
+
+test('mobile: frete exige endereço da solicitação, cotação válida e unidade autorizada', async () => {
+  await contaMobile()
+  const payload = dadosMobile(); payload.tipo_atendimento='delivery'
+  payload.endereco={ cep:'13211772',endereco:'Rua Teste',numero:'10',bairro:'Centro',cidade:'Jundiaí',estado:'SP',complemento:'' }
+  const id=await solicitar(payload)
+  await db.query("SELECT set_config('request.jwt.claim.sub',$1,true)", [admin])
+  await db.query("INSERT INTO clientes(cpf,nome) VALUES('52998224725','Cliente')")
+  const cotacao=randomUUID()
+  await db.query(`INSERT INTO cotacoes_entrega(id,usuario_id,loja_id,cliente_cpf,origem,destino,distancia_metros,valor_km,taxa,provedor)
+    VALUES($1,$2,$3,'52998224725','{}',$4,2500,1.5,3.75,'openrouteservice')`, [cotacao,admin,loja,JSON.stringify({ ...payload.endereco,numero:'99' })])
+  await rejeita('SELECT decidir_solicitacao_mobile($1,$2,NULL,$3)',[id,'aceitar',cotacao],/endereço/)
+  await db.query('UPDATE cotacoes_entrega SET destino=$1 WHERE id=$2',[JSON.stringify(payload.endereco),cotacao])
+  await db.query("SELECT set_config('request.jwt.claim.sub',$1,true)", ['20000000-0000-0000-0000-000000000003'])
+  await rejeita('SELECT decidir_solicitacao_mobile($1,$2,NULL,$3)',[id,'aceitar',cotacao],/Sem permissão/)
+  await db.query("SELECT set_config('request.jwt.claim.sub',$1,true)", [admin])
+  const pedidoId=await decidirMobile(id,'aceitar',cotacao)
+  assert.equal(Number(await valor('SELECT valor_total FROM pedidos WHERE id=$1',[pedidoId])),31.75)
+  assert.equal(await saldo(carne),900)
+})
 
 test('banco: pedido soma adicionais e baixa os insumos exatamente uma vez no reenvio', async () => {
   const chave = randomUUID()

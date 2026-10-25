@@ -44,7 +44,7 @@ export default function EditarFicha({ variacao, onSalvo }) {
       setRevisao(v => v + 1)
       await onSalvo()
     } catch (error) {
-      setErro(error.code === 'PGRST202' ? 'Execute sql/migration_edicao_fichas.sql no Supabase para habilitar a edição.' : error.message)
+      setErro(error.code === 'PGRST202' ? 'Edição temporariamente indisponível. Contate o administrador.' : error.message)
     } finally { trava.current = false; setSalvando(false) }
   }
   return (
