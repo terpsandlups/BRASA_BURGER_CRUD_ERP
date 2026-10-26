@@ -7,3 +7,7 @@ dist/
 __pycache__/
 *.pyc
 supabase/.temp/
+# Artefatos locais de estudo e pacotes acadêmicos; não integram o ERP.
+teste/
+*.zip
+/package-lock.json

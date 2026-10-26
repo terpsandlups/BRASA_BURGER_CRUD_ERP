@@ -2,6 +2,14 @@
 
 ## Convivium e pedidos móveis — 24/10/2026
 
+Atualização de fechamento: `/administracao` gerencia marca, unidades e equipe;
+o master também cadastra empresas e seleciona o contexto. O portal passou a
+`/pedir/:marca`, preservando `/pedir` para Brasa Burger. O frete é calculado pelo
+consumidor antes do envio e reservado até o aceite. A migração de empresas
+`20261025004910_empresas_acesso_frete_cliente.sql` está aplicada e a função de
+entregas foi republicada. Permitir o retorno `/pedir/**` no Auth ao publicar a
+origem HTTPS. Os parágrafos abaixo preservam a configuração do primeiro portal.
+
 O frontend agora usa a identidade Convivium Management System. O portal do
 cliente fica em `/pedir`; a equipe confirma em `/solicitacoes`. A migração
 `20261025000912_portal_clientes_convivium.sql` foi aplicada no projeto existente.

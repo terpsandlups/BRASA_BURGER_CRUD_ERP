@@ -27,7 +27,7 @@ const PRODUTO_VAZIO = {
 }
 
 export default function Produtos() {
-  const { podeOperar } = useAuth()
+  const { podeOperar, usuario } = useAuth()
   const [produtos, setProdutos] = useState([])
   const [variacoes, setVariacoes] = useState([])
   const [custos, setCustos] = useState([])
@@ -108,14 +108,15 @@ export default function Produtos() {
     setSalvandoProduto(true)
     const { error } = await supabase.from('produtos').insert({
       ...novoProduto,
-      sku: novoProduto.sku.toUpperCase().trim(),
+      empresa_id:usuario.empresa_id,
+      sku: `${usuario.empresa_id.slice(0,8)}_${novoProduto.sku.toUpperCase().trim()}`,
     })
     setSalvandoProduto(false)
     if (error) {
       alert('Erro ao criar produto: ' + error.message)
       return
     }
-    const skuCriado = novoProduto.sku.toUpperCase().trim()
+    const skuCriado = `${usuario.empresa_id.slice(0,8)}_${novoProduto.sku.toUpperCase().trim()}`
     setNovoProduto(PRODUTO_VAZIO)
     setMostrarNovoProduto(false)
     await carregar()

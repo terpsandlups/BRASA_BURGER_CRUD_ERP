@@ -1,8 +1,14 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../lib/AuthContext.jsx'
+import { supabase } from '../lib/supabaseClient.js'
+import { useLocation } from 'react-router-dom'
 
 export default function Login() {
   const { entrar } = useAuth()
+  const location=useLocation()
+  const marca=new URLSearchParams(location.search).get('marca') || 'brasa-burger'
+  const [identidade,setIdentidade]=useState(null)
+  useEffect(()=>{let ativo=true;supabase.rpc('cardapio_mobile',{p_slug:marca}).then(({data})=>{if(ativo)setIdentidade(data?.empresa || null)}).catch(()=>{});return()=>{ativo=false}},[marca])
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
   const [erro, setErro] = useState('')
@@ -25,8 +31,9 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-carvao">
       <form onSubmit={handleSubmit} className="bg-superficie text-osso p-8 w-full max-w-sm">
-        <h1 className="font-display text-2xl font-semibold text-ambar mb-1">Convivium</h1>
-        <p className="text-xs text-fumaca mb-6">Management System · Acesso da equipe</p>
+        {identidade?.logo_url && <img src={identidade.logo_url} alt="" className="h-16 w-16 object-contain mb-4" />}
+        <h1 className="font-display text-2xl font-semibold text-ambar mb-1">{identidade?.nome || 'Convívium'}</h1>
+        <p className="text-xs text-fumaca mb-6">Acesso da equipe · Convívium Management System</p>
 
         <label htmlFor="login-email" className="text-xs uppercase tracking-wide text-fumaca">E-mail</label>
         <input
@@ -56,7 +63,7 @@ export default function Login() {
         >
           {enviando ? 'Entrando...' : 'Entrar'}
         </button>
-        <a href="/pedir" className="block text-center text-sm text-ambar underline mt-5">Fazer um pedido</a>
+        <a href={`/pedir/${marca}`} className="block text-center text-sm text-ambar underline mt-5">Fazer um pedido</a>
       </form>
     </div>
   )

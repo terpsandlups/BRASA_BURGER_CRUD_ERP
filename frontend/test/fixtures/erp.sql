@@ -63,3 +63,7 @@ INSERT INTO produto_adicionais_disponiveis VALUES ('LAN001','60000000-0000-0000-
 INSERT INTO estoque_lojas(loja_id,ingrediente_id,quantidade_disponivel) SELECT l.id,i.id,1000 FROM lojas l CROSS JOIN ingredientes i;
 INSERT INTO configuracoes_canal VALUES ('proprio',0,0),('ifood',10,12);
 INSERT INTO configuracoes_pagamento VALUES ('pix',0),('dinheiro',0),('credito',3);
+ALTER TABLE auth.users ADD COLUMN email text;
+ALTER TABLE usuarios ADD COLUMN nome text, ADD COLUMN email text;
+ALTER TABLE lojas ADD COLUMN slug text;
+ALTER TABLE categorias ALTER COLUMN id SET DEFAULT gen_random_uuid();

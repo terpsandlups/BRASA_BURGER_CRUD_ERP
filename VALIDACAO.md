@@ -1,5 +1,18 @@
 # Registro de validação — Convivium / Brasa Burguer
 
+## Fechamento 1, 2 e 3: empresas e frete do cliente — 24/10/2026
+
+- 100 testes aprovados, incluindo 32 de PostgreSQL efêmero; build aprovado e dependências inalteradas desde a auditoria sem vulnerabilidades.
+- Master cadastra empresa/unidade e troca contexto; administrador comum não cadastra outras empresas; gerente só lê sua unidade e não provisiona usuários. Mesmo CPF tem cadastros independentes em duas empresas. Relações cruzadas de estoque/ficha e edição de produto de outra marca são recusadas.
+- Consumidor sem perfil ERP consulta cotação com orçamento próprio; não lê configurações internas. Cotação vencida, de outro titular, endereço divergente e reutilização em outra solicitação são recusados. Reenvio recupera a mesma solicitação. Reserva enviada conserva o frete no aceite, mesmo após os 15 minutos iniciais.
+- Migração `20261025004910` aplicada e função `calcular-entrega` republicada. Banco real permaneceu com uma empresa, três unidades e sete cadastros de consumidores; a conta administrativa existente é master. Advisor remoto: zero erros de segurança.
+- Navegador conectado: conta master exibiu identidade Brasa Burger, três unidades e formulários de marca, unidade, vínculo de equipe e empresa; portal exibiu a marca, impediu retirada na Eloy e iniciou cotação automaticamente ao completar CEP/número.
+- Responsividade da Administração: viewport 1440 × 1000 com sidebar e duas colunas; 390 × 844 com menu recolhido e formulários empilhados. Larguras úteis/rolagem iguais (1432 px e 382 px), sem transbordamento horizontal. Selecionar Administrador no vínculo esconde unidade; Gerente mantém a seleção de unidade. Nenhum formulário administrativo foi enviado no banco real durante a conferência.
+- Corrigidos CEP/bairro do Retiro por evidência do ViaCEP: `15992-503` era Rua do Retiro de Matão; número 1354 em Jundiaí está na faixa do `13209-201`, Jardim Paris. Não foram inventadas coordenadas.
+- Consulta real Eloy → endereço comercial do Retiro: geocodificador não encontrou o imóvel. Resultado observado: erro de cobertura, mapa de confirmação oferecido, botão de envio desabilitado e nenhuma taxa gerada. O início automático foi verificado; sucesso de geocodificação desse imóvel não foi alegado.
+- Cadastro/recebimento de e-mail em domínio HTTPS externo não foi testado, pois não existe domínio publicado nesta revisão. Cadastro usa Auth existente e retorna para `/pedir/:marca`.
+- Não foram criadas empresas, contas ou vendas sintéticas persistentes em produção. Os cenários de escrita foram executados no PostgreSQL efêmero.
+
 ## Portal móvel e segurança — 24/10/2026
 
 | Cenário | Evidência | Resultado |

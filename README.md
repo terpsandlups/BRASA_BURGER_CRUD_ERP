@@ -1,10 +1,12 @@
-# Convivium Management System
+# Convívium Management System
 
-ERP para operações de alimentação, demonstrado pela Brasa Burguer. A revisão de
-24/10/2026 adiciona o portal de pedidos em `/pedir`, a fila da equipe em
-`/solicitacoes` e os canais em `/integracoes`. Pagamento presencial; delivery
-com frete calculado e confirmado pela loja antes do aceite. Clientes do portal
-não recebem acesso ao ERP.
+ERP para operações de alimentação. **Convívium é a plataforma; Brasa Burger é
+a primeira empresa cliente**, com sua identidade na operação e no portal.
+Conta master e administração em `/administracao`; portal por marca em
+`/pedir/brasa-burger`; fila da equipe em `/solicitacoes`. Administrador da marca
+acessa suas unidades; gerente acessa somente a unidade vinculada. Clientes do
+portal não recebem acesso ao ERP. Pagamento presencial; frete calculado antes
+do envio, com confirmação no mapa quando o endereço não tiver cobertura.
 
 Consulte o [estado dos oito pedidos de melhoria](CONVIVIUM_EXECUCAO.md), os
 [contratos futuros de integração](INTEGRACOES_FUTURAS.md) e o

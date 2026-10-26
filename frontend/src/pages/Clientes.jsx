@@ -15,7 +15,7 @@ const vazio = {
 }
 
 export default function Clientes() {
-  const { podeOperar } = useAuth()
+  const { podeOperar, usuario } = useAuth()
   const [clientes, setClientes] = useState([])
   const [form, setForm] = useState(vazio)
   const [mostrarCadastro, setMostrarCadastro] = useState(false)
@@ -138,7 +138,7 @@ export default function Clientes() {
     setSalvando(true)
     try {
     const { error } = await supabase.from('clientes').insert({
-      ...form, cpf: cpfLimpo, telefone: apenasDigitos(form.telefone),
+      ...form, empresa_id:usuario.empresa_id, cpf: cpfLimpo, telefone: apenasDigitos(form.telefone),
     })
     if (error) throw error
     setForm(vazio)

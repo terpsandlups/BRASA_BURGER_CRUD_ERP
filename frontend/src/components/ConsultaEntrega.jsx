@@ -4,7 +4,7 @@ import MapaPonto from './MapaPonto.jsx'
 import { supabase } from '../lib/supabaseClient.js'
 
 export default function ConsultaEntrega({ lojaId, pontoSalvo, origemPendente, modoPedido = false,
-  clienteCpf = '', destinoInicial = {}, onCotacao, onInvalidar }) {
+  clienteCpf = '', destinoInicial = {}, onCotacao, onInvalidar, portal = false, automatico = false }) {
   const [destino, setDestino] = useState(destinoInicial)
   const [ponto, setPonto] = useState(null)
   const [pontoConfirmado, setPontoConfirmado] = useState(false)
@@ -17,6 +17,16 @@ export default function ConsultaEntrega({ lojaId, pontoSalvo, origemPendente, mo
   const trava = useRef(false)
   const versao = useRef(0)
   useEffect(() => () => { versao.current += 1 }, [])
+  useEffect(() => {
+    if (!automatico || !lojaId || !/^\d{8}$/.test(String(destino.cep || '').replace(/\D/g,'')) || ['cep','endereco','numero','bairro','cidade','estado'].some(c => !String(destino[c] || '').trim()) || (ponto && !pontoConfirmado)) return
+    const timer = setTimeout(() => consultar({ preventDefault() {} }), 1000)
+    return () => clearTimeout(timer)
+  }, [automatico, lojaId, destino, ponto, pontoConfirmado])
+  useEffect(() => {
+    if (!automatico || !resultado?.expira_em) return
+    const timer=setTimeout(()=>{ onInvalidar?.();setResultado(null);setDestino(d=>({...d})) },Math.max(0,Date.parse(resultado.expira_em)-Date.now()))
+    return ()=>clearTimeout(timer)
+  },[automatico,resultado])
 
   function alterar(campo, valor) {
     versao.current += 1
@@ -36,7 +46,7 @@ export default function ConsultaEntrega({ lojaId, pontoSalvo, origemPendente, mo
     setResultado(null)
     try {
       const { data, error } = await supabase.functions.invoke('calcular-entrega', {
-        body: { acao: 'sugerir_mapa', loja_id: lojaId, destino },
+        body: { acao: 'sugerir_mapa', ...(portal ? { portal:true } : {}), loja_id: lojaId, destino },
       })
       if (error) {
         let mensagem = 'Não foi possível localizar a região. Mova o mapa manualmente.'
@@ -68,7 +78,7 @@ export default function ConsultaEntrega({ lojaId, pontoSalvo, origemPendente, mo
     try {
       // A tarifa e a origem são carregadas no servidor, nunca aceitas do navegador.
       const { data, error } = await supabase.functions.invoke('calcular-entrega', {
-        body: { ...(modoPedido ? { acao: 'cotar_pedido', cliente_cpf: clienteCpf } : {}),
+        body: { ...(modoPedido ? (portal ? { acao:'cotar_mobile',portal:true } : { acao: 'cotar_pedido', cliente_cpf: clienteCpf }) : {}),
           loja_id: lojaId, destino: { ...destino,
           ...(ponto ? { latitude: ponto.latitude, longitude: ponto.longitude } : {}) } },
       })
@@ -95,25 +105,25 @@ export default function ConsultaEntrega({ lojaId, pontoSalvo, origemPendente, mo
   return (
     <section className="ui-form delivery-quote">
       <h2 className="font-display text-xl">{modoPedido ? 'Frete do pedido' : 'Consultar entrega'}</h2>
-      <p className="text-sm text-fumaca my-3">Tarifa da unidade e distância pela rota de carro. Confirme o imóvel no mapa quando necessário.</p>
+      <p className="text-sm text-fumaca my-3">{portal ? 'Preencha o endereço. O frete será calculado automaticamente.' : 'Tarifa da unidade e distância pela rota de carro. Confirme o imóvel no mapa quando necessário.'}</p>
       {pontoSalvo && <p className="text-xs text-ambar mb-3">Origem: ponto salvo da unidade.</p>}
       <form onSubmit={consultar}>
         <fieldset disabled={consultando || buscandoMapa}>
           <legend className="text-sm mb-3">Endereço de destino</legend>
           <CamposEndereco valores={destino} onChange={alterar} />
-          <button type="button" onClick={buscarNoMapa} disabled={origemPendente} className="text-sm underline text-ambar mt-3 disabled:opacity-50">
+          {(!portal || erro) && <button type="button" onClick={buscarNoMapa} disabled={origemPendente} className="text-sm underline text-ambar mt-3 disabled:opacity-50">
             {buscandoMapa ? 'Localizando região...' : 'Encontrar endereço no mapa'}
-          </button>
+          </button>}
           {erroMapa && <p role="alert" className="text-sm text-brasa mt-2">{erroMapa}</p>}
           {centroMapa && <p role="status" className="text-xs text-ambar mt-2">
             {centroMapa.precisao === 'imovel'
               ? 'O serviço encontrou o imóvel. Tente calcular sem marcar um ponto.'
               : `Mapa centralizado na região ${centroMapa.precisao === 'cep' ? 'do CEP' : 'da rua'}. Clique no imóvel exato para confirmar; esta sugestão não será usada automaticamente na taxa.`}
           </p>}
-          <MapaPonto titulo="Ponto da entrega (destino)" ponto={ponto} centroSugerido={centroMapa} desabilitado={consultando || buscandoMapa}
-            onChange={valor => { versao.current += 1; onInvalidar?.(); setPonto(valor); setPontoConfirmado(false); setCentroMapa(null); setResultado(null); setErro('') }} />
+          {(!portal || erro || centroMapa || ponto) && <MapaPonto titulo="Ponto da entrega (destino)" ponto={ponto} centroSugerido={centroMapa} desabilitado={consultando || buscandoMapa}
+            onChange={valor => { versao.current += 1; onInvalidar?.(); setPonto(valor); setPontoConfirmado(false); setCentroMapa(null); setResultado(null); setErro('') }} />}
           {ponto && <label className="flex items-start gap-2 text-xs text-ambar mt-3">
-            <input type="checkbox" checked={pontoConfirmado} onChange={e => setPontoConfirmado(e.target.checked)} />
+            <input type="checkbox" checked={pontoConfirmado} onChange={e => {onInvalidar?.();setResultado(null);setPontoConfirmado(e.target.checked)}} />
             Confirmo que o ponto marcado é o imóvel de entrega informado. Sei que o ponto, não o CEP, será usado na distância.
           </label>}
           <p className="text-xs text-fumaca mt-3">A consulta de rota compartilha endereço e coordenadas com openrouteservice. Nome, CPF, telefone e complemento não são enviados.</p>
@@ -126,7 +136,7 @@ export default function ConsultaEntrega({ lojaId, pontoSalvo, origemPendente, mo
         {erro.startsWith('Endereço da loja (origem):') && <p className="mt-2">Confira rua, número e CEP salvos na origem da unidade. Se a base gratuita não tiver o imóvel, marque o ponto correto da loja acima e salve.</p>}
         {erro.startsWith('Endereço de entrega (destino):') && <p className="mt-2">Confira rua, número e CEP do destino. Se a base gratuita não tiver o imóvel, marque o ponto correto da entrega no mapa.</p>}
       </div>}
-      {resultado && (
+      {resultado && (portal ? <div role="status" className="mt-4"><p className="text-lg text-ambar">Frete: {resultado.taxa.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</p><p className="text-xs text-fumaca">Cotação válida por 15 minutos · Rotas © openrouteservice / HeiGIT · © OpenStreetMap contributors</p></div> : (
         <div role="status" className="mt-4">
           <p className="text-sm">Origem consultada: {resultado.origem}</p>
           <p className="text-sm">Destino consultado: {resultado.destino}</p>
@@ -142,7 +152,7 @@ export default function ConsultaEntrega({ lojaId, pontoSalvo, origemPendente, mo
           <p className="text-xs text-fumaca mt-2">Rota de carro, somente ida, sem trânsito em tempo real. {modoPedido ? 'Cotação válida por 15 minutos.' : 'Consulta sem lançamento no pedido.'}</p>
           {resultado.provedor === 'openrouteservice' && <p className="text-xs mt-3">Rotas: <a className="underline" href="https://openrouteservice.org/" target="_blank" rel="noreferrer">© openrouteservice / HeiGIT</a> · Dados: <a className="underline" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap contributors</a></p>}
         </div>
-      )}
+      ))}
     </section>
   )
 }

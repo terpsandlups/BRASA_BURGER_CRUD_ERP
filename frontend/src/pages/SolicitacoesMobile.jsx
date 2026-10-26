@@ -39,15 +39,15 @@ function Atendimento({ solicitacao: s, onAtualizar }) {
     {dados.troco_para && <p>Troco para: {dinheiro(dados.troco_para)}</p>}
     {dados.tipo_atendimento === 'delivery' && <>
       <p className="text-sm">{dados.endereco.endereco}, {dados.endereco.numero} · {dados.endereco.bairro} · {dados.endereco.cidade}/{dados.endereco.estado} · {dados.endereco.cep} {dados.endereco.complemento}</p>
-      {!clientePronto ? <button disabled={!permitido || ocupado} className="bg-ambar px-4 py-3 rounded-lg" onClick={() => executar(async () => {
-        const { error } = await supabase.from('clientes').upsert({ cpf: dados.cpf, nome: dados.nome, telefone: dados.telefone }, { onConflict: 'cpf', ignoreDuplicates: true })
+      {s.cotacao_mobile_id ? <p className="text-oliva">Frete confirmado no pedido: {dinheiro(s.taxa_entrega)}</p> : !clientePronto ? <button disabled={!permitido || ocupado} className="bg-ambar px-4 py-3 rounded-lg" onClick={() => executar(async () => {
+        const { error } = await supabase.from('clientes').upsert({ cpf: dados.cpf, nome: dados.nome, telefone: dados.telefone }, { onConflict: 'empresa_id,cpf', ignoreDuplicates: true })
         if (error) throw error
         setClientePronto(true)
       })}>Preparar cálculo de frete</button> : <ConsultaEntrega lojaId={s.loja_id} modoPedido clienteCpf={dados.cpf} destinoInicial={dados.endereco} onCotacao={setCotacao} onInvalidar={() => setCotacao(null)} />}
-      <p className="text-sm text-fumaca">Confirme o frete com o cliente pelo telefone antes de aceitar. Use o endereço da solicitação.</p>
+      {!s.cotacao_mobile_id && <p className="text-sm text-fumaca">Confirme o frete com o cliente pelo telefone antes de aceitar. Use o endereço da solicitação.</p>}
     </>}
     {erro && <p role="alert" className="text-brasa">{erro}</p>}
-    <button disabled={!permitido || ocupado || (dados.tipo_atendimento === 'delivery' && (!cotacao || Date.parse(cotacao.expira_em) <= Date.now()))} className="bg-ambar w-full px-4 py-3 rounded-lg disabled:opacity-50" onClick={() => decidir('aceitar')}>{ocupado ? 'Processando…' : `Aceitar · ${dinheiro(Number(s.subtotal) + Number(cotacao?.taxa || 0))}`}</button>
+    <button disabled={!permitido || ocupado || (dados.tipo_atendimento === 'delivery' && !s.cotacao_mobile_id && (!cotacao || Date.parse(cotacao.expira_em) <= Date.now()))} className="bg-ambar w-full px-4 py-3 rounded-lg disabled:opacity-50" onClick={() => decidir('aceitar')}>{ocupado ? 'Processando…' : `Aceitar · ${dinheiro(Number(s.subtotal) + Number(s.cotacao_mobile_id ? s.taxa_entrega : cotacao?.taxa || 0))}`}</button>
     <label className="block text-sm">Motivo da recusa<textarea value={motivo} maxLength={500} onChange={e => setMotivo(e.target.value)} className="block w-full border border-borda p-3 mt-2" /></label>
     <button disabled={!permitido || ocupado || motivo.trim().length < 3} className="border border-borda w-full px-4 py-3 rounded-lg disabled:opacity-50" onClick={() => decidir('recusar')}>Recusar solicitação</button>
   </div>

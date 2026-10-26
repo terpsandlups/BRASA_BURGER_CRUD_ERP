@@ -1,10 +1,12 @@
 import { useRef, useState } from 'react'
 import { supabase } from '../lib/supabaseClient.js'
 import Button from './ui/Button.jsx'
+import { useAuth } from '../lib/AuthContext.jsx'
 
 const inicial = { nome: '', unidade_medida: 'g', custo_unitario: '', categoria: '' }
 
 export default function CadastroInsumo({ onSalvo }) {
+  const { usuario }=useAuth()
   const [form, setForm] = useState(inicial)
   const [salvando, setSalvando] = useState(false)
   const [mensagem, setMensagem] = useState('')
@@ -22,7 +24,7 @@ export default function CadastroInsumo({ onSalvo }) {
     setMensagem('')
     try {
       const { error } = await supabase.from('ingredientes').insert({
-        ...form, nome: form.nome.trim(), categoria: form.categoria.trim() || null,
+        ...form, empresa_id:usuario.empresa_id, nome: form.nome.trim(), categoria: form.categoria.trim() || null,
         custo_unitario: Number(form.custo_unitario), ativo: true,
       })
       if (error) throw error

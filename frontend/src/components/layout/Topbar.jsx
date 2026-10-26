@@ -24,6 +24,7 @@ export default function Topbar({ onAbrirMenu, menuAberto }) {
       <button type="button" onClick={onAbrirMenu} aria-label="Abrir menu" aria-expanded={menuAberto}
         className="lg:hidden rounded-lg border border-borda px-3 py-2 text-sm"><Icon nome="menu" size={18} /><span className="sr-only sm:not-sr-only">Menu</span></button>
       <div className="flex items-center gap-2 text-xs text-fumaca">
+        <span className="text-texto font-medium truncate max-w-28 sm:max-w-none">{usuario?.empresas?.nome}</span>
         <span className={`w-2 h-2 rounded-full inline-block ${online ? 'bg-oliva' : 'bg-brasa'}`} />
         <span className="hidden sm:inline">{online ? 'Sessão ativa' : 'Sem conexão'}</span>
       </div>

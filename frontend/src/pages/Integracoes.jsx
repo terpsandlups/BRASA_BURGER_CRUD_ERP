@@ -2,7 +2,7 @@ import PageHeader from '../components/layout/PageHeader.jsx'
 import { Link } from 'react-router-dom'
 
 const canais = [
-  { nome: 'Convivium', estado: 'Canal próprio', texto: 'Pedidos no balcão, retirada e entrega. Solicitações do portal são confirmadas pela unidade.', link: '/solicitacoes', acao: 'Ver solicitações' },
+  { nome: 'Canal próprio', estado: 'Ativo', texto: 'Pedidos no balcão, retirada e entrega. Solicitações do portal são confirmadas pela unidade.', link: '/solicitacoes', acao: 'Ver solicitações' },
   { nome: 'iFood', estado: 'Lançamento manual', texto: 'Registre a venda no PDV com o canal iFood. A taxa de entrega própria não é adicionada a pedidos do marketplace.', link: '/pedidos', acao: 'Abrir pedidos' },
   { nome: 'Goomer', estado: 'Integração planejada', texto: 'Conexão automática prevista para uma próxima etapa.' },
   { nome: 'Rappi', estado: 'Lançamento manual', texto: 'Registre a venda no PDV com o canal Rappi.', link: '/pedidos', acao: 'Abrir pedidos' },

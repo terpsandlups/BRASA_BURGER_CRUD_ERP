@@ -260,7 +260,7 @@ export default function Pedidos() {
   const [enviando, setEnviando] = useState(false)
   const envioEmCursoRef = useRef(false)
   const transacaoRef = useRef(null)
-  if (!transacaoRef.current) transacaoRef.current = criarEnvioTransacional(supabase, undefined, { storage: window.sessionStorage, chave: `brasa.pedido.pendente.${session.user.id}` })
+  if (!transacaoRef.current) transacaoRef.current = criarEnvioTransacional(supabase, undefined, { storage: window.sessionStorage, chave: `convivium.pedido.pendente.${session.user.id}.${usuario.empresa_id}` })
   const [confirmacaoPendente, setConfirmacaoPendente] = useState(false)
   const [pedidosEmAtualizacao, setPedidosEmAtualizacao] = useState(() => new Set())
   const [canalVenda, setCanalVenda] = useState('proprio')
@@ -487,6 +487,7 @@ export default function Pedidos() {
     const { data, error } = await supabase
       .from('clientes')
       .insert({
+        empresa_id:usuario.empresa_id,
         cpf: apenasDigitos(cpfCliente),
         nome: novoClienteNome,
         telefone: apenasDigitos(novoClienteTelefone),

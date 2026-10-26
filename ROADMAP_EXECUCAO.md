@@ -1,5 +1,14 @@
 # Continuidade de execução
 
+## Fechamento dos pontos 1, 2 e 3 — 24/10/2026
+
+Conta master e empresas isoladas; marca Brasa Burger na operação; nome/logo/cor
+configuráveis e gestão de unidades/equipe em `/administracao`. Portal por marca
+com cotação automática de frete antes de enviar e reserva consumida no aceite.
+Migração de empresas aplicada e Edge Function publicada; 100 testes aprovados.
+Os pontos 4 a 8 não são declarados concluídos por este fechamento. Cobertura
+real de endereços e URL HTTPS externa têm limites descritos na validação.
+
 ## Convivium e portal móvel — 24/10/2026
 
 Identidade Convivium aplicada, portal `/pedir` e fila `/solicitacoes`

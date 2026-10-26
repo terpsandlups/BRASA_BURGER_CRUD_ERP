@@ -42,7 +42,7 @@ export function AuthProvider({ children }) {
     setErroUsuario('')
     ;(async () => {
       try {
-        const { data, error } = await supabase.from('usuarios').select('*, perfis(nome), lojas(nome)').eq('id', userId).maybeSingle()
+        const { data, error } = await supabase.from('usuarios').select('*, perfis(nome), lojas(nome), empresas(nome,slug,cor,logo_url)').eq('id', userId).maybeSingle()
         if (error) throw error
         if (!data) throw new Error('Sua conta não tem acesso à equipe. Para fazer pedidos, abra o portal do cliente.')
         if (!data.ativo) throw new Error('Seu usuário está inativo. Solicite a liberação ao administrador.')

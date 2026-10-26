@@ -16,9 +16,9 @@ const links = [
 ]
 
 export function Navegacao({ onNavegar, escuro = false }) {
-  const { podeOperar } = useAuth()
+  const { podeOperar, usuario } = useAuth()
   return <nav aria-label="Menu principal" className="space-y-1.5">
-    {links.filter(link => podeOperar(link.modulo)).map((link) => <NavLink key={link.to} to={link.to} end={link.end} onClick={onNavegar}
+    {[...links, ...((usuario?.master || usuario?.perfis?.nome === 'Administrador') ? [{ to: '/administracao', label: usuario.master ? 'Conta master' : 'Administração', icone: 'ajuste', modulo: 'usuarios' }] : [])].filter(link => podeOperar(link.modulo)).map((link) => <NavLink key={link.to} to={link.to} end={link.end} onClick={onNavegar}
       className={({ isActive }) => `flex items-center gap-3 px-4 py-3 rounded-lg font-medium text-sm transition-colors ${isActive
         ? 'bg-ambar text-carvao'
         : escuro ? 'text-osso/80 hover:bg-superficie2 hover:text-osso' : 'text-texto hover:bg-osso'}`}>
@@ -28,18 +28,20 @@ export function Navegacao({ onNavegar, escuro = false }) {
 }
 
 export default function Sidebar() {
+  const { usuario } = useAuth()
   return (
     <aside className="app-sidebar hidden lg:flex w-60 xl:w-64 shrink-0 bg-carvao text-osso h-dvh sticky top-0 flex-col overflow-y-auto">
       <div className="px-6 py-8 border-b border-superficie2">
+        {usuario?.empresas?.logo_url && <img src={usuario.empresas.logo_url} alt="" className="h-14 w-14 object-contain mb-3" />}
         <h1 className="font-display text-2xl font-semibold tracking-wide text-ambar">
-          Convivium
+          {usuario?.empresas?.nome || 'Brasa Burger'}
         </h1>
-        <p className="text-xs text-fumaca mt-1">Management System</p>
+        <p className="text-xs text-fumaca mt-1">{usuario?.master ? 'Conta master · Gestão da plataforma' : 'Gestão da operação'}</p>
       </div>
 
       <div className="flex-1 px-3 py-6"><Navegacao escuro /></div>
-      <a href="/pedir" target="_blank" rel="noreferrer" className="px-6 pb-4 text-sm text-ambar underline">Abrir portal do cliente</a>
-      <p className="px-6 pb-6 text-xs text-osso/50">Operação · Gestão · Resultados</p>
+      <a href={`/pedir/${usuario?.empresas?.slug || 'brasa-burger'}`} target="_blank" rel="noreferrer" className="px-6 pb-4 text-sm text-ambar underline">Abrir portal do cliente</a>
+      <p className="px-6 pb-6 text-xs text-osso/50">Por Convívium Management System</p>
     </aside>
   )
 }

@@ -18,6 +18,7 @@ const Entregas = lazy(() => import('./pages/Entregas.jsx'))
 const PortalCliente = lazy(() => import('./pages/PortalCliente.jsx'))
 const SolicitacoesMobile = lazy(() => import('./pages/SolicitacoesMobile.jsx'))
 const Integracoes = lazy(() => import('./pages/Integracoes.jsx'))
+const Administracao = lazy(() => import('./pages/Administracao.jsx'))
 
 function Acesso({ modulo, children }) {
   const { podeOperar } = useAuth()
@@ -50,7 +51,7 @@ function AreaProtegida() {
   </div>
 
   return (
-    <div className="app-shell flex min-h-screen">
+    <div className="app-shell flex min-h-screen" style={{ '--ui-gold': usuario.empresas?.cor || '#e4ae65' }} key={usuario.empresa_id}>
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
         <Topbar onAbrirMenu={() => setMenuAberto(true)} menuAberto={menuAberto} />
@@ -68,13 +69,15 @@ function AreaProtegida() {
             <Route path="/entregas" element={<Acesso modulo="vendas"><Entregas /></Acesso>} />
             <Route path="/solicitacoes" element={<Acesso modulo="vendas"><SolicitacoesMobile /></Acesso>} />
             <Route path="/integracoes" element={<Acesso modulo="vendas"><Integracoes /></Acesso>} />
+            <Route path="/administracao" element={usuario.master || usuario.perfis?.nome === 'Administrador' ? <Administracao /> : <Navigate to="/" replace />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
           </Suspense>
           </ErrorBoundary>
+          <footer className="mt-10 pt-4 border-t border-borda text-xs text-fumaca">Por Convívium Management System</footer>
         </main>
       </div>
-      <SidePanel aberto={menuAberto} onFechar={() => setMenuAberto(false)} titulo="Convivium">
+      <SidePanel aberto={menuAberto} onFechar={() => setMenuAberto(false)} titulo={usuario.empresas?.nome || 'Brasa Burger'}>
         <Navegacao onNavegar={() => setMenuAberto(false)} />
       </SidePanel>
     </div>
@@ -85,6 +88,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/pedir" element={<ErrorBoundary><Suspense fallback={<p role="status" className="p-8">Carregando cardápio…</p>}><PortalCliente /></Suspense></ErrorBoundary>} />
+      <Route path="/pedir/:marca" element={<ErrorBoundary><Suspense fallback={<p role="status" className="p-8">Carregando cardápio…</p>}><PortalCliente /></Suspense></ErrorBoundary>} />
       <Route path="*" element={<AuthProvider><AreaProtegida /></AuthProvider>} />
     </Routes>
   )

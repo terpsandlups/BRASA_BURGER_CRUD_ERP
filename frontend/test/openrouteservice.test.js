@@ -9,12 +9,12 @@ const ponto = () => ({ geometry: { type: 'Point', coordinates: [-46.9, -23.1] },
   locality: 'Jundiaí', street: 'Rua Exemplo', housenumber: '10', postalcode: '13201-000', label: 'Rua Exemplo, 10, Jundiaí',
 } })
 function ambiente({ quota = false, impreciso = false, invalida = false, destinoImpreciso = false,
-  buscaLivreImprecisa = false, origemPonto = null, destinoPonto = null, key = 'chave-ficticia', salvarCotacao } = {}) {
+  buscaLivreImprecisa = false, origemPonto = null, destinoPonto = null, key = 'chave-ficticia', salvarCotacao, onRpc } = {}) {
   const chamadas = []
   const handler = criarHandler({ apiKey: key, allowedOrigins: ['http://localhost:5173'],
     salvarCotacao,
     criarCliente: () => ({ auth: { getUser: async () => ({ data: { user: { id: 'u' } } }) },
-      rpc: async () => ({ data: { ...endereco, ...origemPonto, valor_km: 1.5 } }) }),
+      rpc: async (nome,args) => { onRpc?.(nome,args); return { data: { ...endereco, ...origemPonto, valor_km: 1.5 } } } }),
     fetchFn: async (url, options) => {
       chamadas.push({ url, options })
       if (quota) return Response.json({}, { status: 429 })
@@ -238,4 +238,16 @@ test('cotação não é criada para CPF inválido nem rota imprecisa', async () 
     assert.equal(resposta.status, cpf.length === 3 ? 400 : 422)
   }
   assert.equal(gravacoes, 0)
+})
+
+test('frete do consumidor usa autorização própria e reserva taxa real sem CPF de cadastro interno', async()=>{
+ let salva;let rpc
+ const {handler,request,chamadas}=ambiente({onRpc:nome=>{rpc=nome},salvarCotacao:async c=>{salva=c;return{id:'22222222-2222-2222-2222-222222222222',expiraEm:'2026-10-25T10:00:00Z'}}})
+ const original=request();const body=await original.json()
+ const resposta=await handler(new Request(original.url,{method:'POST',headers:original.headers,body:JSON.stringify({...body,acao:'cotar_mobile',portal:true,taxa:0.01})}))
+ assert.equal(resposta.status,200);assert.equal((await resposta.json()).taxa,5.25)
+ assert.equal(rpc,'preparar_consulta_rota_mobile');assert.equal(salva.portal,true);assert.equal(salva.clienteCpf,undefined)
+ assert.equal(salva.taxa,5.25);assert.equal(chamadas.length,3)
+ const invalida=await handler(new Request(original.url,{method:'POST',headers:original.headers,body:JSON.stringify({...body,acao:'cotar_mobile'})}))
+ assert.equal(invalida.status,400)
 })

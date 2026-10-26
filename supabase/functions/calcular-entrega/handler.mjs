@@ -84,19 +84,21 @@ export function criarHandler({ apiKey, provider = 'openrouteservice', allowedOri
       try { body = JSON.parse(new TextDecoder().decode(bytes)) } catch { throw new Falha(400, 'Requisição inválida.') }
       if (!/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(body?.loja_id || '')) throw new Falha(400, 'Selecione uma loja válida.')
       const sugerirMapa = body.acao === 'sugerir_mapa'
-      const cotarPedido = body.acao === 'cotar_pedido'
-      if (body.acao && !sugerirMapa && !cotarPedido) throw new Falha(400, 'Ação inválida.')
+      const portal = body.portal === true
+      const cotarMobile = body.acao === 'cotar_mobile'
+      const cotarPedido = body.acao === 'cotar_pedido' || cotarMobile
+      if ((cotarMobile && !portal) || (portal && !cotarMobile && !sugerirMapa) || (body.acao && !sugerirMapa && !cotarPedido)) throw new Falha(400, 'Ação inválida.')
       if ((sugerirMapa || cotarPedido) && provider !== 'openrouteservice') throw new Falha(503, 'Busca no mapa indisponível neste provedor.')
-      if (cotarPedido && (!/^[0-9]{11}$/.test(body.cliente_cpf || '') || typeof salvarCotacao !== 'function')) {
+      if (cotarPedido && ((!cotarMobile && !/^[0-9]{11}$/.test(body.cliente_cpf || '')) || typeof salvarCotacao !== 'function')) {
         throw new Falha(400, 'Selecione um cliente válido para cotar o pedido.')
       }
       const destino = enderecoParaRota(body.destino)
       // O navegador não decide origem, tarifa ou permissões. A RPC usa auth.uid().
-      const { data: config, error } = await client.rpc('preparar_consulta_rota', { p_loja: body.loja_id })
+      const { data: config, error } = await client.rpc(portal ? 'preparar_consulta_rota_mobile' : 'preparar_consulta_rota', { p_loja: body.loja_id })
       if (error) {
         if (error.code === '42501') throw new Falha(403, 'Sem permissão para consultar rotas nesta unidade.')
         if (error.code === 'P0001') throw new Falha(429, 'Limite de consultas atingido. Aguarde antes de tentar novamente.')
-        if (error.code === '22023') throw new Falha(422, 'Salve o endereço e a tarifa da loja antes de consultar.')
+        if (error.code === '22023') throw new Falha(422, portal ? 'Entrega indisponível nesta unidade. Escolha outra unidade ou retirada.' : 'Salve o endereço e a tarifa da loja antes de consultar.')
         throw new Falha(503, 'Não foi possível preparar a consulta. Confira a instalação da migração de rotas.')
       }
       const origem = enderecoParaRota(config)
@@ -118,7 +120,7 @@ export function criarHandler({ apiKey, provider = 'openrouteservice', allowedOri
           destinoSalvo.complemento = complemento.trim()
           let salva
           try {
-            salva = await salvarCotacao({ usuarioId: sessao.user.id, lojaId: body.loja_id,
+            salva = await salvarCotacao({ usuarioId: sessao.user.id, lojaId: body.loja_id, portal: cotarMobile,
               clienteCpf: body.cliente_cpf, origem: config, destino: destinoSalvo,
               distanciaMetros: calculo.distancia_metros, valorKm: calculo.valor_km,
               taxa: calculo.taxa, provedor: 'openrouteservice' })

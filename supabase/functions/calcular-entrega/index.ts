@@ -19,11 +19,11 @@ Deno.serve(criarHandler({
     if (!chaveServico) throw new Error('Chave interna indisponível')
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, chaveServico,
       { auth: { persistSession: false, autoRefreshToken: false } })
-    const { data, error } = await admin.from('cotacoes_entrega').insert({
-      usuario_id: cotacao.usuarioId, loja_id: cotacao.lojaId, cliente_cpf: cotacao.clienteCpf,
+    const { data, error } = await admin.from(cotacao.portal ? 'cotacoes_mobile' : 'cotacoes_entrega').insert({
+      usuario_id: cotacao.usuarioId, loja_id: cotacao.lojaId, ...(cotacao.portal ? {} : { cliente_cpf: cotacao.clienteCpf }),
       origem: cotacao.origem, destino: cotacao.destino,
       distancia_metros: cotacao.distanciaMetros, valor_km: cotacao.valorKm,
-      taxa: cotacao.taxa, provedor: cotacao.provedor,
+      taxa: cotacao.taxa, ...(cotacao.portal ? {} : { provedor: cotacao.provedor }),
     }).select('id, expira_em').single()
     if (error) throw error
     return { id: data.id, expiraEm: data.expira_em }
