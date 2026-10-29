@@ -1,5 +1,15 @@
 # Continuidade de execução
 
+## Prioridade acadêmica — Entrega 2 — 29/10/2026
+
+O fechamento acadêmico atual é regido pelo [plano da Entrega 2](docs/entrega-02/README.md), com tarefas identificadas, prioridades e critérios de aceite. O pacote da Entrega 1 permanece como histórico de proposta/modelagem e linha de base.
+
+Nesta atualização foram consolidados README, guia, texto-base nas 11 seções, matriz das três disciplinas, memória de cálculo, casos/resultados e fontes dos diagramas. O aceite do docente para JavaScript foi confirmado; identificação e organização inicial foram recuperadas na Entrega 1.
+
+Ordem de fechamento: instalação integral reproduzível; homologação do fluxo conectado e de duas sessões; conciliação; contribuições e referências; PDFs/anexos; ensaio e verificação; tag `entrega-2-2026-2`; ZIP e formulário até 27/11/2026. Os PDFs e o pacote final ainda não foram produzidos.
+
+As pendências comerciais do produto continuam abaixo e em `CONVIVIUM_EXECUCAO.md`; não se tornam automaticamente requisitos da disciplina. Os registros datados seguintes preservam a evolução e seus limites na época.
+
 ## Fechamento dos pontos 1, 2 e 3 — 24/10/2026
 
 Conta master e empresas isoladas; marca Brasa Burger na operação; nome/logo/cor

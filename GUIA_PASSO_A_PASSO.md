@@ -1,189 +1,141 @@
-# Brasa Burguer — Guia passo a passo
+# Convívium — execução e demonstração da Entrega 2
 
-Este guia prepara um ambiente local de desenvolvimento a partir do projeto completo. O ZIP de documentação contém somente os três arquivos Markdown: coloque-os na raiz da pasta que já contém `frontend/`, `sql/`, `python/` e `mysql/`.
+Revisão: 29/10/2026. Versão funcional de referência: `6c83548`. Veja os [critérios de fechamento](docs/entrega-02/README.md).
 
-**Já tem o sistema funcionando?** Substituir estes documentos não exige recriar o Supabase, executar migrações ou repetir seeds. As etapas de banco abaixo são para preparar um ambiente novo de desenvolvimento. Seeds podem duplicar dados se não forem idempotentes.
+## 1. Caminhos de reprodução
 
-## 1. Conferir os arquivos e ferramentas
+| Caminho | Requisitos | Evidência |
+|---|---|---|
+| Testes e build isolados | Git, Node.js 24, npm e lockfile | Testes locais e testes/build/auditoria do CI aprovados na versão de referência |
+| Interface com backend preparado | Frontend e Supabase com schema, regras e dados compatíveis | Uso registrado em `VALIDACAO.md`; depende do backend preparado |
+| Backend vazio | Bootstrap, migrações, Auth, primeiro master, função e dados sintéticos | **Homologação pendente E2-REP-01** |
 
-Abra o terminal na raiz do projeto extraído. Confirme que existe `frontend/package.json` e que as pastas de SQL e Python estão presentes.
+A fixture dos testes não é uma instalação integral a partir de `sql/schema.sql`.
 
-Instale Node.js em versão compatível com o projeto e Python 3. Use os requisitos reais de `package.json`, eventual arquivo de versão do Node e dependências Python. Não atualize a versão do Vite apenas para seguir um tutorial.
+## 2. Obter a versão e instalar
 
-```bash
+```powershell
+git clone https://github.com/terpsandlups/BRASA_BURGER_CRUD_ERP.git
+cd BRASA_BURGER_CRUD_ERP
+git rev-parse HEAD
+cd frontend
 node --version
 npm --version
-python --version
+npm ci
 ```
 
-Em macOS/Linux, o comando Python pode ser `python3`. Node.js executa as ferramentas do Vite; a interface React executa no navegador. Veja a [documentação do Vite](https://vite.dev/guide/) para requisitos da ferramenta, lembrando que a documentação atual pode corresponder a outra versão.
+Use Node.js 24, conforme `.github/workflows/validacao.yml`. Guarde o commit na evidência. A tag final `entrega-2-2026-2` será criada após o fechamento.
 
-## 2. Preparar um Supabase de desenvolvimento
+## 3. Testes e compilação
 
-Crie ou selecione um projeto no Supabase, preferencialmente separado de dados reais. Guarde a senha do banco em local seguro. A disponibilidade e os limites do plano devem ser conferidos na conta utilizada.
-
-No SQL Editor, a ordem inicial descrita no material original é:
-
-1. `sql/schema.sql`.
-2. `sql/migration_fase1.sql`.
-3. `sql/migration_fase1b_cardapio.sql`.
-
-Execute cada arquivo somente após conferir suas instruções e dependências. Pare no primeiro erro e registre a mensagem completa. Não repita indiscriminadamente scripts parcialmente executados.
-
-O README também cita:
-
-| Script | Tratamento |
-|---|---|
-| `sql/migration_fase1c_rls_geral.sql` | Revisar as permissões antes de aplicar; o nome não garante isolamento por loja |
-| `sql/update_marca_unidades.sql` | Conferir dependências e existência das lojas antes de aplicar o rebranding |
-| Outras migrações da pasta real | Identificar dependências e registrar sua ordem |
-
-Os três scripts iniciais não são uma instalação completa comprovada da versão atual. Histórico, canais, estoque e dashboard atualizado podem depender de migrações posteriores. Não inventar uma ordem para arquivos cujo conteúdo ainda não foi conferido.
-
-## 3. Configurar acesso e criar o usuário
-
-No painel Supabase, obtenha a URL do projeto e as chaves compatíveis com a configuração existente.
-
-- O frontend documentado usa `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`.
-- Os seeds documentados usam `SUPABASE_URL` e `SUPABASE_KEY`, com chave privilegiada `service_role` no fluxo original.
-- Nunca coloque `service_role` ou outra chave secreta em variáveis `VITE_`, no navegador ou no repositório.
-
-O Supabase também oferece chaves publishable/secret. Não troque os tipos sem conferir a compatibilidade dos scripts e bibliotecas. Consulte [API keys — Supabase](https://supabase.com/docs/guides/getting-started/api-keys).
-
-Em Authentication → Users, crie um usuário de desenvolvimento. Conforme o material do projeto, um trigger cria o registro correspondente em `usuarios` com perfil Visualização. Confira se ele existe. Se não existir, investigue as migrações e o trigger antes de continuar.
-
-Para o administrador do ambiente de desenvolvimento, localize o ID do perfil Administrador em `perfis` e atribua-o ao campo `perfil_id` do usuário pela administração do banco. Use outro usuário com perfil restrito nos testes de autorização; conseguir entrar como administrador não valida o RBAC completo.
-
-## 4. Instalar dependências e executar seeds
-
-Use um ambiente virtual a partir da raiz do projeto:
-
-```bash
-python -m venv .venv
-```
-
-Ative-o conforme o sistema:
+No diretório `frontend/`:
 
 ```powershell
-# Windows / PowerShell
-.venv\Scripts\Activate.ps1
+npm test
+npm run build
 ```
 
-```bash
-# macOS / Linux
-source .venv/bin/activate
-```
+A revisão de referência tem 100 testes aprovados, incluindo 32 em PostgreSQL via PGlite em memória. Não exigem `.env`, Supabase remoto ou chave de rotas. O build gera `frontend/dist/`; não configura o backend.
 
-Se houver arquivo de dependências Python no projeto, instale-o pelo caminho real. Na ausência dele, o guia original informa a dependência `supabase`:
-
-```bash
-python -m pip install supabase
-```
-
-Essa instalação mínima não foi verificada com os scripts atuais. Registre versões compatíveis após validar o ambiente.
-
-Configure as variáveis apenas no terminal local. Os valores abaixo são fictícios:
+A auditoria do CI pode ser reproduzida com acesso à rede:
 
 ```powershell
-# Windows / PowerShell
-$env:SUPABASE_URL="https://SEU-PROJETO.supabase.co"
-$env:SUPABASE_KEY="SUA-CHAVE-PRIVILEGIADA"
+npm audit --audit-level=high
 ```
 
-```bash
-# macOS / Linux
-export SUPABASE_URL="https://SEU-PROJETO.supabase.co"
-export SUPABASE_KEY="SUA-CHAVE-PRIVILEGIADA"
-```
+Registre data, ambiente, comando e resultado conforme os [casos de teste](docs/entrega-02/anexos/CASOS_E_RESULTADOS.md).
 
-Em um banco novo e com os pré-requisitos atendidos, execute na raiz:
+## 4. Interface com backend preparado
 
-```bash
-python python/seed_data.py
-python python/seed_cardapio.py
-```
-
-Confira os resultados no banco. Não use uma contagem fixa de produtos como prova de sucesso: o cardápio mudou entre versões. Não publique prints ou histórico do terminal com credenciais.
-
-## 5. Configurar e iniciar a interface
-
-Entre em `frontend/`:
-
-```bash
-cd frontend
-```
-
-Se ainda não houver `.env`, copie o exemplo. Preserve um `.env` já configurado.
+Copie o exemplo somente se ainda não houver `.env`:
 
 ```powershell
-# Windows / PowerShell
 Copy-Item .env.example .env
 ```
 
-```bash
-# macOS / Linux
-cp .env.example .env
-```
-
-Preencha conforme os nomes lidos pela aplicação:
+Preencha localmente:
 
 ```dotenv
 VITE_SUPABASE_URL=https://SEU-PROJETO.supabase.co
 VITE_SUPABASE_ANON_KEY=SUA-CHAVE-PUBLICA
 ```
 
-Instale e inicie:
+Não use chave privilegiada em variáveis `VITE_`. Preserve configurações existentes.
 
-```bash
-npm install
+```powershell
 npm run dev
 ```
 
-Se houver `package-lock.json` válido e sincronizado, use `npm ci` no lugar de `npm install`. Abra a URL exibida pelo terminal, normalmente `http://localhost:5173`. Faça login no Brasa Burguer. Reinicie o servidor de desenvolvimento após alterar as variáveis de ambiente.
+Abra a URL exibida pelo Vite. Outro Vite pode usar o mesmo banco: iniciar o frontend não cria um backend separado.
 
-Para conferir scripts disponíveis, execute `npm run`. Se o projeto definir `build`, execute `npm run build` para verificar a compilação; isso não substitui testes funcionais.
+## 5. Contas e permissões atuais
 
-## 6. Validar o ambiente
+- **Consumidor:** usa `/pedir/brasa-burger`. Cadastro público Auth não cria colaborador em `usuarios`.
+- **Equipe:** exige conta Auth e registro ativo em `usuarios`, com empresa, perfil e unidade compatíveis.
+- **Administrador:** em `/administracao`, vincula por e-mail uma conta Auth já existente ao perfil e à unidade permitidos.
+- **Gerente:** opera apenas na unidade vinculada, conforme validação no servidor.
+- **Master existente:** cadastra empresas e seleciona contexto. O provisionamento do primeiro master em banco vazio integra E2-REP-01.
 
-Registre os resultados observados, sem marcar como aprovado antes de executar:
+A instrução antiga de cadastro automático como Visualização foi substituída pelo provisionamento explícito. Cadastro público nunca concede perfil ERP.
 
-| Verificação | Resultado esperado |
+## 6. Instalação integral em banco vazio — E2-REP-01
+
+Ainda não há uma sequência integral homologada. Para fechar essa exigência:
+
+1. Preparar Supabase descartável, separado de dados operacionais.
+2. Conferir o bootstrap legado e registrar a ordem efetivamente testada dos SQLs.
+3. Incluir funções, views, triggers, grants, RLS e migrações de portal/empresas sem depender de objetos exclusivos do ambiente existente.
+4. Documentar e testar a criação da primeira conta Auth e seu vínculo como master.
+5. Preparar dados sintéticos mínimos de empresa, unidades, catálogo, ficha, estoque e contas de teste.
+6. Configurar Auth e função de entrega; executar o fluxo integrado.
+7. Repetir em outro banco vazio e guardar comandos, versões e resultados.
+
+Inventário a conciliar, **não uma ordem certificada de execução**:
+
+| Grupo | Fontes |
 |---|---|
-| Login e encerramento de sessão | Acesso autorizado e sessão encerrada corretamente |
-| Unidade e período no Dashboard | Indicadores e gráficos refletem o mesmo recorte |
-| Custo 8,90 e preço 27,90 | CMV 31,90%; margem R$ 19,00 e 68,10% |
-| Período sem pedidos | Estado vazio ou indicador indisponível, sem erro de divisão |
-| Cliente não encontrado | Cadastro e retorno ao pedido preservam contexto, se implementado |
-| Histórico | Pedido gravado pode ser recuperado e seus detalhes conferidos |
-| Pedido e estoque | Consumo coerente com ficha/unidade; reenvio sem baixa duplicada |
-| Usuário restrito | Leitura e escrita respeitam perfil e unidade |
-| Telas menores e teclado | Conteúdo legível e ações acessíveis |
+| Base e perfis | `sql/schema.sql`, `sql/migration_fase1.sql` |
+| Catálogo e endereço | `sql/migration_fase1b_cardapio.sql`, `sql/migration_fase1d_endereco_cliente.sql`, `sql/migration_cadastro_insumos.sql` |
+| Estoque e análises | `sql/migration_fase2_estoque.sql`, `sql/migration_fase4_5_fundacao_analitica.sql` |
+| Pedido e entrega | `sql/migration_pedido_transacional.sql`, `sql/migration_configuracao_entrega.sql`, `sql/migration_consulta_rotas.sql` |
+| Evolução | Arquivos existentes em `supabase/migrations/`, ordenados por dependência |
+| Edição de catálogo/ficha | `sql/edicao_fichas_vigente.sql`, antes de `20261025004910_empresas_acesso_frete_cliente.sql` |
+| Marca e unidades | `sql/update_marca_unidades.sql`, conferindo dependências e dados |
 
-Para cada teste, registrar commit/versão, data, entrada e resultado. Este guia não comprova que a instalação ou os testes foram executados.
+Não existe arquivo versionado `sql/migration_fase1c_rls_geral.sql`. O arquivo local `sql/migration_edicao_fichas.sql` não é fonte da versão publicada; use como referência versionada `sql/edicao_fichas_vigente.sql`.
 
-## 7. Atualizar a documentação no projeto
+Os scripts Python de seed citam marca anterior e estado prévio; precisam ser adaptados e testados para a estrutura atual de empresas antes de compor a carga oficial. O MySQL é um estudo separado e não instala a aplicação Supabase.
 
-1. Extraia o ZIP de documentação em uma pasta temporária.
-2. Copie `README.md`, `GUIA_PASSO_A_PASSO.md` e `DESIGN_SYSTEM_STATUS.md` para a raiz do projeto, substituindo as versões antigas.
-3. Confira os caminhos descritos contra os arquivos reais e complete a ordem das migrações.
-4. Publique esses documentos junto com o código-fonte no repositório. O ZIP é para transporte; os Markdown devem ficar extraídos para leitura no GitHub.
-5. Registre um commit descritivo, por exemplo: `docs: atualiza arquitetura, status e guia do Brasa Burguer`.
+## 7. Delivery e acesso externo
 
-Antes de publicar, confira se o Git ignora `.env` e variantes locais, chaves, `.venv/`, `node_modules/`, arquivos de build e dados pessoais. Preserve exemplos fictícios, código-fonte e arquivos de dependências. Se um segredo já foi versionado, ignorar o arquivo depois não remove o histórico; revogue a credencial exposta.
+Consulte `MVP_GRATUITO_SETUP.md` e `CONVIVIUM_EXECUCAO.md`. A função exige `ORS_API_KEY` somente no servidor, `ALLOWED_ORIGINS` com origens exatas, publicação da função, migrações compatíveis e origem/tarifa válidas por loja. Quando necessário, confirmar o ponto real do imóvel.
 
-O endereço real do repositório deve ser incluído no formulário acadêmico e no trabalho escrito após a publicação. O pacote acadêmico é outro ZIP, com os dois PDFs e `anexos/`.
+Configurar as URLs de retorno Auth, incluindo `/pedir/**`. Para acesso externo, publicar frontend HTTPS e conferir fallback SPA e e-mail de confirmação. Os arquivos `_redirects` e `_headers` preparados não comprovam publicação. Execução local reproduzível atende ao ambiente adotado para demonstração; acesso externo depende de hospedagem.
 
-## 8. Problemas comuns
+## 8. Demonstração integrada
+
+Em ambiente de teste com dados sintéticos e commit registrado:
+
+1. Mostrar empresa/unidades como administrador e gerente restrito em outra sessão.
+2. No portal, escolher unidade, montar carrinho e demonstrar validação de entrada inválida.
+3. Cotar delivery ou explicar a indisponibilidade de cobertura e confirmar o imóvel. Conferir itens + frete = total.
+4. Enviar solicitação e conferir a fila da unidade correta.
+5. Aceitar como equipe, conferir venda/estoque e repetir a confirmação para verificar ausência de duplicação.
+6. Avançar status e consultar histórico e indicadores com os mesmos filtros.
+7. Mostrar cálculo e teste correspondente; explicar cancelados e cobertura de custo.
+8. Demonstrar cancelamento/estorno e bloqueio de outra empresa/unidade.
+
+Escrita pela interface e concorrência real ainda dependem de E2-APP-01/E2-SEG-01. Este roteiro descreve a execução necessária, não declara esses cenários homologados.
+
+## 9. Falhas e evidências
 
 | Sintoma | Conferência |
 |---|---|
-| Node/npm não reconhecido | Instalação, PATH e novo terminal |
-| Variável Supabase ausente nos seeds | Variáveis definidas no mesmo terminal da execução |
-| Tabela ou coluna inexistente | Migrações e versão do schema; não presumir que os três scripts bastam |
-| Acesso negado no banco | Sessão, perfil, grants e políticas RLS; não liberar acesso geral como solução automática |
-| Tela em branco | Console do navegador, dependências e variáveis da aplicação |
-| Login falha | Usuário Auth, credenciais e configuração do projeto correto |
-| Nome antigo ou lojas erradas | Seed e script de marca aplicados no ambiente correto |
-| Dashboard diverge do histórico | Mesmos filtros, estados de pedido, descontos e fonte de custo |
+| Variáveis ausentes | `.env`, nomes corretos e reinício do Vite |
+| Auth funciona, ERP não abre | Registro ativo em `usuarios`, empresa, perfil e unidade; consumidor usa portal |
+| Tabela/função ausente | Versão e bootstrap do backend |
+| Acesso recusado | Empresa/unidade, perfil e RLS; registrar erro sem liberar acesso geral |
+| Endereço não localizado | Cobertura e confirmação do imóvel; falha não gera taxa zero |
+| Resposta de pedido incerta | Recuperar a mesma requisição e conferir pedido/estoque antes de iniciar outra venda |
 
-Guarde a mensagem de erro completa, retirando credenciais e dados pessoais antes de compartilhá-la.
+Registrar caso, ambiente, entrada, esperado, obtido, interpretação e versão. Retirar senhas, tokens e dados pessoais reais de logs, capturas e anexos.

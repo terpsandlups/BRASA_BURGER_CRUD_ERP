@@ -1,5 +1,14 @@
 # Registro de validação — Convivium / Brasa Burguer
 
+## Referência acadêmica da Entrega 2 — 29/10/2026
+
+- Código funcional conferido no GitHub: `6c83548fd19d31ad71f0f0641754597664c60eb5`, de 26/10/2026; repositório público.
+- Execução local de `npm test`, em `frontend/`, em 29/10/2026: 100 testes, 100 aprovados, zero falhas/cancelados/ignorados. Inclui 32 cenários PostgreSQL/PGlite isolados; não acessa o banco operacional.
+- [CI 40368508146](https://github.com/terpsandlups/BRASA_BURGER_CRUD_ERP/actions/runs/40368508146), de 26/10/2026: sucesso no mesmo commit; instalação, testes, build e auditoria configurados no workflow.
+- [Casos e resultados](docs/entrega-02/anexos/CASOS_E_RESULTADOS.md): entradas, esperado, obtido, interpretação e cenários de homologação pendentes. [Matriz](docs/entrega-02/anexos/MATRIZ_DISCIPLINAR.md) e [memória de cálculo](docs/entrega-02/anexos/MEMORIA_CALCULO.md) localizam evidências das disciplinas.
+- A atualização é documental. A suíte isolada e o CI não comprovam bootstrap vazio, concorrência com duas conexões remotas, confirmação de e-mail externo ou precisão de trajetos reais. O [plano da Entrega 2](docs/entrega-02/README.md) mantém esses limites e o fechamento acadêmico.
+- A tag/release `entrega-2-2026-2`, os dois PDFs finais e o ZIP ainda dependem da conferência da versão de submissão.
+
 ## Fechamento 1, 2 e 3: empresas e frete do cliente — 24/10/2026
 
 - 100 testes aprovados, incluindo 32 de PostgreSQL efêmero; build aprovado e dependências inalteradas desde a auditoria sem vulnerabilidades.

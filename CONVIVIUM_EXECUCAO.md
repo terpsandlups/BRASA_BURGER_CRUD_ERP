@@ -1,5 +1,11 @@
 # Convívium Management System — execução de 24/10/2026
 
+## Entrega acadêmica atual — 29/10/2026
+
+O [plano da Entrega 2](docs/entrega-02/README.md) concentra as exigências do enunciado, o que já está documentado/verificado e todas as tarefas de fechamento. A numeração dos oito pedidos de produto abaixo é independente dos blocos acadêmicos. A Entrega 1 permanece histórica.
+
+O responsável confirmou o aceite do docente para JavaScript. Identificação, turma e organização inicial do grupo foram recuperadas na Entrega 1. O README e o guia atuais, o texto-base, a matriz disciplinar, os cálculos, os casos/resultados e os diagramas estão alinhados à referência `6c83548`. PDFs finais, reprodução integral, homologações e tag final continuam com critérios explícitos no plano.
+
 Esta revisão acompanha os oito pedidos de evolução. Código implementado, migração aplicada e testes executados são evidências diferentes de homologação operacional completa.
 
 | Pedido | Entrega nesta revisão | Limite verificável |

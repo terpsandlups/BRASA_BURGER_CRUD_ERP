@@ -1,196 +1,125 @@
 # Convívium Management System
 
-ERP para operações de alimentação. **Convívium é a plataforma; Brasa Burger é
-a primeira empresa cliente**, com sua identidade na operação e no portal.
-Conta master e administração em `/administracao`; portal por marca em
-`/pedir/brasa-burger`; fila da equipe em `/solicitacoes`. Administrador da marca
-acessa suas unidades; gerente acessa somente a unidade vinculada. Clientes do
-portal não recebem acesso ao ERP. Pagamento presencial; frete calculado antes
-do envio, com confirmação no mapa quando o endereço não tiver cobertura.
+ERP para operações de alimentação. **Convívium é a plataforma; Brasa Burger é a primeira empresa cliente.** Operação e portal usam a identidade da empresa, com identificação do Convívium no rodapé.
 
-Consulte o [estado dos oito pedidos de melhoria](CONVIVIUM_EXECUCAO.md), os
-[contratos futuros de integração](INTEGRACOES_FUTURAS.md) e o
-[registro de validação](VALIDACAO.md). A pesquisa aprofundada de concorrentes
-continua dependente da conexão Exa. O produto segue em piloto, com os limites
-de homologação explicitados nesses registros.
+## Entrega 2 — aplicação integrada — 2026/2
 
-## Contexto original e evolução
+O foco acadêmico atual é a **Entrega 2**. O [plano completo](docs/entrega-02/README.md) reúne requisitos, evidências, pendências e critérios de conclusão. A Entrega 1 permanece como linha de base documental e histórica.
 
-Projeto acadêmico e de portfólio de um ERP de varejo alimentar em desenvolvimento, demonstrado pela rede fictícia Brasa Burguer, em Jundiaí/SP. Integra atendimento, clientes, pedidos, cardápio, fichas técnicas, estoque, entregas e análises gerenciais.
+- **Prazo:** 27/11/2026, no horário institucional; semana de entrega de 23 a 27/11.
+- **Valor:** 7.000 pontos.
+- **Submissão:** formulário oficial com título, URL completa do repositório e um ZIP de até 100 MB.
+- **Pacote final:** `PI-2026-2-CONVIVIUM-MANAGEMENT-SYSTEM-ENTREGA-2.zip`, contendo `trabalho-escrito.pdf`, `apresentacao.pdf` e `anexos/`.
+- **Versão final:** tag ou release `entrega-2-2026-2`, a criar após o fechamento e a conferência dos PDFs.
+- **Estado:** piloto funcional; documentação da Entrega 2 em consolidação. Os PDFs e o ZIP finais ainda precisam ser produzidos e conferidos.
 
-## Visão do produto
+## Identificação acadêmica
 
-O objetivo é que a mesma base de gestão possa assumir a identidade e as regras de cada estabelecimento: marca, cores, linguagem, cardápio, unidades, canais de venda e fluxo operacional. Em vez de parecer um ERP genérico, a ferramenta deve se apresentar como um sistema próprio da marca que a utiliza. O Brasa Burguer é a primeira aplicação dessa visão; a personalização completa por estabelecimento ainda é uma meta do roadmap, não uma funcionalidade pronta.
+| Campo | Informação |
+|---|---|
+| Instituição | Faculdade Anhanguera |
+| Curso | Tecnologia em Análise e Desenvolvimento de Sistemas |
+| Disciplina e turma | Projeto Integrado I, II e III |
+| Período e local | 2026/2 — Jundiaí/SP |
+| Docente | Prof. Gilberto Falco Netto |
+| Integrantes | Gabriel Rodrigues do Prado, 3º semestre; Rafaela Rodrigues Oliveira, 1º semestre |
+| Modalidade | Continuidade de protótipo acadêmico |
+| Linguagem | JavaScript, com regras SQL/PL/pgSQL; aceite do docente confirmado pelo responsável em 29/10/2026 |
 
-A evolução prevista é configurar identidade visual e operação por estabelecimento sem manter uma cópia separada do código para cada marca. Assim, a temática da loja aparece na experiência de uso, enquanto os módulos de gestão são adaptados ao seu cardápio, unidades e processos. O projeto ainda está construindo essa capacidade: o visual atual do Brasa Burguer não significa que já exista um painel de personalização para outras marcas.
+A identificação e a organização inicial do grupo vêm da Entrega 1. Gabriel tem atribuições de arquitetura, JavaScript, modelagem e integração; Rafaela, de levantamento, fluxo, validação, testes e documentação. A Entrega 2 deve relacionar as contribuições efetivas a artefatos e registros, conforme seu plano.
 
-O protótipo atual já oferece dashboard e portal de análises, operação de pedidos, cadastros, estoque e frete por rota. O CEP preenche dados postais; quando o serviço gratuito não localiza um número, o operador pode buscar a região no mapa e confirmar o imóvel. No delivery próprio, uma cotação válida entra no total do pedido; marketplaces não recebem cobrança duplicada de frete. Consulte [roadmap](ROADMAP_EXECUCAO.md) e [configuração do MVP gratuito](MVP_GRATUITO_SETUP.md).
+## Problema, público e objetivo
 
-**Revisão de 17/10/2026:** operação responsiva, pesquisa de cardápio, quantidades
-editáveis, cálculo decimal de markup, recuperação de envio, reposição atômica
-e controle de acesso por perfil/unidade. O visual grafite aprovado de Pedidos
-foi padronizado nas oito abas: cabeçalhos, indicadores, filtros, tabelas,
-gráficos, formulários e painéis laterais usam uma base de tema compartilhada.
-Foram executados 79 testes locais,
-incluindo 15 de PostgreSQL isolado. Veja os [casos de uso](CASOS_USO_VAREJO.md)
-e o [registro de validação](VALIDACAO.md). O produto continua em piloto; canais
-Goomer/iFood são lançados manualmente, sem integração comercial nesta etapa.
+Controles separados dificultam recuperar pedidos, conferir custos, acompanhar estoque e comparar unidades. O sistema integra atendimento, clientes, cardápio, fichas técnicas, pedidos, entregas e indicadores para operadores, gerentes e proprietários.
 
-Para reproduzir as verificações, use Node.js 24 no diretório `frontend`:
+O caso Brasa Burger considera Japy e Retiro com presencial e delivery, e Eloy exclusivamente delivery. A plataforma administra outras empresas sem duplicar o código da interface.
+
+## Funcionalidades e limites atuais
+
+| Área | Implementação | Limite relevante |
+|---|---|---|
+| Plataforma e marca | Master cadastra empresas; administrador configura nome, logo, cor, unidades e equipe | Vínculo exige conta Auth existente; convite por e-mail e edição integral do tema são futuros |
+| Acesso | Autenticação e autorização por empresa, perfil e unidade, com RLS e validação no banco | Homologação com duas sessões reais pendente |
+| Portal do consumidor | Catálogo, conta, carrinho, adicionais, unidade, frete e acompanhamento próprio | HTTPS e confirmação de e-mail na origem externa ainda não homologados |
+| Recebimento pela loja | Fila por unidade; aceite cria venda e baixa estoque em transação | Solicitação aguardando não reserva estoque |
+| Pedidos e histórico | Compositor, preço por canal, busca, status, recuperação de envio e cancelamento | Reaproveitamento exige pedido integral de composição idêntica |
+| Produtos e estoque | Catálogo, fichas, edição de preço/quantidade, insumos e reposição atômica | Compras e inventário avançado fora do escopo atual |
+| Entrega própria | openrouteservice/HeiGIT e mapa OpenStreetMap/Leaflet; cotação pelo servidor | Cobertura pode exigir ponto confirmado; comparação de trajetos reais pendente |
+| Indicadores | Filtros, faturamento, frete separado, ticket, CMV, cobertura de custo, rankings e CSV | CMV gerencial usa ficha atual; não equivale a lucro líquido |
+| Canais | Venda própria e lançamento manual dos demais canais previstos | APIs iFood/Goomer/Rappi e pagamento online são futuros |
+
+## Arquitetura
+
+| Camada ou pasta | Responsabilidade |
+|---|---|
+| `frontend/src/pages/` e `components/` | React/JSX, navegação, formulários e interface |
+| `frontend/src/lib/` | Cálculos, validação, autorização visual e envio |
+| Supabase Auth e PostgREST | Autenticação e acesso aos dados/RPCs |
+| `sql/` e `supabase/migrations/` | PostgreSQL, PL/pgSQL, integridade, transações e RLS |
+| `supabase/functions/calcular-entrega/` | Sessão, provedor de rotas e cotação no servidor |
+| `frontend/test/` | Testes Node.js e PostgreSQL isolado com PGlite |
+| `python/` | Scripts legados independentes de carga |
+| `mysql/` | Estudo analítico separado do banco transacional |
+| `docs/entrega-02/` | Requisitos, texto-base, matriz, cálculos e evidências da Entrega 2 |
+
+Node.js 24 executa ferramentas e testes. React executa no navegador e acessa Supabase; não há API própria Node.js intermediária. O frontend ainda não possui publicação HTTPS comprovada.
+
+## Instalação e execução
+
+O [guia atualizado](GUIA_PASSO_A_PASSO.md) distingue testes isolados, uso com backend preparado e instalação integral. Para testes e build, não são necessárias credenciais:
 
 ```powershell
+git clone https://github.com/terpsandlups/BRASA_BURGER_CRUD_ERP.git
+cd BRASA_BURGER_CRUD_ERP/frontend
 npm ci
 npm test
 npm run build
 ```
 
-Os testes de banco usam PostgreSQL em memória e não precisam de credenciais do
-Supabase. O workflow de validação repete testes, build e auditoria no GitHub.
+Com backend já preparado, copie `frontend/.env.example` para `frontend/.env`, configure `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` com URL e chave pública e execute, em `frontend/`:
 
-## Mapas e entregas no MVP em testes
-
-Nesta fase inicial, usamos **OpenStreetMap com Leaflet** para exibir o mapa e **openrouteservice/HeiGIT no plano gratuito** para buscar endereços e calcular rotas. O uso de dados cartográficos abertos ajuda a testar e iniciar o produto sem contratar a Google Maps API. O plano gratuito do serviço de rotas tem cotas e cobertura próprias; não significa uso ilimitado.
-
-O endereço físico continua necessário no cadastro da entrega. Se a base de localização não reconhecer o imóvel com precisão, a busca aproxima o mapa da rua ou do CEP para o operador confirmar o ponto correto. A aproximação não cria uma taxa automaticamente. **Google Maps não está ativo no MVP**; seu [guia antigo](GOOGLE_MAPS_SETUP.md) é apenas um registro de uma possibilidade futura, sujeita a decisão específica sobre custos e integração.
-
-**Validação em 07/10/2026:** o mantenedor confirmou a simulação com mapa OpenStreetMap e rotas openrouteservice. Depois, um pedido delivery próprio foi gravado com R$ 86,60 de itens + R$ 7,95 de frete = R$ 94,55, e a cotação foi consumida. Isso valida o cenário testado, não todos os endereços, perfis e falhas de rede.
-
-## Identificação acadêmica
-
-- **Instituição:** Faculdade Anhanguera.
-- **Curso:** Análise e Desenvolvimento de Sistemas.
-- **Disciplina integradora:** Projeto Integrado I, II e III — 2026/2.
-- **Docente:** Prof. Gilberto Falco Netto.
-- **Gabriel Rodrigues do Prado:** 3º semestre.
-- **Rafaela Rodrigues Oliveira:** 1º semestre.
-- **Modalidade:** continuidade de um protótipo existente.
-
-A linha de base deve ser identificada no primeiro registro do repositório. Os incrementos de 2026/2 devem ser associados aos commits e às contribuições efetivas dos integrantes.
-
-## Problema e objetivo
-
-Cadastros e controles isolados dificultam recuperar pedidos, acompanhar custos e comparar unidades. O Brasa Burguer reúne essas informações para apoiar a operação e a análise de desempenho.
-
-O cenário considera Japy e Retiro com atendimento presencial e delivery, e Eloy exclusivamente delivery. O CPF permite consultar o cliente e relacionar seu histórico. Cada variação de produto possui ficha técnica própria, como artesanal de 150/200 g e smash de 56/90 g.
-
-## Arquitetura
-
-| Camada | Tecnologia e função |
-|---|---|
-| Interface | React, JavaScript/JSX e Tailwind CSS |
-| Desenvolvimento e build | Vite, Node.js e npm |
-| Navegação e gráficos | React Router e Recharts, conforme ficha técnica |
-| API e autenticação | Supabase PostgREST e Supabase Auth |
-| Dados e regras | PostgreSQL, SQL, funções e triggers em PL/pgSQL |
-| Scripts independentes | Python: carga inicial e simulações descritas nos materiais |
-| Estudo analítico separado | MySQL standalone; não é o banco transacional da aplicação |
-| Hospedagem prevista | Netlify; publicação não comprovada nesta revisão |
-
-React executa a interface no navegador. Node.js sustenta as ferramentas de desenvolvimento. A interface acessa o Supabase; Python executa tarefas independentes e não é uma API intermediária obrigatória.
-
-## Estado de desenvolvimento — registro documental anterior
-
-A tabela abaixo preserva o registro documental anterior. Para o estado mais recente do código e dos testes, consulte o roadmap e o registro de validação. Uma tela existente não implica que todas as operações do módulo estejam completas.
-
-| Área | Estado documentado | Limite ou próximo passo |
-|---|---|---|
-| Login e permissões | Supabase Auth e sete perfis RBAC | Validar permissões efetivas por ação e unidade |
-| Dashboard | Filtros por unidade e 7/30/90 dias; faturamento, pedidos, ticket, CMV e margem | Conferir fórmulas, filtros e conciliação no código |
-| Análises visuais | Evolução das vendas, vendas por unidade, top produtos e composição por canal | Verificar consistência dos dados e estados vazios |
-| Pedidos | Kanban com indicadores, busca, avanço de status e adicionais | Detalhamento lateral e Realtime não confirmados |
-| Histórico e clientes | Telas mencionadas no status recente; ficha técnica descreve histórico e cadastro durante o pedido | Confirmar filtros, retorno ao pedido e persistência |
-| Produtos | Catálogo, variações, adicionais e consulta de ficha técnica/CMV | Cadastro completo pela interface não confirmado |
-| Estoque | Tela mencionada no status recente; ficha técnica descreve baixas por triggers | Inventário, transferências, perdas e reposição ainda não comprovados |
-| Design System | Tema grafite compartilhado nas oito abas, componentes e responsividade | Ampliar testes de acessibilidade e homologação operacional |
-| Camada analítica | Views e estruturas analíticas descritas na ficha técnica | Integração efetiva com Power BI permanece futura |
-| Testes e publicação | Plano de validação e Netlify previstos | Sem evidência de suíte automatizada, CI/CD ou deploy nesta revisão |
-
-O README anterior colocava Histórico/Estoque e parte do dashboard em estágios anteriores. O status recente atualiza a existência dessas telas e o dashboard, sem comprovar todo o módulo de estoque. Canais são citados na ficha técnica e no gráfico recente; entregadores e timeline precisam ter seu nível de implementação conferido no código.
-
-## Estrutura documentada
-
-| Caminho | Conteúdo |
-|---|---|
-| `frontend/` | Aplicação React/Vite, dependências e configurações |
-| `frontend/src/components/` | Componentes de interface, layout e indicadores |
-| `sql/schema.sql` | Estrutura inicial de dados e views |
-| `sql/migration_fase1.sql` | Categorias, usuários, perfis, permissões e RLS |
-| `sql/migration_fase1b_cardapio.sql` | Ampliação do cardápio e fornecedores |
-| `sql/migration_fase1c_rls_geral.sql` | Alteração de políticas descrita no README anterior; exige revisão |
-| `sql/update_marca_unidades.sql` | Atualização de marca e unidades |
-| `python/seed_data.py` | Carga inicial |
-| `python/seed_cardapio.py` | Carga do cardápio |
-| `mysql/` | Ambiente independente para estudo SQL |
-
-Esta relação reproduz os caminhos informados. Migrações posteriores devem ser documentadas conforme os arquivos reais; os scripts acima não constituem uma lista comprovadamente completa da versão atual.
-
-## Executar localmente
-
-Siga o [guia passo a passo](GUIA_PASSO_A_PASSO.md) para preparar o Supabase, executar os scripts e configurar o ambiente. Com banco e variáveis preparados:
-
-```bash
-cd frontend
-npm install
+```powershell
 npm run dev
 ```
 
-Use a versão de Node compatível com o `package.json` e a versão instalada do Vite. Se houver `package-lock.json` válido e sincronizado, `npm ci` permite instalar as versões registradas. A URL local será exibida no terminal.
+Abra a URL exibida pelo Vite. `127.0.0.1` funciona apenas no próprio computador. A **instalação integral em banco vazio permanece pendente de comprovação**: migrações dependem do bootstrap legado em `sql/`; testes com fixture não comprovam esse bootstrap.
 
-## Ficha técnica e indicadores
+## Uso principal
 
-Um produto pode ter várias variações; cada variação relaciona ingredientes e quantidades pela ficha técnica. A view `vw_custo_variacao` é descrita como fonte de custo por variação.
+1. Consumidor abre `/pedir/brasa-burger`, seleciona unidade e modalidade, monta o carrinho e entra ou cria conta.
+2. No delivery, o endereço completo inicia a cotação. Quando necessário, confirma o imóvel no mapa; vê itens, frete e total antes de enviar.
+3. A solicitação chega à fila da unidade em `/solicitacoes`. A equipe aceita ou recusa; aceite cria venda e baixa estoque uma vez nos cenários testados.
+4. A equipe acompanha `/pedidos` e `/historico`; o consumidor acompanha suas solicitações. Pagamento ocorre presencialmente, na retirada ou entrega.
+5. Master e administrador usam `/administracao`. Gerente opera na unidade vinculada. Cadastro público não cria colaborador do ERP.
 
-| Indicador | Regra conceitual |
+## Disciplinas e matemática
+
+| Disciplina exigida | Evidência atual |
 |---|---|
-| Custo de ficha | Soma das quantidades convertidas × custo unitário de cada ingrediente |
-| CMV do produto (%) | Custo ÷ preço de venda × 100 |
-| Margem bruta simplificada (R$) | Preço de venda − custo de ficha |
-| Margem bruta simplificada (%) | Margem em reais ÷ preço de venda × 100 |
-| Ticket médio | Receita elegível ÷ quantidade de pedidos elegíveis |
+| Linguagem de Programação | JavaScript modular, tipos, funções, eventos, entrada/saída, erros e RPCs |
+| Algoritmos e Programação Estruturada | Validação, seleção, repetição e decomposição do pedido e do aceite |
+| Matemática Computacional | Somatórios, arredondamento, frete por distância, CMV, margem, ticket e CPF |
 
-Exemplo: preço **R$ 27,90** e custo **R$ 8,90** resultam em **CMV de 31,90%**, margem de **R$ 19,00** e margem percentual de **68,10%**. Essa margem não é lucro líquido.
+A [matriz disciplinar](docs/entrega-02/anexos/MATRIZ_DISCIPLINAR.md) localiza funções e testes; a [memória de cálculo](docs/entrega-02/anexos/MEMORIA_CALCULO.md) define variáveis e resultados. Custo R$ 8,90 e receita R$ 27,90 resultam em CMV 31,90% e margem simplificada 68,10%. No dashboard, a base de CMV é a receita dos itens com ficha; frete não compõe essa base. Cancelados são excluídos e cobertura incompleta é informada.
 
-No dashboard, CMV agregado usa custo total elegível dividido pela receita correspondente; não a média simples dos percentuais dos produtos. Taxas de entrega, descontos, cancelamentos e período devem ter tratamento explícito. Sem denominador válido, exibir indicador indisponível. Sem custo histórico preservado, a análise pela ficha atual é estimativa e pode mudar com o cadastro.
+Desenvolvimento em JavaScript, Computação em Nuvem e Análise Orientada a Objetos complementam os três eixos obrigatórios, conforme a organização acadêmica da Entrega 1.
 
-## Cardápio
+## Testes, histórico e segurança
 
-Smash, artesanais, Monte Seu Burger, opções especiais, acompanhamentos, croquetas, porções, sanduíches, cervejas artesanais, chopp, bebidas e sobremesas. Variações e adicionais conectam a apresentação comercial às quantidades da ficha técnica. A view `vw_engenharia_cardapio` é descrita como base da classificação por volume e margem; sua existência não comprova dashboard analítico completo.
+Em 29/10/2026, a revisão de `6c83548` executou **100 testes, 100 aprovados e zero falhas**, incluindo 32 cenários PostgreSQL isolados. O [GitHub Actions de 26/10/2026](https://github.com/terpsandlups/BRASA_BURGER_CRUD_ERP/actions/runs/40368508146) aprovou testes, build e auditoria nessa versão. Consulte [casos e resultados da Entrega 2](docs/entrega-02/anexos/CASOS_E_RESULTADOS.md) e [registros anteriores](VALIDACAO.md).
 
-## Integração das disciplinas
+O histórico possui incrementos de setembro e outubro de 2026. O [texto-base](docs/entrega-02/TRABALHO_ESCRITO.md) distingue protótipo, Entrega 1 e evolução integrada. Os commits observados estão concentrados em `terpsandlups`; a comprovação individual também depende de registros e artefatos reais.
 
-| Disciplina/eixo | Aplicação no projeto | Evidência a vincular |
-|---|---|---|
-| Linguagem de Programação | JavaScript: tipos, funções, eventos, entrada e saída | Componentes e unidade funcional executável |
-| Algoritmos e Programação Estruturada | Sequência, condições, repetição e decomposição | Pseudocódigo e regras implementadas em JavaScript/SQL |
-| Matemática Computacional | Custos, conversões, somatórios, percentuais e indicadores | Fórmulas e casos de teste com resultados esperados |
-| Desenvolvimento em JavaScript | Estado de interface, componentes e acesso à API | Fluxo do pedido e componentes React |
-| Computação em Nuvem | Serviços gerenciados, autenticação e acesso aos dados | Arquitetura Supabase e configuração de implantação |
-| Análise Orientada a Objetos | Entidades, responsabilidades e relações | Modelagem de Cliente, Pedido, Item, Produto, Variação e Loja |
+Credenciais e dados pessoais reais devem ficar fora do Git e dos anexos. Use `.env.example`; chaves privilegiadas e `ORS_API_KEY` pertencem ao servidor. Testes isolados usam dados sintéticos. A revisão final do histórico, arquivos e capturas integra o checklist da Entrega 2.
 
-Gabriel cursa as três últimas disciplinas e já concluiu a disciplina de algoritmos em C. A proposta preserva os eixos exigidos e contextualiza a implementação em JavaScript/SQL; a aceitação da adequação cabe ao docente. Não se presume a grade completa de Rafaela. As contribuições devem refletir o trabalho efetivamente realizado.
+## Documentos
 
-## Evolução em blocos
+- [Plano e checklist completo da Entrega 2](docs/entrega-02/README.md).
+- [Texto-base do trabalho escrito](docs/entrega-02/TRABALHO_ESCRITO.md).
+- [Guia de execução e demonstração](GUIA_PASSO_A_PASSO.md).
+- [Roadmap de produto e histórico](ROADMAP_EXECUCAO.md).
+- [Oito pedidos de melhoria](CONVIVIUM_EXECUCAO.md).
+- [Mapas e função de entrega](MVP_GRATUITO_SETUP.md).
+- [Integrações futuras](INTEGRACOES_FUTURAS.md).
 
-1. **4.1 — Dashboard:** validar filtros, métricas e dados da implementação informada.
-2. **4.2 — Pedidos e Histórico:** consolidar fluxo, detalhes, cadastro durante a venda e rastreabilidade.
-3. **4.3 — Clientes e CRM:** validar perfil/histórico e evoluir análises de relacionamento.
-4. **4.4 — Produtos e fichas:** completar manutenção pela interface e padronizar custos e identidade.
-5. **4.5 — Fundação analítica:** reconciliar indicadores e preparar integração com Power BI.
-
-Inventário avançado, compras, financeiro, produção, automações e implantação evoluem conforme dependências e capacidade da equipe. Cada bloco deve ser validado antes do seguinte.
-
-## Segurança e evidências
-
-Não versionar senhas, `.env` real, chaves privilegiadas ou dados pessoais reais. Manter apenas exemplos fictícios de configuração. A chave pública identifica o acesso da aplicação; as permissões dependem das políticas do banco. A descrição “RLS liberado para autenticados” não comprova isolamento entre lojas. Conferir o conteúdo da migração correspondente e testar leitura e escrita por perfil/unidade.
-
-Registrar nos testes: versão/commit, ambiente, entrada, resultado esperado e resultado observado. Casos mínimos: cálculos acima, conversão de unidades, pedido inválido, acesso a outra loja, cancelamento e reenvio sem baixa duplicada.
-
-## Documentação e entrega acadêmica
-
-- [Guia de instalação e validação](GUIA_PASSO_A_PASSO.md).
-- [Status e plano do Design System](DESIGN_SYSTEM_STATUS.md).
-- Entrega 1: ZIP com `trabalho-escrito.pdf`, `apresentacao.pdf` e `anexos/`, até 100 MB, pelo formulário oficial.
-- O formulário também recebe título e URL completa do repositório, público ou compartilhado com o docente.
-- Prazo informado no enunciado: **02/10/2026**, conforme horário institucional.
-
-Este pacote de Markdown atualiza a documentação do repositório. O código, os PDFs acadêmicos e os anexos são entregáveis separados. A URL do GitHub e a síntese de commits serão vinculadas ao trabalho após a publicação real.
+O pacote `PI-2026-2-BRASA-BURGUER-ENTREGA-1.zip` documenta a Entrega 1. Seus PDFs e exemplos antigos não substituem os artefatos finais da Entrega 2.
