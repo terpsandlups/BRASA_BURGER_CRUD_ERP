@@ -11,3 +11,4 @@ supabase/.temp/
 teste/
 *.zip
 /package-lock.json
+.entrega-02-build/

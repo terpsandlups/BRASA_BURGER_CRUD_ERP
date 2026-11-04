@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test"
+    "test": "node --test",
+    "verify:postgres": "node scripts/verificar-postgres.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
@@ -22,8 +23,9 @@
     "@tailwindcss/postcss": "4.3.3",
     "@vitejs/plugin-react": "4.7.0",
     "autoprefixer": "^10.4.20",
+    "pg": "8.16.3",
     "postcss": "^8.4.41",
     "tailwindcss": "4.3.3",
-    "vite": "6.4.4"
+    "vite": "6.4.5"
   }
 }

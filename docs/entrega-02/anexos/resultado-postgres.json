@@ -1,0 +1,13 @@
+{
+  "data": "2026-10-29",
+  "ambiente": "PostgreSQL nativo local, dois bancos vazios e conexões independentes; contrato Auth de teste",
+  "resultados": [
+    "Instalação integral em banco vazio 1: aprovada",
+    "Duas conexões de consumidor enviam a mesma chave: uma solicitação e nenhuma baixa",
+    "Duas conexões da equipe aceitam simultaneamente: uma venda de R$ 25,00 e uma baixa de 150 g",
+    "Gerente de outra unidade: leitura vazia e alteração negada",
+    "Cancelamento devolve 150 g e preserva pedido cancelado no histórico",
+    "Estoque insuficiente: rollback sem venda/baixa parcial",
+    "Instalação integral em banco vazio 2: aprovada"
+  ]
+}
