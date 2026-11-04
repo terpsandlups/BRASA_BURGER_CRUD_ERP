@@ -64,7 +64,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      SUPABASE_TEST_WORKDIR: ${{ runner.temp }}/convivium-supabase
+      SUPABASE_TEST_WORKDIR: /tmp/convivium-supabase
     steps:
       - uses: actions/checkout@v6
         with:
