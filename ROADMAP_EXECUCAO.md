@@ -1,15 +1,14 @@
 # Continuidade de execução
 
-## Prioridade acadêmica — Entrega 2 — 29/10/2026
+## Fechamento acadêmico da Entrega 2: 04/11/2026
 
-O fechamento acadêmico atual é regido pelo [plano da Entrega 2](docs/entrega-02/README.md), com tarefas identificadas, prioridades e critérios de aceite. O pacote da Entrega 1 permanece como histórico de proposta/modelagem e linha de base.
+Pacote final conforme o [plano da Entrega 2](docs/entrega-02/README.md): trabalho escrito nas 11 seções, apresentação principal com 10 páginas de conteúdo, complemento técnico, modelo de negócio, anexos, PDFs, PPTX e ZIP. A Entrega 1 permanece preservada.
 
-Nesta atualização foram consolidados README, guia, texto-base nas 11 seções, matriz das três disciplinas, memória de cálculo, casos/resultados e fontes dos diagramas. O aceite do docente para JavaScript foi confirmado; identificação e organização inicial foram recuperadas na Entrega 1.
+Instalador integral, primeiro master controlado, dados demonstrativos, 101 testes e build aprovados. PostgreSQL nativo e Supabase local com Auth/PostgREST reais confirmaram concorrência, venda única, isolamento de unidade e estorno. Evidências em docs/entrega-02/anexos e no CI 41924749997.
 
-Ordem de fechamento: instalação integral reproduzível; homologação do fluxo conectado e de duas sessões; conciliação; contribuições e referências; PDFs/anexos; ensaio e verificação; tag `entrega-2-2026-2`; ZIP e formulário até 27/11/2026. Os PDFs e o pacote final ainda não foram produzidos.
+Os integrantes precisam revisar e ensaiar a fala de até 15 minutos e realizar a submissão pelo formulário até 27/11/2026. Homologações operacionais de HTTPS, e-mail externo, trajetos físicos, carga e ciclo completo escrito pela interface continuam explicitadas como limites, sem serem apresentadas como realizadas.
 
-As pendências comerciais do produto continuam abaixo e em `CONVIVIUM_EXECUCAO.md`; não se tornam automaticamente requisitos da disciplina. Os registros datados seguintes preservam a evolução e seus limites na época.
-
+A pesquisa de concorrentes depende de Search/Exa. As pendências comerciais do produto permanecem distintas do fechamento acadêmico. Os registros datados abaixo preservam a evolução e seus limites na época.
 ## Fechamento dos pontos 1, 2 e 3 — 24/10/2026
 
 Conta master e empresas isoladas; marca Brasa Burger na operação; nome/logo/cor

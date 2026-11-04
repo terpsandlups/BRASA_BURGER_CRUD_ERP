@@ -4,20 +4,20 @@
 
 O [plano da Entrega 2](docs/entrega-02/README.md) concentra as exigências do enunciado, o que já está documentado/verificado e todas as tarefas de fechamento. A numeração dos oito pedidos de produto abaixo é independente dos blocos acadêmicos. A Entrega 1 permanece histórica.
 
-O responsável confirmou o aceite do docente para JavaScript. Identificação, turma e organização inicial do grupo foram recuperadas na Entrega 1. O README e o guia atuais, o texto-base, a matriz disciplinar, os cálculos, os casos/resultados e os diagramas estão alinhados à referência `6c83548`. PDFs finais, reprodução integral, homologações e tag final continuam com critérios explícitos no plano.
+O responsável confirmou o aceite do docente para JavaScript. Identificação, turma e organização inicial do grupo foram recuperadas na Entrega 1. O README e o guia atuais, o texto-base, a matriz disciplinar, os cálculos, os casos/resultados e os diagramas acompanham a versão `entrega-2-2026-2`. Instalador e homologação isolada concluídos; PDFs, apresentações e pacote final são descritos no plano atualizado.
 
 Esta revisão acompanha os oito pedidos de evolução. Código implementado, migração aplicada e testes executados são evidências diferentes de homologação operacional completa.
 
 | Pedido | Entrega nesta revisão | Limite verificável |
 |---|---|---|
-| 1. Atualizar GitHub e reler o projeto | Fontes das melhorias revisadas, 100 testes e build; definições válidas de edição já versionadas; estudo pessoal e ZIPs preservados e ignorados no Git | Alterações locais preexistentes de `sql/schema.sql` e o arquivo local `sql/migration_edicao_fichas.sql` permanecem fora do commit. Configurações e dados comerciais continuam no Supabase |
+| 1. Atualizar GitHub e reler o projeto | Fontes das melhorias revisadas, 101 testes e build; definições válidas de edição já versionadas; estudo pessoal e ZIPs preservados e ignorados no Git | Alterações locais preexistentes de `sql/schema.sql` e o arquivo local `sql/migration_edicao_fichas.sql` permanecem fora do commit. Configurações e dados comerciais continuam no Supabase |
 | 2. Pedidos pelo celular | Portal por marca `/pedir/:marca`, conta do consumidor, unidade, carrinho, adicionais, cotação automática por endereço, total antes do envio, fila na unidade e acompanhamento. Frete reservado acompanha o aceite sem nova negociação | Cobertura do geocodificador pode exigir confirmação do imóvel no mapa. Hospedagem HTTPS e entrega de e-mail do domínio devem ser configuradas quando houver domínio publicado |
 | 3. Plataforma e identidade da operação | `/administracao`: master cadastra empresas; administrador personaliza nome/logo/cor, cadastra unidades e vincula equipe; administrador da marca acessa suas unidades e gerente apenas a unidade atribuída. Brasa Burger na operação e Convívium no rodapé | Equipe utiliza contas Auth já cadastradas. Não há disparo de convites por e-mail nem personalização completa de todos os tokens de tema |
 | 4. Segurança | Novo cadastro não cria colaborador; RLS por titular/unidade, escrita por RPC, preços verificados, limites de envio, idempotência, aceite e baixa atômicos; auxiliares legadas sem execução anônima e com `search_path` fixo | Proteção de senha vazada desativada na conta; funções autenticadas privilegiadas permanecem deliberadamente guardadas por permissões |
 | 5. Revisão profissional | Mensagens de instalação removidas das telas, textos de frete reduzidos, informações operacionais preservadas, estado de indisponibilidade do portal e página Canais de venda | ERP permanece piloto; não inclui contabilidade fiscal, emissão de notas ou fechamento financeiro completo |
 | 6. Pesquisa de concorrentes | Escopo e critérios registrados abaixo; nenhuma conclusão de mercado inventada | Pendente: ferramentas Exa indisponíveis. A busca de plugins também retornou indisponibilidade nesta sessão |
 | 7. Plataforma própria e futuras APIs | Origem própria mantida no servidor; página Canais de venda; contrato e arquitetura futura em `INTEGRACOES_FUTURAS.md` | Nenhuma conexão automática iFood/Goomer/Rappi é anunciada como ativa |
-| 8. Frete | Regressão do ORS e banco, preço adulterado, cotação vencida/usada, outro cliente/unidade e endereço divergente; aceitação integra frete ao total | Comparação de trajetos reais de carro/moto e testes operacionais com duas sessões reais continuam necessários |
+| 8. Frete | Regressão do ORS e banco, preço adulterado, cotação vencida/usada, outro cliente/unidade e endereço divergente; aceitação integra frete ao total | Trajetos reais ainda precisam de comparação em campo; duas sessões Auth independentes e concorrência PostgreSQL foram aprovadas no ambiente isolado |
 
 ## Operação do portal
 
@@ -42,7 +42,7 @@ Limites: 5 solicitações por conta em 15 minutos e 10 aguardando por conta; at�
 
 - Migração: `supabase/migrations/20261025000912_portal_clientes_convivium.sql`, aplicada no projeto configurado `aglrevynnumzokvwutok`. O horário UTC do nome foi gerado pelo CLI; a data local da execução foi 24/10/2026.
 - Fechamento: `20261025004910_empresas_acesso_frete_cliente.sql` aplicada; Edge Function `calcular-entrega` republicada com cotação móvel. A migração deve vir depois das definições de edição em `sql/edicao_fichas_vigente.sql` no bootstrap de uma instalação nova.
-- A migração depende das tabelas e migrações operacionais anteriores. As migrações versionadas não substituem o bootstrap legado em `sql/`.
+- A migração depende das tabelas e migrações operacionais anteriores. O instalador consolidado em `sql/instalacao/convivium-completo.sql` reúne bootstrap e migrações para bancos novos.
 - Para reproduzir as verificações: Node.js 24, `cd frontend`, `npm ci`, `npm test`, `npm run build`, `npm audit --audit-level=high`.
 - Configurar Supabase Auth com a URL HTTPS do frontend e `/pedir/**` entre os redirecionamentos permitidos. O cadastro envia `emailRedirectTo` para o portal da marca na origem atual. Testar o recebimento e a confirmação do e-mail no domínio publicado.
 - `VITE_SUPABASE_URL` e a chave pública ficam no frontend; chaves privilegiadas continuam apenas no servidor. Não alterar a chave de rotas nem contratar serviços pagos.
@@ -58,7 +58,7 @@ A skill Search exige Exa e proíbe fallback para pesquisa genérica. A sessão n
 
 ## Segurança e limites da evidência
 
-Verificações finais do fechamento: 100 testes aprovados (32 no PostgreSQL efêmero), build aprovado; dependências inalteradas desde a auditoria sem vulnerabilidades. Testes cobrem cadastro de empresa/unidade, troca de contexto, CPF repetido entre marcas, gerente restrito, bloqueio de vínculos cruzados, cotação do consumidor, expiração/titular e reserva preservada no aceite. O Advisor remoto retornou zero erros. A conferência de navegador está registrada em `VALIDACAO.md`.
+Verificações do fechamento em 04/11/2026: 101 testes aprovados (33 com PGlite), build e auditoria aprovados; Vite atualizado para 6.4.5. PostgreSQL nativo e Auth/API locais reais passaram no CI. Evidência: https://github.com/terpsandlups/BRASA_BURGER_CRUD_ERP/actions/runs/41924749997. Testes cobrem cadastro de empresa/unidade, troca de contexto, CPF repetido entre marcas, gerente restrito, bloqueio de vínculos cruzados, cotação do consumidor, expiração/titular e reserva preservada no aceite. O Advisor remoto retornou zero erros. A conferência de navegador está registrada em `VALIDACAO.md`.
 
 O CEP salvo no Retiro, `15992-503`, correspondia a Matão. O ViaCEP informou `13209-201`, bairro Jardim Paris, para a faixa 926/927 a 1744/1745 da Rua do Retiro em Jundiaí; foi corrigido o cadastro do número 1354, mantendo rua/número. Na consulta real Eloy → endereço do Retiro, a cotação automática iniciou, mas a base ORS não encontrou o imóvel: envio permaneceu bloqueado e mapa foi oferecido. Não foi emitida taxa fictícia, alterado ponto geográfico ou enviado pedido real nesse teste.
 

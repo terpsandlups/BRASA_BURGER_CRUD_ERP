@@ -1,13 +1,13 @@
 # Matriz final de evidências — Entrega 2
 
-Revisão de 29/10/2026; referência funcional `6c83548`. Fonte editável para o relatório e anexos. Os caminhos abaixo são relativos à raiz do repositório e devem apontar para a tag final na exportação.
+Revisão de 04/11/2026; referência `entrega-2-2026-2`. Os caminhos são relativos à raiz do repositório na tag de referência.
 
 ## Três disciplinas obrigatórias
 
 | Disciplina | Conceito | Aplicação necessária | Localização no código | Teste e evidência |
 |---|---|---|---|---|
 | Linguagem de Programação | Tipos, módulos, funções e retorno | Dados do carrinho transformados em solicitação | `frontend/src/lib/portalCliente.js`: `montarSolicitacao`, `totalCarrinho` | `frontend/test/portalCliente.test.js`: subtotal, normalização e entrada inválida |
-| Linguagem de Programação | Entrada/saída, eventos e estado | Consumidor escolhe unidade/itens; equipe recebe a solicitação | `frontend/src/pages/PortalCliente.jsx`; `frontend/src/pages/SolicitacoesMobile.jsx` | Demonstração conectada E2-APP-01 ainda pendente; cenários de RPC em `operacaoBanco.test.js` aprovados |
+| Linguagem de Programação | Entrada/saída, eventos e estado | Consumidor escolhe unidade/itens; equipe recebe a solicitação | `frontend/src/pages/PortalCliente.jsx`; `frontend/src/pages/SolicitacoesMobile.jsx` | API/Auth locais reais aprovados; escrita integral pela interface ainda não homologada; cenários RPC em `operacaoBanco.test.js` aprovados |
 | Linguagem de Programação | Erros e operações assíncronas | Preservar envio pendente quando a resposta de rede é incerta | `frontend/src/lib/pedidoTransacional.js`: `criarEnvioTransacional` | `frontend/test/pedidoTransacional.test.js`: recuperação e cliques simultâneos |
 | Algoritmos e Programação Estruturada | Sequência e seleção | Validar conta, unidade, modalidade, preços, CPF, cotação e itens antes da persistência | `supabase/migrations/20261025004910_empresas_acesso_frete_cliente.sql`: `erp_privado.enviar_mobile` | `frontend/test/operacaoBanco.test.js`: preço adulterado, cotação vencida e titular divergente |
 | Algoritmos e Programação Estruturada | Repetição e decomposição | Somar linhas/adicionais e processar itens da venda | `frontend/src/lib/portalCliente.js`: `totalCarrinho`; RPCs de envio/aceite | `portalCliente.test.js` e `operacaoBanco.test.js`: adicionais, quantidade e baixa |
@@ -17,7 +17,7 @@ Revisão de 29/10/2026; referência funcional `6c83548`. Fonte editável para o 
 | Matemática Computacional | Razões, percentuais e médias | CMV, margem, cobertura de custo e ticket com recorte explícito | `frontend/src/lib/dashboard.js`: `calcularDashboard` | `frontend/test/dashboard.test.js`: CMV 31,90%, cobertura 50%, cancelados e frete separado |
 | Matemática Computacional | Soma ponderada e módulo | Validar dígitos do CPF | `frontend/src/lib/format.js`: `validarCPF`; validação adicional na RPC móvel | `portalCliente.test.js` e `operacaoBanco.test.js`: CPF inválido recusado |
 
-A presença de código não substitui sua explicação. No PDF, interpretar um trecho de cada eixo, localizar arquivo/função/teste e relacionar a entrada ao resultado.
+A matriz localiza os trechos interpretados nas seções 6 a 8 do trabalho escrito, relacionando conceito, implementação e resultado.
 
 ## Disciplinas complementares da continuidade
 
@@ -27,4 +27,4 @@ A presença de código não substitui sua explicação. No PDF, interpretar um t
 | Computação em Nuvem | Supabase Auth/PostgREST, PostgreSQL, Edge Function e secrets no servidor; hospedagem externa pendente |
 | Análise Orientada a Objetos | Responsabilidades e relações de Empresa, Loja, Cliente, Pedido, Item, Produto e Variação; o frontend atual usa componentes/funções, não a classe inicial isolada do ZIP |
 
-O docente aceitou a linguagem, conforme confirmação do responsável. Os três eixos obrigatórios continuam explicitamente demonstrados. Conferir e incluir as bibliografias efetivamente usadas das três disciplinas em E2-REF-01.
+O docente aceitou a linguagem, conforme confirmação do responsável. Os três eixos obrigatórios continuam explicitamente demonstrados. As fontes efetivamente usadas estão na seção 11 do trabalho; a lista institucional completa não foi fornecida no enunciado.

@@ -67,7 +67,7 @@ export async function verificarPostgres(url){
    try{assert.equal((await c1.query('SELECT * FROM clientes')).rowCount,0)}
    catch(error){assert.equal(error.code,'42501')}
   }
-  return {data:'2026-10-29',ambiente:'PostgreSQL nativo local, dois bancos vazios e conexões independentes; contrato Auth de teste',resultados};
+  return {data:new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',dateStyle:'short'}).format(new Date()),ambiente:'PostgreSQL nativo local, dois bancos vazios e conexões independentes; contrato Auth de teste',resultados};
  }finally{
   for(const c of conexoes.slice(1).reverse()) await c.end().catch(()=>{});
   for(const nome of bancos) await admin.query(`DROP DATABASE IF EXISTS "${nome}" WITH (FORCE)`);

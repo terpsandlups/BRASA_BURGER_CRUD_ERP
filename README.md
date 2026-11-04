@@ -10,8 +10,8 @@ O foco acadêmico atual é a **Entrega 2**. O [plano completo](docs/entrega-02/R
 - **Valor:** 7.000 pontos.
 - **Submissão:** formulário oficial com título, URL completa do repositório e um ZIP de até 100 MB.
 - **Pacote final:** `PI-2026-2-CONVIVIUM-MANAGEMENT-SYSTEM-ENTREGA-2.zip`, contendo `trabalho-escrito.pdf`, `apresentacao.pdf` e `anexos/`.
-- **Versão final:** tag ou release `entrega-2-2026-2`, a criar após o fechamento e a conferência dos PDFs.
-- **Estado:** piloto funcional; documentação da Entrega 2 em consolidação. Os PDFs e o ZIP finais ainda precisam ser produzidos e conferidos.
+- **Versão final:** tag/release [`entrega-2-2026-2`](https://github.com/terpsandlups/BRASA_BURGER_CRUD_ERP/releases/tag/entrega-2-2026-2).
+- **Estado:** piloto funcional com pacote acadêmico preparado. PDFs em [output/pdf](output/pdf/), três PowerPoints em [Slides/Entrega-2](Slides/Entrega-2/) e ZIP na release. Ensaio oral e envio institucional ficam com os integrantes.
 
 ## Identificação acadêmica
 
@@ -26,7 +26,7 @@ O foco acadêmico atual é a **Entrega 2**. O [plano completo](docs/entrega-02/R
 | Modalidade | Continuidade de protótipo acadêmico |
 | Linguagem | JavaScript, com regras SQL/PL/pgSQL; aceite do docente confirmado pelo responsável em 29/10/2026 |
 
-A identificação e a organização inicial do grupo vêm da Entrega 1. Gabriel tem atribuições de arquitetura, JavaScript, modelagem e integração; Rafaela, de levantamento, fluxo, validação, testes e documentação. A Entrega 2 deve relacionar as contribuições efetivas a artefatos e registros, conforme seu plano.
+A identificação e a organização inicial do grupo vêm da Entrega 1. Gabriel tem atribuições de arquitetura, JavaScript, modelagem e integração; Rafaela, de levantamento, fluxo, validação, testes e documentação. O trabalho registra essa divisão declarada e a limitação de autoria individual no histórico de uma conta compartilhada.
 
 ## Problema, público e objetivo
 
@@ -39,7 +39,7 @@ O caso Brasa Burger considera Japy e Retiro com presencial e delivery, e Eloy ex
 | Área | Implementação | Limite relevante |
 |---|---|---|
 | Plataforma e marca | Master cadastra empresas; administrador configura nome, logo, cor, unidades e equipe | Vínculo exige conta Auth existente; convite por e-mail e edição integral do tema são futuros |
-| Acesso | Autenticação e autorização por empresa, perfil e unidade, com RLS e validação no banco | Homologação com duas sessões reais pendente |
+| Acesso | Autenticação e autorização por empresa, perfil e unidade, com RLS e validação no banco | Duas sessões Auth reais aprovadas em stack local isolada; carga não testada |
 | Portal do consumidor | Catálogo, conta, carrinho, adicionais, unidade, frete e acompanhamento próprio | HTTPS e confirmação de e-mail na origem externa ainda não homologados |
 | Recebimento pela loja | Fila por unidade; aceite cria venda e baixa estoque em transação | Solicitação aguardando não reserva estoque |
 | Pedidos e histórico | Compositor, preço por canal, busca, status, recuperação de envio e cancelamento | Reaproveitamento exige pedido integral de composição idêntica |
@@ -82,7 +82,7 @@ Com backend já preparado, copie `frontend/.env.example` para `frontend/.env`, c
 npm run dev
 ```
 
-Abra a URL exibida pelo Vite. `127.0.0.1` funciona apenas no próprio computador. A **instalação integral em banco vazio permanece pendente de comprovação**: migrações dependem do bootstrap legado em `sql/`; testes com fixture não comprovam esse bootstrap.
+Abra a URL exibida pelo Vite. `127.0.0.1` funciona apenas no próprio computador. A instalação integral usa [`sql/instalacao/convivium-completo.sql`](sql/instalacao/convivium-completo.sql), somente em banco novo. Foi verificada em PGlite, PostgreSQL nativo e Supabase local real. O guia documenta dados sintéticos e primeiro master.
 
 ## Uso principal
 
@@ -106,7 +106,7 @@ Desenvolvimento em JavaScript, Computação em Nuvem e Análise Orientada a Obje
 
 ## Testes, histórico e segurança
 
-Em 29/10/2026, a revisão de `6c83548` executou **100 testes, 100 aprovados e zero falhas**, incluindo 32 cenários PostgreSQL isolados. O [GitHub Actions de 26/10/2026](https://github.com/terpsandlups/BRASA_BURGER_CRUD_ERP/actions/runs/40368508146) aprovou testes, build e auditoria nessa versão. Consulte [casos e resultados da Entrega 2](docs/entrega-02/anexos/CASOS_E_RESULTADOS.md) e [registros anteriores](VALIDACAO.md).
+Em 04/11/2026, a versão validada possui **101 testes aprovados**, incluindo 33 com PostgreSQL/PGlite. O [GitHub Actions](https://github.com/terpsandlups/BRASA_BURGER_CRUD_ERP/actions/runs/41924749997) aprovou testes, build, auditoria, PostgreSQL nativo e Auth/API em Supabase local descartável. Duas sessões independentes confirmaram uma venda/baixa e o cancelamento repôs o estoque. Consulte [casos e resultados da Entrega 2](docs/entrega-02/anexos/CASOS_E_RESULTADOS.md) e [registros anteriores](VALIDACAO.md).
 
 O histórico possui incrementos de setembro e outubro de 2026. O [texto-base](docs/entrega-02/TRABALHO_ESCRITO.md) distingue protótipo, Entrega 1 e evolução integrada. Os commits observados estão concentrados em `terpsandlups`; a comprovação individual também depende de registros e artefatos reais.
 

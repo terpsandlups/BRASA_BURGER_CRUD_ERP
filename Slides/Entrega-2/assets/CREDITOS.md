@@ -1,0 +1,1 @@
+Foto ilustrativa recuperada de Brasa Burguer Management.pptx, image2.png. Não retrata a operação Brasa Burger. Fonte original indicada no arquivo: https://ak1.ostkcdn.com/images/products/30115178/6-Stainless-Steel-Metal-Receipt-Spike-Holder-Bill-Spindle-for-Restaurant-Office-0a9481ad-a3f0-405b-beec-66f7f8c9cd58_600.jpg?impolicy=medium

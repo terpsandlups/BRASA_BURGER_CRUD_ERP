@@ -1,6 +1,6 @@
 # Memória de cálculo implementada — Entrega 2
 
-Referência: `6c83548`; revisão de 29/10/2026. Valores de exemplo são sintéticos. As fórmulas descrevem a implementação atual, substituindo para a Entrega 2 a base matemática do exemplo inicial isolado.
+Referência: `entrega-2-2026-2`; revisão de 04/11/2026. Valores de exemplo são sintéticos. As fórmulas descrevem a implementação atual, substituindo para a Entrega 2 a base matemática do exemplo inicial isolado.
 
 ## 1. Quantidades, preços e subtotal
 
@@ -95,4 +95,4 @@ O custo do dashboard é estimado pela ficha atual, podendo mudar após alteraç�
 
 O modelo satisfaz uma necessidade da aplicação: determinar total/frete e apoiar leitura de custo e venda. Sua validação combina cálculo manual e asserções automatizadas. O relatório e os slides devem declarar as unidades, a base dos percentuais, a regra de arredondamento e as limitações acima.
 
-Na revisão final, conferir novamente fórmulas e resultados se houver mudança no código. A fórmula antiga de CMV sobre total com frete, existente no pacote da Entrega 1, não deve ser apresentada como regra atual do dashboard.
+A fórmula histórica de CMV sobre total com frete, existente no pacote da Entrega 1, difere da regra atual do dashboard, que separa o frete e informa cobertura.

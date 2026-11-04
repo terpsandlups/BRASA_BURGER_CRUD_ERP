@@ -4,16 +4,16 @@
 
 | Campo | Registro |
 |---|---|
-| Código funcional | `6c83548fd19d31ad71f0f0641754597664c60eb5` |
-| Execução local | 29/10/2026, Windows, Node.js, diretório `frontend/` |
+| Código funcional | tag `entrega-2-2026-2`; código validado em `9efb272` |
+| Execução local | 04/11/2026, Windows, Node.js, diretório `frontend/` |
 | Comando | `npm test` → `node --test` |
-| Obtido | 100 testes; 100 aprovados; 0 falhas, cancelados ou ignorados |
-| Banco | 32 cenários PostgreSQL/PGlite isolados, com rollback |
-| CI | [Execução 40368508146](https://github.com/terpsandlups/BRASA_BURGER_CRUD_ERP/actions/runs/40368508146), 26/10/2026, mesmo commit, conclusão success |
+| Obtido | 101 testes; 101 aprovados; 0 falhas, cancelados ou ignorados |
+| Banco | 33 cenários PostgreSQL/PGlite isolados, com rollback |
+| CI | [Execução 41924749997](https://github.com/terpsandlups/BRASA_BURGER_CRUD_ERP/actions/runs/41924749997), 04/11/2026, três jobs com conclusão success |
 | Passos do CI | Instalação pelo lockfile, testes, build e auditoria de dependências |
-| Limite | Repetir os checks na versão final antes da tag |
+| Limite | Não comprova carga, e-mail externo ou trajetos físicos |
 
-A revisão documental posterior não altera nem reatribui esses resultados. Testes isolados não acessam o Supabase operacional nem comprovam o bootstrap integral. Os caminhos abaixo são relativos à raiz do repositório; os nomes localizam as asserções e os dados completos. A tabela é um recorte da suíte.
+A revisão documental posterior não altera nem reatribui esses resultados. Os testes não acessam o Supabase operacional. O novo teste de bootstrap usa a sequência integral, sem a fixture operacional. A API/Auth foi verificada separadamente na stack local do runner. Os caminhos abaixo são relativos à raiz do repositório; os nomes localizam as asserções e os dados completos. A tabela é um recorte da suíte.
 
 ## Casos automatizados executados
 
@@ -40,18 +40,20 @@ A revisão documental posterior não altera nem reatribui esses resultados. Test
 
 Arquivos: `frontend/test/entrega.test.js`, `dashboard.test.js`, `operacaoBanco.test.js` e `pedidoTransacional.test.js`. A suíte SQL carrega `frontend/test/fixtures/erp.sql` e as migrações indicadas no seu bloco de preparação.
 
-## Homologações necessárias
+## Homologações e alcance da evidência
 
-| Caso / tarefa | Entrada e execução | Esperado | Obtido / situação |
+| Caso | Entrada | Esperado | Obtido / interpretação |
 |---|---|---|---|
-| HM01 / E2-REP-01 | Instalação documentada em Supabase vazio | Backend reproduzível sem objetos ocultos | Não executado; bootstrap integral pendente |
-| HM02 / E2-APP-01 | Consumidor → unidade → aceite → estoque → histórico pela interface | Mesma operação rastreável em todas as etapas | Não executado integralmente em ambiente descartável |
-| HM03 / E2-SEG-01 | Duas sessões reais confirmando a mesma solicitação | Uma venda/baixa e recuperação coerente | Pendente; PGlite não substitui duas conexões remotas |
-| HM04 / E2-SEG-01 | Contas reais de teste em empresas/unidades distintas | Acesso alheio negado | Pendente de homologação conectada; testes SQL aprovados |
-| HM05 / E2-RES-01 | Venda, cancelamento com destinação e reposição | Estoque, receita e indicadores conciliados | Pendente de ciclo conectado completo |
-| HM06 / E2-ENT-01 | Origens reais confirmadas e destinos variados | Distância/taxa coerentes com trajeto real | Pendente de comparação em campo |
-| HM07 / E2-EXT-01 | Cadastro/confirmação em origem HTTPS | Receber e-mail e retornar ao portal da marca | Não executado; origem externa não publicada |
-| HM08 / E2-EXP-01 | Capturas atuais da demonstração | Legibilidade, dados sintéticos e versão identificada | Pendente de capturas finais |
+| CT19 / HM01 | Sequência integral em dois bancos vazios | Objetos, permissões, primeiro master e dados mínimos | PGlite e PostgreSQL nativo aprovados; também Supabase local real |
+| HM02 | Auth real, montagem/envio do frontend e PostgREST local | Solicitação na unidade correta, espera sem baixa, aceite e acompanhamento | R$ 55,80, saldo 100 antes e 98 após aceite; etapa recebido. API aprovada; escrita integral pela interface não realizada |
+| HM03 | Duas conexões PostgreSQL e duas sessões Auth simultâneas | Venda e baixa únicas | Aprovado em ambos os ensaios. Nativo: R$ 25,00/150 g; API: R$ 55,80/2 un. Cenários distintos |
+| HM04 | Gerente de outra unidade e consumidores | Negar leitura/alteração alheia | Aprovado em SQL e API; isolamento entre empresas adicionalmente coberto por PGlite |
+| HM05 | Cancelar com devolução e estoque insuficiente | Repor uma vez, preservar histórico e reverter falha | Nativo: 850 g para 1000 g; API: 98 para 100. Rollback insuficiente aprovado no nativo e suíte SQL |
+| HM06 | Endereços reais e rotas físicas | Distância/taxa compatíveis | Não executado em campo. Fórmula e falhas de cobertura testadas |
+| HM07 | Origem HTTPS e e-mail externo | Confirmação retorna ao portal | Não executado; ERP externo não publicado |
+| HM08 | Catálogo e carrinho na interface | Carregar unidade/itens e somar preços | Aprovado em 04/11: 2 x 26,90 = 53,80. Capturas não mostram envio |
+
+Resultados sanitizados: `resultado-postgres.json` e `resultado-api-local.json`. A stack Auth/API foi criada e destruída no runner isolado. Nenhuma conta ou pedido sintético foi criado no Supabase compartilhado.
 
 ## Falhas corrigidas e limites
 
@@ -59,7 +61,7 @@ Arquivos: `frontend/test/entrega.test.js`, `dashboard.test.js`, `operacaoBanco.t
 - Preço adulterado, cotação inválida, estoque insuficiente e acesso alheio são rejeições esperadas nos testes.
 - O registro anterior relata falha de geocodificação do endereço comercial do Retiro: envio bloqueado e mapa oferecido, sem taxa inventada. Isso comprova tratamento daquela falha, não sucesso de rota do imóvel.
 - Respostas simuladas do provedor não demonstram cobertura cartográfica real.
-- Carga e múltiplas conexões reais continuam pendentes.
+- Carga permanece não testada. Concorrência com conexões independentes foi aprovada; ela não representa carga de produção.
 - Auditoria de dependências aprovada não comprova ausência de segredos nem ausência de todo risco.
 
 ## Modelo de registro para cada execução nova

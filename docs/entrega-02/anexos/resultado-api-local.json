@@ -1,0 +1,11 @@
+{
+  "data": "2026-11-04",
+  "ambiente": "Supabase local descartável no GitHub Actions: Auth, PostgREST e PostgreSQL reais",
+  "resultado": [
+    "Auth real local e catálogo via PostgREST: três unidades e um produto sintético",
+    "Funções do frontend enviam solicitação real: subtotal R$ 55,80 e estoque ainda 100",
+    "Duas sessões Auth independentes aceitam: uma venda R$ 55,80, saldo 98 e acompanhamento recebido",
+    "Gerente de outra unidade não lê nem avança o pedido",
+    "Cancelamento via API real devolve duas unidades e preserva o histórico"
+  ]
+}

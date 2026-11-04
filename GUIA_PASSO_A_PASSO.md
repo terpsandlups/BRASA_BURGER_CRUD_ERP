@@ -8,7 +8,7 @@ Revisão: 29/10/2026. Versão funcional de referência: `6c83548`. Veja os [crit
 |---|---|---|
 | Testes e build isolados | Git, Node.js 24, npm e lockfile | Testes locais e testes/build/auditoria do CI aprovados na versão de referência |
 | Interface com backend preparado | Frontend e Supabase com schema, regras e dados compatíveis | Uso registrado em `VALIDACAO.md`; depende do backend preparado |
-| Backend vazio | Bootstrap, migrações, Auth, primeiro master, função e dados sintéticos | **Homologação pendente E2-REP-01** |
+| Backend vazio | Bootstrap, migrações, Auth, primeiro master, função e dados sintéticos | Instalador integral validado em banco vazio |
 
 A fixture dos testes não é uma instalação integral a partir de `sql/schema.sql`.
 
@@ -35,7 +35,7 @@ npm test
 npm run build
 ```
 
-A revisão de referência tem 100 testes aprovados, incluindo 32 em PostgreSQL via PGlite em memória. Não exigem `.env`, Supabase remoto ou chave de rotas. O build gera `frontend/dist/`; não configura o backend.
+A revisão de referência tem 101 testes aprovados, incluindo 33 em PostgreSQL via PGlite em memória. Não exigem `.env`, Supabase remoto ou chave de rotas. O build gera `frontend/dist/`; não configura o backend.
 
 A auditoria do CI pode ser reproduzida com acesso à rede:
 
@@ -74,37 +74,39 @@ Abra a URL exibida pelo Vite. Outro Vite pode usar o mesmo banco: iniciar o fron
 - **Equipe:** exige conta Auth e registro ativo em `usuarios`, com empresa, perfil e unidade compatíveis.
 - **Administrador:** em `/administracao`, vincula por e-mail uma conta Auth já existente ao perfil e à unidade permitidos.
 - **Gerente:** opera apenas na unidade vinculada, conforme validação no servidor.
-- **Master existente:** cadastra empresas e seleciona contexto. O provisionamento do primeiro master em banco vazio integra E2-REP-01.
+- **Master existente:** cadastra empresas e seleciona contexto. O primeiro master é provisionado pelo dono do banco, conforme a seção 6.
 
 A instrução antiga de cadastro automático como Visualização foi substituída pelo provisionamento explícito. Cadastro público nunca concede perfil ERP.
 
-## 6. Instalação integral em banco vazio — E2-REP-01
+## 6. Instalação integral em Supabase novo
 
-Ainda não há uma sequência integral homologada. Para fechar essa exigência:
+A sequência foi verificada em bancos vazios PGlite, PostgreSQL nativo e stack Supabase local real. Use um projeto novo ou uma stack local descartável. O instalador recusa tabelas ERP já existentes e não serve para atualizar o banco operacional.
 
-1. Preparar Supabase descartável, separado de dados operacionais.
-2. Conferir o bootstrap legado e registrar a ordem efetivamente testada dos SQLs.
-3. Incluir funções, views, triggers, grants, RLS e migrações de portal/empresas sem depender de objetos exclusivos do ambiente existente.
-4. Documentar e testar a criação da primeira conta Auth e seu vínculo como master.
-5. Preparar dados sintéticos mínimos de empresa, unidades, catálogo, ficha, estoque e contas de teste.
-6. Configurar Auth e função de entrega; executar o fluxo integrado.
-7. Repetir em outro banco vazio e guardar comandos, versões e resultados.
+1. Crie um projeto Supabase novo, ou inicie uma stack Supabase local com Docker e CLI. Auth e os papéis `anon`, `authenticated` e `service_role` devem existir antes da instalação.
+2. No SQL Editor como dono do banco, execute `sql/instalacao/convivium-completo.sql` integralmente. Ele reúne 22 fontes na ordem de dependência registrada em `frontend/scripts/bootstrap.mjs`.
+3. Para demonstração em banco novo, execute `sql/instalacao/dados_demonstracao.sql`. A carga possui três unidades demonstrativas, um produto de R$ 27,90, ficha e saldo 100 por unidade. Não inclui endereços físicos, coordenadas, senhas ou contas Auth. A reaplicação é recusada para evitar mistura de dados.
+4. Crie a conta inicial pelo Auth do projeto novo, com e-mail que você controla. Confirme o e-mail conforme a política do ambiente.
+5. Somente no SQL Editor como dono do banco, substitua o e-mail no comando abaixo pelo da conta criada:
 
-Inventário a conciliar, **não uma ordem certificada de execução**:
+```sql
+SELECT erp_privado.provisionar_primeiro_master('seu-email@example.com');
+```
 
-| Grupo | Fontes |
-|---|---|
-| Base e perfis | `sql/schema.sql`, `sql/migration_fase1.sql` |
-| Catálogo e endereço | `sql/migration_fase1b_cardapio.sql`, `sql/migration_fase1d_endereco_cliente.sql`, `sql/migration_cadastro_insumos.sql` |
-| Estoque e análises | `sql/migration_fase2_estoque.sql`, `sql/migration_fase4_5_fundacao_analitica.sql` |
-| Pedido e entrega | `sql/migration_pedido_transacional.sql`, `sql/migration_configuracao_entrega.sql`, `sql/migration_consulta_rotas.sql` |
-| Evolução | Arquivos existentes em `supabase/migrations/`, ordenados por dependência |
-| Edição de catálogo/ficha | `sql/edicao_fichas_vigente.sql`, antes de `20261025004910_empresas_acesso_frete_cliente.sql` |
-| Marca e unidades | `sql/update_marca_unidades.sql`, conferindo dependências e dados |
+A função exige a conta Auth existente e recusa execução quando já há master. Não é uma RPC pública e não concede privilégio pelo cadastro do consumidor.
 
-Não existe arquivo versionado `sql/migration_fase1c_rls_geral.sql`. O arquivo local `sql/migration_edicao_fichas.sql` não é fonte da versão publicada; use como referência versionada `sql/edicao_fichas_vigente.sql`.
+6. Configure `frontend/.env` com URL e chave pública desse projeto novo. Execute `npm run dev` em `frontend/` e entre com a conta master. Em `/administracao`, confira empresa, unidades e perfis. A equipe precisa ter conta Auth existente para receber vínculo.
+7. Para demonstrar o fluxo sem provedor de rotas, escolha retirada/presencial na unidade demonstrativa Japy. Crie uma conta de consumidor separada no portal. Envie dois produtos, aceite na fila, confira total 55,80 e saldo 98. Cancelar com devolução deve retornar o saldo a 100. Nunca execute esse roteiro sintético no ambiente operacional compartilhado sem autorização própria.
+8. Para delivery, configure a função e as origens reais conforme a seção 7. O seed não inventa coordenadas para lojas reais.
 
-Os scripts Python de seed citam marca anterior e estado prévio; precisam ser adaptados e testados para a estrutura atual de empresas antes de compor a carga oficial. O MySQL é um estudo separado e não instala a aplicação Supabase.
+O instalador foi gerado de fontes versionadas. Para regenerá-lo após alterações autorizadas, execute na raiz `node frontend/scripts/gerar-instalacao.mjs` e revise o diff. `sql/instalacao/base.sql` preserva a base de instalação versionada; alterações locais não publicadas em `sql/schema.sql` não compõem essa sequência.
+
+### Reprodução automatizada
+
+O workflow `.github/workflows/validacao.yml` executa três jobs: testes/build/auditoria, PostgreSQL 17 e Supabase local com CLI 2.117.0. O último usa Auth, PostgREST e sessões reais e exporta `resultado-api-local.json`. As contas e senhas sintéticas existem somente na stack descartável do runner.
+
+Com PostgreSQL local disponível, pode-se executar `npm run verify:postgres` em `frontend/`, definindo `POSTGRES_TEST_URL` para uma instância local de teste. O usuário precisa poder criar e remover bancos. O script recusa host remoto, cria dois bancos com nomes aleatórios e remove somente os bancos que criou. O contrato Auth deste ensaio é mínimo de teste; o job Supabase valida os serviços reais separadamente.
+
+As evidências sanitizadas ficam em `docs/entrega-02/anexos/resultado-postgres.json` e `resultado-api-local.json`. Scripts Python legados e o estudo MySQL não são necessários para instalar o ERP.
 
 ## 7. Delivery e acesso externo
 
@@ -125,7 +127,7 @@ Em ambiente de teste com dados sintéticos e commit registrado:
 7. Mostrar cálculo e teste correspondente; explicar cancelados e cobertura de custo.
 8. Demonstrar cancelamento/estorno e bloqueio de outra empresa/unidade.
 
-Escrita pela interface e concorrência real ainda dependem de E2-APP-01/E2-SEG-01. Este roteiro descreve a execução necessária, não declara esses cenários homologados.
+Concorrência real e ciclo de pedido/cancelamento passaram por SQL e API em ambiente isolado. A revisão de interface cobriu catálogo e carrinho. O ciclo escrito integral pela interface, rotas físicas e e-mail externo ainda precisam de homologação própria.
 
 ## 9. Falhas e evidências
 

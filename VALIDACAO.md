@@ -1,5 +1,19 @@
 # Registro de validação — Convivium / Brasa Burguer
 
+## Fechamento da Entrega 2: 04/11/2026
+
+- 101 testes Node aprovados, incluindo 33 com PostgreSQL/PGlite, e build Vite 6.4.5 aprovado.
+- Instalação integral em bancos vazios, primeiro master controlado e carga sintética: aprovados.
+- PostgreSQL nativo: conexões independentes, uma solicitação/venda/baixa, acesso alheio negado, estorno e rollback por insuficiência aprovados.
+- Supabase local real no runner: Auth, PostgREST, funções do frontend, fila, duas sessões de aceite, acompanhamento e cancelamento aprovados.
+- Catálogo/carrinho pela interface pública: duas unidades de 26,90, total 53,80. Nenhum envio nessas capturas.
+- CI: https://github.com/terpsandlups/BRASA_BURGER_CRUD_ERP/actions/runs/41924749997. Três jobs com sucesso.
+- Evidências: `docs/entrega-02/anexos/resultado-postgres.json`, `resultado-api-local.json`, `CASOS_E_RESULTADOS.md` e `evidencias/`.
+- Limites: HTTPS do ERP, e-mail externo, rotas físicas, carga e ciclo escrito integral pela interface não foram homologados. Não houve escrita sintética no Supabase compartilhado.
+
+Os registros abaixo preservam execuções anteriores e suas contagens históricas.
+
+
 ## Referência acadêmica da Entrega 2 — 29/10/2026
 
 - Código funcional conferido no GitHub: `6c83548fd19d31ad71f0f0641754597664c60eb5`, de 26/10/2026; repositório público.

@@ -1,6 +1,6 @@
 # Arquitetura, fluxo e dados — Entrega 2
 
-Fontes de 29/10/2026 para o código `6c83548`. Exportação e conferência visual para PDFs/anexos permanecem em E2-EXP-01.
+Fontes de 29/10/2026 para a versão `entrega-2-2026-2`. Fontes editáveis complementam a representação textual e as tabelas do relatório e anexos PDF.
 
 ## Figura 1 — arquitetura implementada
 

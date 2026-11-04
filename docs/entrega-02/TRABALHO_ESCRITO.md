@@ -1,170 +1,222 @@
 # Convívium Management System
 
-## Aplicação integrada para gestão de operações de alimentação — caso Brasa Burger
+## Aplicação integrada para gestão de operações de alimentação
 
-**Texto-base da Entrega 2 — 2026/2.** Revisão de 29/10/2026, baseada no código funcional `6c83548`. Fonte editável; revisão final, homologações e exportação de `trabalho-escrito.pdf` dependem do [plano de fechamento](README.md).
+Caso Brasa Burger. Entrega 2, 2026/2. Jundiaí/SP, novembro de 2026.
+
+Versão de referência: tag `entrega-2-2026-2` do repositório público https://github.com/terpsandlups/BRASA_BURGER_CRUD_ERP. A Entrega 1 permanece preservada como histórico.
 
 ## 1. Identificação e resumo
 
-| Campo | Identificação |
+| Campo | Informação |
 |---|---|
 | Instituição | Faculdade Anhanguera |
 | Curso | Tecnologia em Análise e Desenvolvimento de Sistemas |
 | Disciplina e turma | Projeto Integrado I, II e III |
-| Período | 2026/2 |
+| Período e local | 2026/2, Jundiaí/SP |
 | Docente | Prof. Gilberto Falco Netto |
-| Integrantes | Gabriel Rodrigues do Prado — 3º semestre; Rafaela Rodrigues Oliveira — 1º semestre |
-| Local | Jundiaí/SP |
+| Integrantes | Gabriel Rodrigues do Prado, 3º semestre; Rafaela Rodrigues Oliveira, 1º semestre |
 | Modalidade | Continuidade de protótipo acadêmico |
-| Título atual | Convívium Management System — aplicação integrada para gestão de operações de alimentação |
 
-**Resumo.** O projeto integra atendimento, clientes, catálogo, pedidos, estoque, entrega e indicadores em uma aplicação web. Convívium identifica a plataforma e Brasa Burger, a empresa do caso de aplicação. A solução separa consumidor e operação do ERP, com acesso por empresa, perfil e unidade. JavaScript/React implementa interface e funções de apoio; Supabase fornece autenticação e acesso aos dados; PostgreSQL concentra integridade, autorização e transações. As disciplinas aparecem no processamento modular dos pedidos, nas estruturas de controle e nos cálculos monetários e gerenciais. A referência possui 100 testes automatizados aprovados, incluindo 32 cenários PostgreSQL isolados, e validação remota no GitHub Actions. Permanecem pendentes a instalação integral em banco vazio, homologações conectadas e os artefatos finais da submissão. O resultado atual é um piloto funcional com limites explícitos.
+**Resumo.** O projeto integra consumidor, atendimento e gestão de operações de alimentação. Convívium identifica a plataforma personalizável; Brasa Burger identifica a empresa do caso de aplicação. A interface React/JavaScript usa Supabase Auth e PostgREST, enquanto PostgreSQL executa regras de acesso, integridade e transações. O consumidor seleciona uma unidade, monta o carrinho e envia uma solicitação. A equipe autorizada aceita a solicitação e gera venda e consumo de estoque uma única vez. Programação, algoritmos e matemática aparecem em módulos, validações, estruturas de controle e cálculos monetários e gerenciais. A suíte possui 101 testes aprovados e a instalação integral foi reproduzida em bancos vazios. Conexões PostgreSQL independentes confirmaram idempotência, baixa única e reversão. O resultado é um piloto acadêmico funcional, acompanhado de instruções, evidências e limites explícitos para operação externa.
 
 Palavras-chave: aplicação integrada; JavaScript; algoritmos; matemática computacional; gestão multiunidade.
 
 ## 2. Introdução
 
-O problema é a fragmentação das informações de atendimento e gestão em operações de alimentação. Cadastros repetidos, pedidos sem rastreabilidade e indicadores com critérios diferentes dificultam comparar unidades e conferir custos. Os interessados são operadores, gerentes, responsáveis pelo estoque, proprietários e consumidores.
+Operações de alimentação precisam relacionar pedidos, cadastro, disponibilidade de produtos, estoque e custos. Quando essas informações ficam separadas, a equipe repete registros e encontra dificuldade para recuperar a origem de uma venda ou comparar unidades com os mesmos critérios. O problema deste projeto é integrar esse fluxo com autorização e resultados verificáveis.
 
-A solução reúne o fluxo comercial e a operação em uma base comum. A equipe consulta pedidos, catálogo, estoque e indicadores; consumidores usam o portal da marca e escolhem a unidade responsável. No caso Brasa Burger, Japy e Retiro atendem presencial e delivery; Eloy opera somente delivery.
+Os interessados são consumidores, operadores, gerentes, responsáveis pelo estoque e administradores. No caso Brasa Burger, Japy e Retiro atendem presencial e delivery; Eloy opera somente delivery. O consumidor utiliza o portal da marca e a solicitação chega à unidade escolhida. A plataforma Convívium permite configurar outras empresas, preservando identidade e separação de dados.
 
-A plataforma Convívium permite configurar outras empresas, mantendo identidade e isolamento de dados. A justificativa acadêmica é aplicar programação, decomposição de algoritmos e matemática a um processo que produz resultados verificáveis.
+A justificativa acadêmica é aplicar programação, decomposição de algoritmos e matemática a uma necessidade operacional. A aplicação oferece exemplos verificáveis de entrada, processamento, persistência e saída. Os resultados relatados são de testes e demonstração; não representam estudo estatístico de produtividade de uma operação comercial.
 
 ## 3. Objetivos e escopo final
 
-**Objetivo geral:** implementar e documentar uma aplicação integrada para gerir pedidos e informações de operações de alimentação, do consumidor à loja, com regras de acesso, persistência, estoque e cálculo.
+O objetivo geral é implementar e documentar uma aplicação integrada para gerir pedidos e informações de operações de alimentação, do consumidor à loja, com regras de acesso, persistência, estoque e cálculo.
 
-Objetivos específicos:
+Os objetivos específicos são separar plataforma, empresas e unidades; permitir cadastro e solicitação pelo consumidor; receber a solicitação na unidade correta; gerar venda e baixa atômicas no aceite; consultar histórico e indicadores coerentes; e disponibilizar código, testes e instruções correspondentes à apresentação.
 
-- Separar plataforma, empresa e unidades, com identidade configurável e perfis.
-- Permitir cadastro e envio de solicitação pelo consumidor, com itens, adicionais e frete válido.
-- Receber a solicitação na unidade correta e gerar venda/baixa pelo aceite transacional.
-- Consultar histórico e indicadores coerentes com o recorte aplicado.
-- Demonstrar funções, estruturas de controle e cálculos por código e testes localizáveis.
-- Disponibilizar instruções e evidências compatíveis com a versão apresentada.
-
-**Implementado na referência:** portal por marca, conta de consumidor, catálogo/carrinho/adicionais, cotação com confirmação de ponto quando necessária, fila, aceite/recusa, pedidos, histórico, clientes, fichas, reposição, dashboard/Analytics e administração de empresas/unidades/equipe. A personalização abrange nome, logo e cor de destaque.
-
-**Limites:** pagamento presencial; canais de marketplace lançados manualmente; financeiro/fiscal completo, aplicativo nativo, convites e tema integral são evoluções. A solicitação aguardando não reserva estoque. Instalação integral vazia, duas sessões reais e conciliação conectada precisam de homologação. HTTPS externo e confirmação de e-mail não foram comprovados. Cobertura cartográfica pode exigir confirmação do imóvel. Atualizar esses limites segundo o resultado real das atividades finais.
-
-## 4. Histórico do projeto
-
-A linha de base anterior possuía telas de painel, pedidos, clientes e produtos/fichas. A Entrega 1, “Brasa Burguer Management”, documentou problema, escopo, modelos e uma unidade inicial JavaScript com seus próprios exemplos e resultados. O pacote permanece histórico e não representa a arquitetura completa atual.
-
-| Marco | Registro | Incremento ou função |
+| Área | Entrega implementada | Limite relevante |
 |---|---|---|
-| Primeiro registro Git | `e20ed1b`, 13/09/2026 | Organização e documentação inicial; não é prova da data de criação do protótipo |
-| Evolução do MVP | `b616dc7`, 05/10/2026 | Operação, análises e entregas por mapa |
-| Frete no pedido | `cd50e13`, 07/10/2026 | Cotação integrada ao pedido transacional |
-| Cancelamento | `1728475`, 08/10/2026 | Estorno e destinações de estoque |
-| Operação e segurança | `ee20fcf`, 17/10/2026 | Regras, permissões e testes de banco |
-| Interface | `f8ff1d2` e `2b709c3`, 17/10/2026 | Compositor e tema compartilhado |
-| Portal | `28a283b`, 24/10/2026 | Consumidor separado do ERP e aceite transacional |
-| Empresas | `6c83548`, 26/10/2026 | Contextos de empresa, escopos e frete pelo consumidor |
+| Plataforma | Master administra empresas; administrador configura nome, logo, destaque, unidades e equipe | Vínculo de equipe exige conta Auth existente |
+| Acesso | Perfis, empresa e unidade com RLS e validação SQL | Gerente opera somente a unidade vinculada |
+| Consumidor | Portal, conta, catálogo, adicionais, carrinho e acompanhamento próprio | Cadastro público não concede perfil ERP |
+| Operação | Fila por unidade, aceite/recusa, pedido, histórico, cancelamento e reposição | Solicitação aguardando não reserva estoque |
+| Entrega própria | Cotação no servidor, rota e confirmação no mapa | Cobertura depende de endereço e origem válidos |
+| Indicadores | Faturamento, frete separado, ticket, CMV, cobertura e filtros | Custo usa ficha atual; margem não é lucro líquido |
 
-Repositório: https://github.com/terpsandlups/BRASA_BURGER_CRUD_ERP. Na revisão, havia 22 commits de setembro/outubro. A comparação dos diffs distingue o trabalho anterior e os incrementos de 2026/2. A tag final `entrega-2-2026-2` deve ser criada após a conferência da versão final.
+Pagamento online, integração automática com marketplaces, financeiro/fiscal completo, aplicativo nativo, convites por e-mail e personalização integral de tema são evoluções. Os canais externos previstos são lançamentos manuais. HTTPS do ERP, confirmação de e-mail externo e comparação de trajetos físicos permanecem como homologações operacionais posteriores. O site de apresentação fornecido pelo grupo é demonstrativo e não constitui uma publicação do ERP conectado.
 
-## 5. Método de desenvolvimento
+## 4. Histórico e continuidade
 
-O desenvolvimento utiliza módulos JavaScript, componentes React, funções SQL/PL/pgSQL, migrações, controle de versões e testes automatizados. Node.js 24 executa Vite e Node Test Runner. PGlite executa cenários PostgreSQL em memória, com dados sintéticos e rollback. O workflow instala dependências pelo lockfile, testa, compila e audita dependências.
+A Entrega 1, intitulada Brasa Burguer Management, apresenta problema, proposta, modelagem, organização do grupo e um exemplo JavaScript inicial. Seu ZIP original permanece no repositório. A etapa atual integra portal, contexto de empresas, regras transacionais e documentação de reprodução. A classe inicial e a arquitetura proposta na primeira etapa não descrevem, sozinhas, a implementação atual.
 
-O docente aceitou JavaScript, conforme confirmação do responsável em 29/10/2026. A implementação associa esse trabalho às regras SQL e aos três eixos obrigatórios do enunciado.
+| Marco Git | Data | Incremento |
+|---|---|---|
+| `e20ed1b` | 13/09/2026 | Primeiro registro Git de organização e documentação |
+| `b616dc7` | 05/10/2026 | Operação, análises e entregas por mapa |
+| `cd50e13` e `1728475` | 07 e 08/10/2026 | Frete transacional e cancelamento com destinação |
+| `ee20fcf` | 17/10/2026 | Permissões, regras e testes de banco |
+| `28a283b` | 24/10/2026 | Portal do consumidor e aceite transacional |
+| `6c83548` | 26/10/2026 | Empresas, escopos e frete pelo consumidor |
+| `6257e5d` | 29/10/2026 | Consolidação dos requisitos da Entrega 2 |
+| `cb4fb07` e `9efb272` | 04/11/2026 | Instalação integral, teste nativo e workflow isolado |
 
-**Organização do grupo:** conforme a Entrega 1, Gabriel Rodrigues do Prado assume arquitetura, módulos JavaScript, modelagem OO, integração e revisão técnica; Rafaela Rodrigues Oliveira assume levantamento do fluxo, problema, entradas/saídas, casos de teste e revisão documental. Essa divisão organiza o trabalho; as atividades efetivamente realizadas na Entrega 2 precisam ser relacionadas aos artefatos e registros reais em E2-AUT-01.
+Os materiais históricos incluem duas apresentações anteriores. As versões atualizadas deste pacote são a apresentação acadêmica e o complemento de fundamentos técnicos. Uma terceira apresentação explica a proposta de modelo de negócio do Convívium, sem inventar faturamento, preços contratados ou resultados de mercado.
 
-O histórico observado concentra commits em uma conta. Não atribuir autoria individual a um commit compartilhado sem evidência. Ambos devem explicar implementação, cálculos e resultados na apresentação.
+## 5. Método, organização e arquitetura
 
-**Arquitetura:** React acessa Supabase Auth e PostgREST/RPC no navegador. PostgreSQL verifica autorização, preços, cotação e estoque. A Edge Function consulta openrouteservice/HeiGIT com segredo no servidor; OpenStreetMap/Leaflet fornece o mapa. Node.js não é uma API intermediária; seeds Python são legados independentes e MySQL é estudo separado.
+O trabalho utiliza desenvolvimento incremental, módulos JavaScript, componentes React, SQL/PL/pgSQL, migrações e controle de versões. Node.js 24 executa Vite e Node Test Runner. PGlite verifica regras de banco em ambiente isolado. Um ensaio adicional em PostgreSQL nativo usa conexões independentes para observar concorrência real. O GitHub Actions instala dependências pelo lockfile e executa teste, compilação e auditoria.
 
-A [Figura 1](anexos/ARQUITETURA_E_FLUXO.md) representa a arquitetura atual. O [guia](../../GUIA_PASSO_A_PASSO.md) distingue execução isolada, frontend com backend preparado e instalação integral ainda pendente. E2-REP-01 deve comprovar a reprodução em banco vazio.
+O docente aceitou JavaScript, conforme confirmação do responsável em 29/10/2026. A especificação ECMAScript 2025 fundamenta módulos, funções, tipos e estruturas de controle usados na linguagem (ECMA INTERNATIONAL, 2025). A documentação do PostgreSQL fundamenta transações e controle de concorrência; a documentação Supabase explica a combinação de Auth e políticas de acesso por linha.
+
+| Integrante | Organização registrada na Entrega 1 | Artefatos relacionados |
+|---|---|---|
+| Gabriel Rodrigues do Prado | Arquitetura, JavaScript, modelagem, integração e revisão técnica | Componentes, módulos, SQL, instalação e documentação técnica |
+| Rafaela Rodrigues Oliveira | Problema, fluxo, entradas/saídas, validação, testes e documentação | Roteiro de uso, casos de teste, relatório e apresentação |
+
+Essa tabela recupera a divisão declarada pelo grupo. O histórico usa uma conta Git compartilhada e não comprova autoria individual de cada alteração. Não se atribui um commit específico a um integrante sem registro individual. Ambos precisam explicar o algoritmo, o cálculo e as evidências na apresentação.
+
+| Camada | Responsabilidade |
+|---|---|
+| Navegador React | Portal, ERP, eventos, estado, validações de apoio e apresentação |
+| Supabase Auth | Contas e sessões. Cadastro público não cria usuário ERP |
+| PostgREST/RPC | Acesso HTTP às consultas e funções autorizadas |
+| PostgreSQL | Dados, RLS, preços, integridade e transações |
+| Edge Function de entrega | Verifica sessão e consulta openrouteservice/HeiGIT com segredo no servidor |
+| OpenStreetMap e Leaflet | Exibem mapa e permitem confirmar o ponto do imóvel |
+
+Node.js não atua como API intermediária da aplicação. Os scripts Python são legados independentes de carga, e o diretório MySQL é estudo analítico separado. O guia documenta banco vazio, primeiro master e dados sintéticos. A tabela representa a arquitetura atual; o anexo inclui fontes Mermaid editáveis da arquitetura, do fluxo e do recorte lógico de dados.
 
 ## 6. Integração disciplinar
 
-| Disciplina | Aplicação | Evidência central |
+| Disciplina obrigatória | Conceito aplicado | Evidência no projeto |
 |---|---|---|
-| Linguagem de Programação | Tipos, módulos, funções, eventos, entrada/saída e erros | `montarSolicitacao`, componentes do portal e envio assíncrono |
-| Algoritmos e Programação Estruturada | Sequência, seleção, repetição e decomposição | Validação de itens, fila, aceite e transação de venda |
-| Matemática Computacional | Somatórios, percentuais, médias e proporcionalidade | Subtotal, markup, frete, CMV, margem, ticket e testes |
+| Linguagem de Programação | Tipos, módulos, funções, entrada/saída e erros | `montarSolicitacao`, eventos e envio assíncrono |
+| Algoritmos e Programação Estruturada | Sequência, seleção, repetição e decomposição | Validação de itens/adicionais, fila, aceite e transação |
+| Matemática Computacional | Somatórios, proporcionalidade, percentuais e médias | Subtotal, frete, markup, CMV, cobertura e ticket |
 
-A [matriz disciplinar](anexos/MATRIZ_DISCIPLINAR.md) localiza conceito, função/arquivo e teste. Desenvolvimento em JavaScript, Computação em Nuvem e Análise Orientada a Objetos complementam os três eixos, conforme a organização da Entrega 1.
+A matriz do anexo relaciona cada conceito a arquivo, função e teste. A linguagem transforma dados e trata o resultado assíncrono; algoritmos conduzem decisões e repetições; matemática determina valores e o significado dos indicadores. Desenvolvimento em JavaScript, Computação em Nuvem e Análise Orientada a Objetos, presentes na Entrega 1, complementam os três eixos.
+
+As referências herdadas da Entrega 1 incluem Cormen et al. para algoritmos, Rosen para raciocínio discreto e aritmético, e ECMAScript para a linguagem. O enunciado fornecido não contém a relação bibliográfica completa dos planos de ensino. Este relatório identifica as fontes utilizadas e não atribui automaticamente essa seleção à bibliografia institucional das disciplinas.
 
 ## 7. Algoritmos e implementação
 
+O fluxo começa com a escolha da empresa/unidade e a montagem do carrinho. O navegador valida contato e dados básicos. Em delivery, exige cotação válida. O servidor confere sessão, empresa, unidade, modalidade, itens, adicionais, quantidade, preços e cotação antes de persistir.
+
 ```text
-abrir portal da empresa e escolher unidade/modalidade
-montar carrinho e autenticar consumidor
-se delivery: obter cotação válida para unidade e endereço
-validar contato, itens e total
-enviar solicitação com chave de requisição
+selecionar unidade, modalidade e itens
+autenticar consumidor
+se delivery: obter cotação válida
+validar contato e montar solicitação
+enviar com chave idempotente
 no servidor:
-    conferir conta, unidade, modalidade e limites
-    para cada item e adicional:
-        conferir disponibilidade, quantidade e preço
-    se delivery: conferir titular, endereço, validade e reserva
-    persistir solicitação aguardando, sem baixar estoque
-quando equipe autorizada aceitar:
-    se já houver venda vinculada: retornar a mesma venda
-    em transação: conferir preços, cotação e estoque
-    criar pedido, itens e consumo; vincular solicitação
-    se ocorrer erro: reverter alterações
-acompanhar status, histórico e indicadores
+  para cada item e adicional: conferir dados e preço
+  se houver erro: recusar sem persistência parcial
+  gravar solicitação aguardando, sem baixar estoque
+no aceite da equipe autorizada:
+  se já existe venda: devolver a venda existente
+  conferir preço, cotação e estoque em transação
+  criar pedido, itens e consumo; vincular solicitação
+  se houver falha: reverter alterações
+acompanhar estado e consultar histórico
 ```
 
-O [fluxograma](anexos/ARQUITETURA_E_FLUXO.md) representa sequência e condições. Repetição aparece na conferência/soma de itens e adicionais; a decomposição separa montagem, cálculo, transporte, validação e persistência.
+Sequência organiza etapas. Seleção decide modalidade, acesso e validade. Repetição percorre itens e adicionais. Funções menores separam montagem, cálculo, envio e persistência. O custo de percorrer o carrinho cresce com a quantidade de linhas e adicionais; o ensaio não mede desempenho sob carga.
 
-Trechos essenciais a interpretar na versão diagramada:
+O trecho real abaixo resume o somatório no navegador. Localização: `frontend/src/lib/portalCliente.js`, função `totalCarrinho`.
 
-- `portalCliente.js/totalCarrinho`: soma preços/adicionais em centavos, multiplica pela quantidade e converte o resultado para reais.
-- `pedidoTransacional.js/criarEnvioTransacional`: conserva chave/conteúdo quando o resultado de rede é incerto e evita envio simultâneo; o servidor também valida idempotência.
-- RPCs móveis e de pedido: recusam preço adulterado, cotação inválida e escopo alheio; erro em um item reverte a transação.
-- `dashboard.js/calcularDashboard`: exclui cancelados, percorre pedidos/itens e calcula indicadores na base definida.
+```javascript
+return itens.reduce((soma, i) => soma +
+  (Math.round(Number(i.preco) * 100) +
+   i.extras.reduce((s, a) =>
+     s + Math.round(Number(a.preco) * 100), 0))
+  * i.quantidade, 0) / 100
+```
 
-Inserir trechos curtos da versão final, com arquivo/função e explicação. A classe `Pedido` do código inicial no ZIP da Entrega 1 pertence à etapa anterior.
+O acumulador externo soma linhas; o interno soma adicionais por unidade. Quantidade multiplica a composição completa. Preços viram centavos antes da soma. O servidor confere o catálogo autorizado, impedindo que preço adulterado no navegador determine o valor persistido.
+
+`criarEnvioTransacional`, em `pedidoTransacional.js`, conserva chave e conteúdo quando a resposta de rede é incerta. No banco, `erp_privado.decidir_mobile` recupera a venda já vinculada. Transação, bloqueios e idempotência impedem baixa duplicada, conforme os testes nativos. RLS restringe leitura por empresa/unidade, e a função verifica autorização antes de alterar dados.
+
+O consumidor acompanha suas próprias solicitações. O cancelamento registra motivo e destino do consumo. A devolução ao estoque ocorre uma vez e preserva o pedido cancelado no histórico.
 
 ## 8. Matemática computacional
 
-A [memória de cálculo](anexos/MEMORIA_CALCULO.md) define variáveis, unidades, arredondamento e limites. Subtotal soma quantidade × preço com adicionais; total acrescenta o frete validado. O modelo atual não aplica o desconto ilustrativo do exemplo inicial.
+O subtotal S soma, em reais, quantidade q de cada linha multiplicada pelo preço p mais seus adicionais a. O total T inclui frete F válido. Quantidades são inteiras positivas. O portal soma centavos; o banco usa valores `numeric` validados.
 
-No frete, metros e centavos/km permitem arredondar somente a taxa final: 3,5 km × R$ 1,50/km = R$ 5,25. Markup de R$ 24,90 com 15% resulta em R$ 28,64, alinhando JavaScript e PostgreSQL.
+```text
+S = soma_i [q_i x (p_i + soma_j a_ij)]
+T = arredondar(S + F, 2)
+```
 
-CMV é custo conhecido ÷ receita dos itens com ficha × 100. Custo R$ 8,90 e receita elegível R$ 27,90 geram CMV 31,90% e margem simplificada 68,10%. Outro item de R$ 27,90 sem ficha reduz a cobertura para 50%. Frete não entra na base de CMV.
+Exemplo sintético: item R$ 25,00 e adicional R$ 3,00 geram R$ 28,00. Com frete R$ 3,75, o total é R$ 31,75. A quantidade multiplica também os adicionais. O desconto ilustrativo da Entrega 1 não faz parte desse cálculo atual.
 
-Ticket médio usa total pago dos pedidos não cancelados dividido pela quantidade desses pedidos. Denominadores inválidos geram indicador indisponível. Custo gerencial usa ficha atual e não equivale a lucro líquido. Preservar essa distinção em relação ao exemplo isolado da Entrega 1.
+No frete, d é distância de ida por rota em km, m é distância em metros, v é tarifa em R$/km e c é tarifa em centavos/km. Calcula-se `m = arredondar(d x 1000)`, `c = arredondar(v x 100)` e taxa em centavos `arredondar(m x c / 1000)`.
+
+| Entrada | Desenvolvimento | Esperado e obtido |
+|---|---|---|
+| 3,5 km e R$ 1,50/km | 3500 x 150 / 1000 = 525 centavos | R$ 5,25 |
+| 1,235 km e R$ 1,50/km | 185,25 centavos arredondados | R$ 1,85 |
+| R$ 24,90 e markup 15% | 24,90 x 1,15 = 28,635 | R$ 28,64 em JS e SQL |
+
+O markup usa inteiros BigInt para evitar a divergência anterior de um centavo no ponto flutuante. Distância e tarifa inválidas são recusadas. O teste matemático comprova fórmula e arredondamento, e não a precisão geográfica de um imóvel.
+
+CMV gerencial usa custo conhecido C dividido pela receita Rf dos itens com ficha conhecida. Ri é a receita de todos os itens, P é o total pago em pedidos não cancelados, Fe é o frete e N é a quantidade desses pedidos.
+
+```text
+CMV (%) = 100 x C / Rf, se Rf > 0
+Margem simplificada (%) = 100 - CMV
+Cobertura de custo (%) = 100 x Rf / Ri, se Ri > 0
+Faturamento dos itens = P - Fe
+Ticket médio (R$/pedido) = P / N, se N > 0
+```
+
+No exemplo validado, dois itens custam R$ 27,90 cada, mas apenas um possui ficha de R$ 8,90. Assim Ri = R$ 55,80, Rf = R$ 27,90 e C = R$ 8,90. CMV = 31,90%, margem simplificada = 68,10% e cobertura de custo = 50%. Frete fica fora da base de CMV. Cancelados ficam fora dos indicadores. Denominador inválido produz resultado indisponível.
+
+O custo usa a ficha atual e pode mudar com a composição. Margem simplificada não inclui todos os gastos e não é lucro líquido. Custo desconhecido não vira zero. A memória anexa detalha unidades, exemplos, limites e localização dos testes.
 
 ## 9. Testes e resultados
 
-A execução local de 29/10/2026 de `6c83548` aprovou 100 testes, sem falhas, incluindo 32 cenários PostgreSQL isolados. O [CI de 26/10/2026](https://github.com/terpsandlups/BRASA_BURGER_CRUD_ERP/actions/runs/40368508146) aprovou testes, build e auditoria do mesmo commit.
+A suíte Node.js possui 101 testes aprovados, incluindo 33 testes com PostgreSQL/PGlite. O novo teste de bootstrap instala a sequência integral duas vezes em bancos vazios, sem depender da fixture operacional. Confere primeiro master, ausência de colaborador no cadastro público e proteção dos dados demonstrativos. A compilação Vite passou. A atualização para Vite 6.4.5 corrigiu a vulnerabilidade indicada na auditoria anterior.
 
-O [catálogo de casos](anexos/CASOS_E_RESULTADOS.md) apresenta entrada, esperado, obtido e interpretação. Abrange cálculo e arredondamento, cobertura, cancelados, cotação, cadastro público, idempotência, estoque e acesso por empresa/unidade.
+O ensaio PostgreSQL nativo de 29/10/2026 instalou a aplicação em dois bancos vazios e usou conexões independentes. A instalação final também passou no job PostgreSQL 17 do GitHub Actions em 04/11/2026. O contrato Auth desse ensaio é local de teste e não simula e-mail.
 
-O centavo divergente no markup foi corrigido e tem regressão. No endereço comercial do Retiro, uma falha de geocodificação foi tratada com bloqueio de envio e mapa, sem taxa fictícia; isso não comprova sucesso de rota do imóvel.
+| Caso | Entrada | Esperado | Obtido e interpretação |
+|---|---|---|---|
+| CT04 | Preço 24,90 e markup 15% | 28,64 em JS e SQL | Coincidem; regressão aprovada |
+| CT05 | Receita 55,80, ficha 8,90 em receita 27,90 | CMV 31,90%, margem 68,10%, cobertura 50% | Asserções aprovadas |
+| CT12 | Aceite sem estoque ou preço atualizado | Nenhuma venda/baixa parcial | Rollback aprovado |
+| CT19 | Bootstrap integral em bancos vazios | Instalar funções e políticas | Duas instalações aprovadas |
+| HM03 | Duas conexões aceitando a mesma solicitação | Uma venda 25,00 e baixa 150 g | Mesma venda, saldo 850 g a partir de 1000 g |
+| HM04 | Gerente de outra unidade | Leitura vazia e alteração negada | Ambas aprovadas |
+| HM05 | Cancelar com devolução | Saldo volta de 850 g a 1000 g | Aprovado, histórico preservado |
 
-As verificações não comprovam instalação integral em banco vazio, duas conexões remotas simultâneas, carga, precisão de trajetos reais ou e-mail externo. HM01 a HM08 registram as homologações pendentes. Atualizar resultados após execução, preservando versão, falhas e limites reais.
+Em 04/11/2026, a stack Supabase local descartável do GitHub Actions aprovou Auth, PostgREST e PostgreSQL reais. As funções do frontend enviaram uma solicitação de dois produtos sintéticos de R$ 27,90, total R$ 55,80. O saldo permaneceu 100 durante a espera, caiu para 98 após dois aceites simultâneos e voltou a 100 no cancelamento. O consumidor acompanhou a etapa recebido e o gerente de outra unidade não leu nem avançou o pedido. Evidência: `anexos/resultado-api-local.json` e execução https://github.com/terpsandlups/BRASA_BURGER_CRUD_ERP/actions/runs/41924749997. Essa evidência é de API e sessões reais locais, sem escrita no Supabase operacional.
+
+Uma revisão da interface pública em 04/11/2026 verificou catálogo, seleção Japy e carrinho com duas unidades de Bacon Cheese: 2 x R$ 26,90 = R$ 53,80. As capturas anexas não mostram envio nem venda. Esse catálogo público difere do produto sintético usado nos testes de banco; os exemplos não são a mesma venda.
+
+O catálogo completo de casos informa entrada, esperado, obtido, interpretação e arquivos. Rejeições esperadas incluem cotação expirada, preço adulterado, CPF inválido, estoque insuficiente e acesso alheio. No Retiro, uma falha anterior de geocodificação bloqueou envio e ofereceu confirmação no mapa, sem taxa inventada.
+
+Os testes não comprovam carga de produção, trajetos físicos, e-mail externo, fluxo escrito integral pela interface nem hospedagem HTTPS do ERP. A escrita sintética no Supabase compartilhado não foi executada. A abordagem isolada preserva o ambiente operacional e explicita o alcance da evidência.
 
 ## 10. Conclusão
 
-A referência integra consumidor e operação da loja com regras de acesso, cálculo e estoque. Programação, algoritmos e matemática participam do funcionamento e têm evidências localizáveis em código e testes.
+O piloto integra consumidor e operação da loja com regras de acesso, cálculo e estoque. As três disciplinas obrigatórias participam do funcionamento e possuem evidências no código e nos testes. O trabalho demonstra decomposição, validação no servidor, transações, idempotência e escolha correta da base dos indicadores.
 
-O aprendizado integrado inclui decomposição, validação no servidor, transações, idempotência e definição correta da base dos indicadores. A separação entre plataforma e empresa permite evolução sem duplicar a aplicação.
+A separação entre plataforma e empresa permite configurar outras operações sem duplicar a interface. No modelo de negócio proposto, o estabelecimento contrata o software e atende seu consumidor com a própria marca. Considera-se assinatura por empresa/faixa de unidades e serviços opcionais de implantação, treinamento e personalização com escopo. Preços, contratos, custos recorrentes e métricas comerciais ainda precisam de validação e não são resultados obtidos pelo piloto.
 
-O resultado atual é um piloto funcional com testes aprovados. O fechamento da Entrega 2 depende de reprodução integral, demonstração conectada, referências, comprovação de contribuições e conferência dos PDFs e ZIP. Evoluções de produto devem permanecer identificadas como possibilidades futuras.
+O pacote reúne trabalho escrito, apresentação com 10 páginas de conteúdo, anexos, instruções, testes e código identificado por tag. As próximas etapas operacionais são publicar e homologar HTTPS, testar e-mail e trajetos reais, validar o ciclo completo pela interface em ambiente de teste e dimensionar carga. A pesquisa aprofundada de concorrentes depende do conector Search/Exa. Ensaio oral e submissão institucional são atos posteriores à preparação dos arquivos.
 
 ## 11. Referências
 
-### Fontes do projeto usadas nesta atualização
-
-- FACULDADE ANHANGUERA. Projeto Integrado I, II e III 2026/2: Entrega 2 — Aplicação integrada. Enunciado de quatro páginas, Prof. Gilberto Falco Netto, fornecido ao grupo.
-- PRADO, Gabriel Rodrigues do; OLIVEIRA, Rafaela Rodrigues. Brasa Burguer Management: proposta e modelagem integrada de um sistema web de gestão multiunidade para food service. Entrega 1. Jundiaí, 2026. Pacote histórico no repositório.
-- CONVÍVIUM MANAGEMENT SYSTEM. Código-fonte, documentação e testes. Referência `6c83548`. Disponível em: https://github.com/terpsandlups/BRASA_BURGER_CRUD_ERP. Consulta: 29 out. 2026.
-- CONVÍVIUM MANAGEMENT SYSTEM. Validar ERP: execução de CI 40368508146. 26 out. 2026. Disponível em: https://github.com/terpsandlups/BRASA_BURGER_CRUD_ERP/actions/runs/40368508146. Conferência: 29 out. 2026.
-
-### Bibliografia recuperada da Entrega 1 — conferir uso final
-
-- CORMEN, Thomas H. et al. Introduction to Algorithms. 4. ed. Cambridge: MIT Press, 2022.
-- ECMA INTERNATIONAL. ECMA-262: ECMAScript Language Specification. 16. ed. Geneva: Ecma International, 2025.
-- FOWLER, Martin. UML Distilled: A Brief Guide to the Standard Object Modeling Language. 3. ed. Boston: Addison-Wesley, 2003.
-- MELL, Peter; GRANCE, Timothy. The NIST Definition of Cloud Computing. Gaithersburg: NIST, 2011. Special Publication 800-145.
-- ROSEN, Kenneth H. Discrete Mathematics and Its Applications. 8. ed. New York: McGraw-Hill, 2019.
-- SOMMERVILLE, Ian. Software Engineering. 10. ed. Boston: Pearson, 2016.
-
-**E2-REF-01:** selecionar obras efetivamente usadas, relacionar citações às explicações e incluir bibliografias das três disciplinas conforme o material institucional. Fontes técnicas de React, Node.js, PostgreSQL, Supabase e rotas devem ter URL/edição e acesso conferidos quando incorporadas. A lista herdada não comprova consulta nova nem correspondência automática à bibliografia institucional.
+- FACULDADE ANHANGUERA. Projeto Integrado I, II e III, 2026/2: Entrega 2, Aplicação integrada. Enunciado de quatro páginas. Prof. Gilberto Falco Netto. Documento fornecido ao grupo.
+- PRADO, Gabriel Rodrigues do; OLIVEIRA, Rafaela Rodrigues. Brasa Burguer Management: proposta e modelagem integrada de um sistema web de gestão multiunidade para food service. Entrega 1. Jundiaí, 2026.
+- CONVÍVIUM MANAGEMENT SYSTEM. Código-fonte, testes e documentação. Tag entrega-2-2026-2. https://github.com/terpsandlups/BRASA_BURGER_CRUD_ERP/tree/entrega-2-2026-2. Consulta: 04 nov. 2026.
+- ECMA INTERNATIONAL. ECMA-262: ECMAScript 2025 Language Specification. 16. ed., 2025. https://tc39.es/ecma262/2025/. Consulta: 04 nov. 2026. Referência de linguagem e estruturas de controle.
+- NODE.JS. Test runner. Documentação da linha 24. https://nodejs.org/docs/latest-v24.x/api/test.html. Consulta: 04 nov. 2026.
+- POSTGRESQL GLOBAL DEVELOPMENT GROUP. Transaction Isolation. PostgreSQL 18 documentation. https://www.postgresql.org/docs/18/transaction-iso.html. Consulta: 04 nov. 2026.
+- SUPABASE. Row Level Security. https://supabase.com/docs/guides/database/postgres/row-level-security. Consulta: 04 nov. 2026.
+- CORMEN, Thomas H. et al. Introduction to Algorithms. 4. ed. Cambridge: MIT Press, 2022. Referência conceitual de algoritmos recuperada da Entrega 1.
+- ROSEN, Kenneth H. Discrete Mathematics and Its Applications. 8. ed. New York: McGraw-Hill, 2019. Referência conceitual de matemática recuperada da Entrega 1.
+- MELL, Peter; GRANCE, Timothy. The NIST Definition of Cloud Computing. NIST SP 800-145, 2011. Referência de computação em nuvem recuperada da Entrega 1.
+- BRASA BURGER. Apresentação demonstrativa de 2026. https://brasa-burguer-apresentacao-2026.azurebard4.chatgpt.site/. Consulta: 04 nov. 2026. Referência visual e narrativa, sem comprovação de métricas operacionais.
