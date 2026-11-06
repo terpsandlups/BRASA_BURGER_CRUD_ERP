@@ -7,6 +7,7 @@ import {createClient} from '@supabase/supabase-js';
 import {aplicarBootstrap} from './bootstrap.mjs';
 import {montarSolicitacao} from '../src/lib/portalCliente.js';
 import {criarEnvioTransacional} from '../src/lib/pedidoTransacional.js';
+import {acessarContaCliente} from '../src/lib/acessoCliente.js';
 
 // A homologação só aceita a stack LOCAL criada pelo CLI no runner descartável.
 const workdir=process.env.SUPABASE_TEST_WORKDIR;
@@ -23,13 +24,18 @@ try{
  await owner.query(await readFile(new URL('../../sql/instalacao/dados_demonstracao.sql',import.meta.url),'utf8'));
  const service=client(vars.SERVICE_ROLE_KEY),anon=vars.ANON_KEY;
  const senha='Aa1!'+randomUUID();const users={};
- for(const tipo of ['master','cliente','gerente']){
+ for(const tipo of ['master','gerente']){
   const email=tipo+'@example.test';const {data,error}=await service.auth.admin.createUser({email,password:senha,email_confirm:true});
   if(error)throw error;users[tipo]=data.user;
  }
  await owner.query("SELECT erp_privado.provisionar_primeiro_master('master@example.test')");
  const entrar=async(tipo)=>{const c=client(anon);const {error}=await c.auth.signInWithPassword({email:tipo+'@example.test',password:senha});if(error)throw error;return c};
- const admin=await entrar('master'),consumer=await entrar('cliente'),admin2=await entrar('master');
+ const admin=await entrar('master'),consumer=client(anon),admin2=await entrar('master');
+ const cadastro=await acessarContaCliente(consumer.auth,{cadastro:true,email:' cliente@example.test ',senha,retorno:'http://localhost:5173/pedir/brasa-burger'});
+ assert.ok(cadastro.session,'A stack local de teste deve permitir cadastro sem confirmação de e-mail.');
+ const perfil=await owner.query('SELECT id FROM public.usuarios WHERE id=$1',[cadastro.user.id]);
+ assert.equal(perfil.rows.length,0,'Cadastro público nunca concede perfil de equipe.');
+ resultado.push('Cadastro público real pelo módulo do portal cria sessão de consumidor sem acesso de equipe');
  const rpc=async(c,fn,args)=>{const {data,error}=await c.rpc(fn,args);if(error)throw error;return data};
  const loja=(await owner.query("SELECT id FROM lojas WHERE slug='demo-japy'")).rows[0].id;
  const outra=(await owner.query("SELECT id FROM lojas WHERE slug='demo-retiro'")).rows[0].id;

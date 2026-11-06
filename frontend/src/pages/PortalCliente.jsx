@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient.js'
 import { criarEnvioTransacional } from '../lib/pedidoTransacional.js'
 import { mensagemPortal, montarSolicitacao, totalCarrinho } from '../lib/portalCliente.js'
+import { acessarContaCliente, armazenamentoDaSessao, reenviarConfirmacaoCliente } from '../lib/acessoCliente.js'
 import { dinheiro, codigoPedido } from '../lib/pedidoApresentacao.js'
 import ConsultaEntrega from '../components/ConsultaEntrega.jsx'
 import Icon from '../components/ui/Icon.jsx'
@@ -51,8 +52,9 @@ export default function PortalCliente() {
   const [paginaPedidos, setPaginaPedidos] = useState(0)
   const trava = useRef(false)
   const consultaCatalogo=useRef(0)
+  const ultimaConta=useRef(null)
   const envio = useMemo(() => criarEnvioTransacional(supabase, undefined, {
-    storage: window.sessionStorage, chave: `convivium.mobile.${session?.user.id || 'anon'}.${marca}`, funcao: 'enviar_solicitacao_mobile',
+    storage: armazenamentoDaSessao(), chave: `convivium.mobile.${session?.user.id || 'anon'}.${marca}`, funcao: 'enviar_solicitacao_mobile',
   }), [session?.user.id,marca])
   useEffect(() => { setPendente(envio.temPendente()) }, [envio])
 
@@ -71,16 +73,25 @@ export default function PortalCliente() {
   useEffect(() => { setCatalogo({lojas:[],itens:[]});setLoja('');setItens([]);setCotacao(null);carregarCardapio();return()=>{consultaCatalogo.current++} }, [marca])
   useEffect(() => { setCotacao(null) }, [session?.user.id,loja,tipo])
   useEffect(() => {
+    const atual=session?.user.id || null
+    if (ultimaConta.current && ultimaConta.current !== atual) {
+      setCliente({ nome:'', cpf:'', telefone:'' }); setEndereco({}); setObservacoes(''); setTroco(''); setAviso('')
+    }
+    ultimaConta.current=atual
+    setPaginaPedidos(0)
+  }, [session?.user.id])
+  useEffect(() => {
     if (!cotacao) return
     const timer=setTimeout(()=>setCotacao(null),Math.max(0,Date.parse(cotacao.expira_em)-Date.now()))
     return ()=>clearTimeout(timer)
   },[cotacao])
   useEffect(() => {
     let ativo = true
+    let eventoRecebido = false
     supabase.auth.getSession().then(({ data, error }) => {
-      if (ativo) { if (error) setErro('Não foi possível recuperar sua sessão.'); setSession(data?.session || null); setSessaoPronta(true) }
+      if (ativo && !eventoRecebido) { if (error) setErro('Não foi possível recuperar sua sessão.'); setSession(data?.session || null); setSessaoPronta(true) }
     }).catch(() => { if (ativo) { setErro('Não foi possível conectar.'); setSessaoPronta(true) } })
-    const { data } = supabase.auth.onAuthStateChange((_event, atual) => { if (ativo) { setSession(atual); setSessaoPronta(true) } })
+    const { data } = supabase.auth.onAuthStateChange((_event, atual) => { if (ativo) { eventoRecebido=true; setSession(atual); setSessaoPronta(true) } })
     return () => { ativo = false; data.subscription.unsubscribe() }
   }, [])
   useEffect(() => {
@@ -117,8 +128,7 @@ export default function PortalCliente() {
   async function autenticar(event) {
     event.preventDefault()
     await executar(async () => {
-      const { data, error } = cadastro ? await supabase.auth.signUp({ email, password: senha, options: { emailRedirectTo: `${window.location.origin}/pedir/${marca}` } }) : await supabase.auth.signInWithPassword({ email, password: senha })
-      if (error) throw new Error(cadastro ? 'Não foi possível criar a conta. Confira os dados e tente novamente.' : 'Não foi possível entrar. Confira e-mail e senha.')
+      const data = await acessarContaCliente(supabase.auth, { cadastro, email, senha, retorno: `${window.location.origin}/pedir/${marca}` })
       setSenha('')
       if (cadastro && !data.session) setAviso('Confira seu e-mail para confirmar o cadastro e depois entre na sua conta.')
     })
@@ -132,7 +142,7 @@ export default function PortalCliente() {
         const id = await envio.enviar(dados)
         if(cotacao?.endereco) setEndereco(cotacao.endereco)
         setCotacao(null)
-        setItens([]); setAviso(`Solicitação #${codigoPedido(id)} enviada. Aguarde a confirmação da loja.`)
+        setItens([]); setPaginaPedidos(0); setAviso(`Solicitação #${codigoPedido(id)} enviada. Aguarde a confirmação da loja.`)
       } finally { setPendente(envio.temPendente()) }
     })
   }
@@ -159,8 +169,20 @@ export default function PortalCliente() {
           <fieldset disabled={pendente || ocupado}>{itens.map(i => <div key={i.chave} className="portal-cart-item"><div><strong>{i.nome}</strong><p className="text-sm text-fumaca">{i.variacao}{i.extras.length ? ` · ${i.extras.map(a => a.nome).join(', ')}` : ''}</p><span>{dinheiro(totalCarrinho([i]))}</span></div><div className="portal-quantity"><button type="button" aria-label={`Diminuir ${i.nome}`} onClick={() => setItens(prev => prev.map(x => x.chave === i.chave ? { ...x, quantidade: x.quantidade - 1 } : x).filter(x => x.quantidade > 0))}>−</button><span>{i.quantidade}</span><button type="button" aria-label={`Aumentar ${i.nome}`} disabled={i.quantidade >= 99} onClick={() => adicionar(i, i.extras)}>+</button></div></div>)}</fieldset>
           <div className="portal-total"><span>Itens</span><strong>{dinheiro(subtotal)}</strong></div>
           {tipo === 'delivery' && <div className="flex justify-between text-sm mb-3"><span>Frete</span><strong>{cotacao ? dinheiro(cotacao.taxa) : 'Informe o endereço'}</strong></div>}
-          <div className="flex justify-between mb-5"><span>Total</span><strong>{dinheiro(subtotal + Number(cotacao?.taxa || 0))}</strong></div>
-          {!sessaoPronta ? <p role="status">Carregando sua conta…</p> : !session ? <form onSubmit={autenticar} className="portal-form"><h3>{cadastro ? 'Criar conta' : 'Entre para pedir'}</h3><label>E-mail<input required type="email" autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} /></label><label>Senha<input required minLength={8} type="password" autoComplete={cadastro ? 'new-password' : 'current-password'} value={senha} onChange={e => setSenha(e.target.value)} /></label><button disabled={ocupado} className="portal-primary">{ocupado ? 'Aguarde…' : cadastro ? 'Criar conta' : 'Entrar'}</button><button type="button" className="text-sm underline" onClick={() => setCadastro(v => !v)}>{cadastro ? 'Já tenho uma conta' : 'Criar uma conta'}</button></form> : <>
+          <div className="flex justify-between mb-5"><span>{tipo === 'delivery' && !cotacao ? 'Subtotal sem frete' : 'Total'}</span><strong>{dinheiro(subtotal + Number(cotacao?.taxa || 0))}</strong></div>
+          {!loja && <p className="text-sm text-fumaca mb-4">Selecione a unidade para adicionar produtos.</p>}
+          {!sessaoPronta ? <p role="status">Carregando sua conta…</p> : !session ? <form onSubmit={autenticar} className="portal-form">
+            <h3>{cadastro ? 'Criar conta' : 'Entre para pedir'}</h3>
+            <label>E-mail<input required type="email" autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} /></label>
+            <label>Senha<input required minLength={cadastro ? 8 : undefined} type="password" autoComplete={cadastro ? 'new-password' : 'current-password'} value={senha} onChange={e => setSenha(e.target.value)} /></label>
+            {cadastro && <p className="text-xs text-fumaca">Use pelo menos oito caracteres. Se a confirmação estiver habilitada, você receberá um link por e-mail.</p>}
+            <button disabled={ocupado} className="portal-primary">{ocupado ? 'Aguarde…' : cadastro ? 'Criar conta' : 'Entrar'}</button>
+            <button type="button" disabled={ocupado} className="text-sm underline" onClick={() => { setCadastro(v => !v); setErro(''); setSenha('') }}>{cadastro ? 'Já tenho uma conta' : 'Criar uma conta'}</button>
+            <button type="button" disabled={ocupado || !email.trim()} className="text-sm underline" onClick={() => executar(async () => {
+              await reenviarConfirmacaoCliente(supabase.auth, email, `${window.location.origin}/pedir/${marca}`)
+              setAviso('Se houver um cadastro aguardando confirmação para este e-mail, você receberá um novo link. Confira também o spam.')
+            })}>Reenviar confirmação de e-mail</button>
+          </form> : <>
             <div className="flex justify-between gap-2 text-sm my-4"><span className="break-all">{session.user.email}</span><button type="button" disabled={ocupado} className="underline" onClick={() => executar(async () => { const { error } = await supabase.auth.signOut(); if (error) throw error; setCliente({ nome: '', cpf: '', telefone: '' }); setEndereco({}); setPaginaPedidos(0) })}>Sair</button></div>
             {tipo === 'delivery' && loja && itens.length > 0 && !pendente && <div className="mb-5"><ConsultaEntrega key={`${loja}:${session.user.id}`} lojaId={loja} modoPedido portal automatico destinoInicial={endereco} onCotacao={setCotacao} onInvalidar={()=>setCotacao(null)} /></div>}
             <form onSubmit={enviar} className="portal-form">
