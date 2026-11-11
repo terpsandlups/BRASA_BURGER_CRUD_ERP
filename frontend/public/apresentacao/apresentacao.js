@@ -3,7 +3,6 @@ const decks=window.CONVIVIUM_SLIDES;
 const nomes={academica:'Entrega 2',tecnica:'Linguagens e tecnologias',negocio:'Modelo de negócio'};
 const $=id=>document.getElementById(id);
 const texto=(tag,conteudo,classe)=>{const no=document.createElement(tag);no.textContent=conteudo || '';if(classe)no.className=classe;return no};
-const brl=n=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(n);
 let modo='academica',pagina=0;
 function imagem(caminho,legenda,alt){const fig=document.createElement('figure');const img=document.createElement('img');img.src=caminho;img.alt=alt || legenda || 'Imagem do projeto';fig.append(img);if(legenda)fig.append(texto('figcaption',legenda));return fig}
 function calculadora(pai){
@@ -48,5 +47,6 @@ function lerHash(){const [m,p]=location.hash.slice(1).split('/');modo=Object.has
 $('modo').onchange=e=>navegar(e.target.value,0);$('pagina').onchange=e=>navegar(modo,Number(e.target.value));$('anterior').onclick=()=>navegar(modo,pagina-1);$('proxima').onclick=()=>navegar(modo,pagina+1);
 $('tela').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen()}catch{$('tela').textContent='Use F11 para tela cheia'}};
 document.addEventListener('fullscreenchange',()=>{$('tela').textContent=document.fullscreenElement?'Sair da tela cheia':'Tela cheia'});
-document.addEventListener('keydown',e=>{if(e.target.closest('input,select,textarea,button,summary')||e.ctrlKey||e.metaKey||e.altKey)return;if(e.key==='ArrowRight'){e.preventDefault();navegar(modo,pagina+1)}if(e.key==='ArrowLeft'){e.preventDefault();navegar(modo,pagina-1)}});
+document.querySelector('.skip').onclick=e=>{e.preventDefault();$('slide').focus()};
+document.addEventListener('keydown',e=>{if(e.target.closest('input,select,textarea,summary')||e.ctrlKey||e.metaKey||e.altKey)return;if(e.key==='ArrowRight'){e.preventDefault();navegar(modo,pagina+1)}if(e.key==='ArrowLeft'){e.preventDefault();navegar(modo,pagina-1)}});
 window.addEventListener('hashchange',lerHash);lerHash();

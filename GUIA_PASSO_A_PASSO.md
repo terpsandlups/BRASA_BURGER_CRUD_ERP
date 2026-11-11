@@ -24,7 +24,7 @@ npm --version
 npm ci
 ```
 
-Use Node.js 24, conforme `.github/workflows/validacao.yml`. Guarde o commit na evidência. A tag final `entrega-2-2026-2` será criada após o fechamento.
+Use Node.js 24, conforme `.github/workflows/validacao.yml`. Guarde o commit na evidência. A tag original `entrega-2-2026-2` permanece histórica. A revisão para aula usa `entrega-2-2026-2-revisao-1`.
 
 ## 3. Testes e compilação
 
@@ -35,7 +35,7 @@ npm test
 npm run build
 ```
 
-A revisão de referência tem 101 testes aprovados, incluindo 33 em PostgreSQL via PGlite em memória. Não exigem `.env`, Supabase remoto ou chave de rotas. O build gera `frontend/dist/`; não configura o backend.
+A revisão de referência tem 117 testes aprovados, incluindo 36 em PostgreSQL via PGlite em memória. Não exigem `.env`, Supabase remoto ou chave de rotas. O build gera `frontend/dist/`; não configura o backend.
 
 A auditoria do CI pode ser reproduzida com acesso à rede:
 
@@ -112,7 +112,7 @@ As evidências sanitizadas ficam em `docs/entrega-02/anexos/resultado-postgres.j
 
 Consulte `MVP_GRATUITO_SETUP.md` e `CONVIVIUM_EXECUCAO.md`. A função exige `ORS_API_KEY` somente no servidor, `ALLOWED_ORIGINS` com origens exatas, publicação da função, migrações compatíveis e origem/tarifa válidas por loja. Quando necessário, confirmar o ponto real do imóvel.
 
-Configurar as URLs de retorno Auth, incluindo `/pedir/**`. Para acesso externo, publicar frontend HTTPS e conferir fallback SPA e e-mail de confirmação. Os arquivos `_redirects` e `_headers` preparados não comprovam publicação. Execução local reproduzível atende ao ambiente adotado para demonstração; acesso externo depende de hospedagem.
+Configurar as URLs de retorno Auth, incluindo `/pedir/**`. O frontend está publicado em https://terpsandlups.github.io/BRASA_BURGER_CRUD_ERP/ com fallback para rotas diretas. O cadastro CPF usa identificador interno e senha no Auth, sem envio de e-mail. Os arquivos `_redirects` e `_headers` preparados não comprovam publicação. A execução local e a publicação HTTPS estão disponíveis. Configure origens adicionais das funções ao adotar outro domínio.
 
 ## 8. Demonstração integrada
 
@@ -141,3 +141,7 @@ Concorrência real e ciclo de pedido/cancelamento passaram por SQL e API em ambi
 | Resposta de pedido incerta | Recuperar a mesma requisição e conferir pedido/estoque antes de iniciar outra venda |
 
 Registrar caso, ambiente, entrada, esperado, obtido, interpretação e versão. Retirar senhas, tokens e dados pessoais reais de logs, capturas e anexos.
+
+## Cadastro CPF e aula ao vivo
+
+Consulte docs/entrega-02/REVISAO_AULA.md. Em instalação nova, o instalador inclui cadastro privado, limites e publicação Realtime. Publique as funções `acesso-cliente` e `calcular-entrega`, com `ALLOWED_ORIGINS` do frontend. A chave de servidor existe somente nas funções. Não coloque chave privilegiada no Vite ou GitHub. Para reproduzir a publicação, configure as duas variáveis públicas documentadas em frontend/.env.example no repositório GitHub e habilite Pages por workflow.

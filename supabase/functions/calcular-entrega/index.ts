@@ -1,4 +1,4 @@
-import { createClient } from 'npm:@supabase/supabase-js@2.45.0'
+import { createClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { criarHandler } from './handler.mjs'
 
 // Chave privilegiada permanece somente na Edge Function; o navegador não pode

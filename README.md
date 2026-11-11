@@ -9,9 +9,11 @@ O foco acadêmico atual é a **Entrega 2**. O [plano completo](docs/entrega-02/R
 - **Prazo:** 27/11/2026, no horário institucional; semana de entrega de 23 a 27/11.
 - **Valor:** 7.000 pontos.
 - **Submissão:** formulário oficial com título, URL completa do repositório e um ZIP de até 100 MB.
-- **Pacote final:** `PI-2026-2-CONVIVIUM-MANAGEMENT-SYSTEM-ENTREGA-2.zip`, contendo `trabalho-escrito.pdf`, `apresentacao.pdf` e `anexos/`.
-- **Versão final:** tag/release [`entrega-2-2026-2`](https://github.com/terpsandlups/BRASA_BURGER_CRUD_ERP/releases/tag/entrega-2-2026-2).
+- **Pacote final:** `PI-2026-2-CONVIVIUM-MANAGEMENT-SYSTEM-ENTREGA-2-REVISAO-1.zip`, contendo `trabalho-escrito.pdf`, `apresentacao.pdf` e `anexos/`.
+- **Versão final:** tag/release [`entrega-2-2026-2-revisao-1`](https://github.com/terpsandlups/BRASA_BURGER_CRUD_ERP/releases/tag/entrega-2-2026-2-revisao-1).
 - **Estado:** piloto funcional com pacote acadêmico preparado. PDFs em [output/pdf](output/pdf/), três PowerPoints em [Slides/Entrega-2](Slides/Entrega-2/) e ZIP na release. Ensaio oral e envio institucional ficam com os integrantes.
+
+Portal público: https://terpsandlups.github.io/BRASA_BURGER_CRUD_ERP/pedir/brasa-burger . [Apresentação interativa](https://terpsandlups.github.io/BRASA_BURGER_CRUD_ERP/apresentacao/). [Roteiro da aula e revisão](docs/entrega-02/REVISAO_AULA.md).
 
 ## Identificação acadêmica
 
@@ -40,7 +42,7 @@ O caso Brasa Burger considera Japy e Retiro com presencial e delivery, e Eloy ex
 |---|---|---|
 | Plataforma e marca | Master cadastra empresas; administrador configura nome, logo, cor, unidades e equipe | Vínculo exige conta Auth existente; convite por e-mail e edição integral do tema são futuros |
 | Acesso | Autenticação e autorização por empresa, perfil e unidade, com RLS e validação no banco | Duas sessões Auth reais aprovadas em stack local isolada; carga não testada |
-| Portal do consumidor | Catálogo, conta, carrinho, adicionais, unidade, frete e acompanhamento próprio | HTTPS e confirmação de e-mail na origem externa ainda não homologados |
+| Portal do consumidor | Catálogo, conta, carrinho, adicionais, unidade, frete e acompanhamento próprio | Portal HTTPS publicado, cadastro direto por CPF e senha; carga de turma ainda exige ensaio |
 | Recebimento pela loja | Fila por unidade; aceite cria venda e baixa estoque em transação | Solicitação aguardando não reserva estoque |
 | Pedidos e histórico | Compositor, preço por canal, busca, status, recuperação de envio e cancelamento | Reaproveitamento exige pedido integral de composição idêntica |
 | Produtos e estoque | Catálogo, fichas, edição de preço/quantidade, insumos e reposição atômica | Compras e inventário avançado fora do escopo atual |
@@ -62,7 +64,7 @@ O caso Brasa Burger considera Japy e Retiro com presencial e delivery, e Eloy ex
 | `mysql/` | Estudo analítico separado do banco transacional |
 | `docs/entrega-02/` | Requisitos, texto-base, matriz, cálculos e evidências da Entrega 2 |
 
-Node.js 24 executa ferramentas e testes. React executa no navegador e acessa Supabase; não há API própria Node.js intermediária. O frontend ainda não possui publicação HTTPS comprovada.
+Node.js 24 executa ferramentas e testes. React executa no navegador e acessa Supabase; não há API própria Node.js intermediária. Frontend HTTPS: https://terpsandlups.github.io/BRASA_BURGER_CRUD_ERP/ . Cadastro CPF, envio e acompanhamento usam o Supabase do piloto.
 
 ## Instalação e execução
 
@@ -106,7 +108,7 @@ Desenvolvimento em JavaScript, Computação em Nuvem e Análise Orientada a Obje
 
 ## Testes, histórico e segurança
 
-Em 04/11/2026, a versão validada possui **101 testes aprovados**, incluindo 33 com PostgreSQL/PGlite. O [GitHub Actions](https://github.com/terpsandlups/BRASA_BURGER_CRUD_ERP/actions/runs/41924749997) aprovou testes, build, auditoria, PostgreSQL nativo e Auth/API em Supabase local descartável. Duas sessões independentes confirmaram uma venda/baixa e o cancelamento repôs o estoque. Consulte [casos e resultados da Entrega 2](docs/entrega-02/anexos/CASOS_E_RESULTADOS.md) e [registros anteriores](VALIDACAO.md).
+Em 11/11/2026, a revisão possui **117 testes aprovados**, incluindo 36 com PostgreSQL/PGlite. O [GitHub Actions](https://github.com/terpsandlups/BRASA_BURGER_CRUD_ERP/actions/runs/43116523681) aprovou testes, build, auditoria, PostgreSQL nativo e Auth/API em Supabase local descartável. Duas sessões independentes confirmaram uma venda/baixa e o cancelamento repôs o estoque. Consulte [casos e resultados da Entrega 2](docs/entrega-02/anexos/CASOS_E_RESULTADOS.md) e [registros anteriores](VALIDACAO.md).
 
 O histórico possui incrementos de setembro e outubro de 2026. O [texto-base](docs/entrega-02/TRABALHO_ESCRITO.md) distingue protótipo, Entrega 1 e evolução integrada. Os commits observados estão concentrados em `terpsandlups`; a comprovação individual também depende de registros e artefatos reais.
 

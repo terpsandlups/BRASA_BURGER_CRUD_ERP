@@ -3,3 +3,6 @@
 @media(max-width:800px){header{padding:18px 20px;gap:15px;flex-wrap:wrap}header label{margin-left:0}header #tela{margin-left:auto}main{padding:22px 20px}.cover,.columns,.photo{grid-template-columns:1fr;gap:25px}.cover img{max-height:220px}.cover{min-height:0}#slide{min-height:0}h1{letter-spacing:-1px}.columns p,.body{font-size:20px}.edicao{letter-spacing:1px;font-size:10px}table{font-size:16px}th,td{padding:12px 8px}nav{gap:8px}nav label{font-size:0}nav select{max-width:140px;font-size:13px}footer{padding:0 20px 25px}.number{letter-spacing:-3px}.photo figure img{max-height:260px}}
 @media(prefers-reduced-motion:no-preference){#slide{animation:entrada .22s ease-out}@keyframes entrada{from{opacity:.65;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}}
 @media print{header,nav,footer,details,.edicao,progress,.demo,.skip{display:none}body{background:white;color:#141619}main{padding:0}#slide{min-height:0}h1{font-size:32pt}.body,.columns p,.lead,.small,figcaption{color:#222}.lead{font-size:21pt}th{color:#80531b}.number{color:#80531b}img{max-height:320px!important}a{color:#141619}}
+
+@media(min-width:801px){nav{position:sticky;bottom:0;background:#141619f5;z-index:1;border-top:1px solid #353330;padding:14px 0}}
+@media(max-width:800px){nav button{font-size:12px;padding:10px}nav select{max-width:135px}}

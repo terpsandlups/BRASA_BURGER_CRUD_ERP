@@ -21,7 +21,7 @@ export function criarAcessoCliente({ allowedOrigins, resolverConta, autenticar, 
         const nome=String(dados.nome || '').trim(),telefone=String(dados.telefone || '').replace(/\D/g,'')
         if(dados.senha.length<8 || nome.length<2 || nome.length>120 || !/^\d{10,11}$/.test(telefone)) return responder(400,{error:'Confira nome, telefone e senha com pelo menos oito caracteres.'})
         if(!cadastrar || !limitarCadastro) return responder(503,{error:'Cadastro indisponível.'})
-        const origemRede=request.headers.get('x-forwarded-for')?.split(',').at(-1)?.trim() || 'sem-ip'
+        const origemRede=request.headers.get('cf-connecting-ip') || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'sem-ip'
         if(!await limitarCadastro(origemRede)) return responder(429,{error:'Limite de cadastros atingido nesta rede. Aguarde ou contate a loja.'})
         // Identificador técnico, sem caixa de e-mail ou identidade de terceiros.
         // Não modifica a confirmação exigida para contas de e-mail já existentes.

@@ -1,11 +1,15 @@
 {
-  "data": "2026-11-04",
+  "data": "2026-11-11",
   "ambiente": "Supabase local descartável no GitHub Actions: Auth, PostgREST e PostgreSQL reais",
   "resultado": [
+    "Cadastro público real pelo módulo do portal cria sessão de consumidor sem acesso de equipe",
+    "CPF e senha passam pelo handler do servidor, Auth real e instalação da sessão no módulo do portal",
     "Auth real local e catálogo via PostgREST: três unidades e um produto sintético",
     "Funções do frontend enviam solicitação real: subtotal R$ 55,80 e estoque ainda 100",
     "Duas sessões Auth independentes aceitam: uma venda R$ 55,80, saldo 98 e acompanhamento recebido",
     "Gerente de outra unidade não lê nem avança o pedido",
-    "Cancelamento via API real devolve duas unidades e preserva o histórico"
+    "Evento Realtime real avisa o consumidor do status em preparo sem liberar leitura do pedido interno",
+    "Cancelamento via API real devolve duas unidades e preserva o histórico",
+    "Aula isolada: 30 cadastros e solicitações concorrentes, 30 avisos Realtime na fila, 30 vendas únicas; estoque 100 na espera, 70 no aceite e 100 após cancelamento"
   ]
 }

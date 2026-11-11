@@ -4,16 +4,16 @@
 
 | Campo | Registro |
 |---|---|
-| Código funcional | tag `entrega-2-2026-2`; código validado em `9efb272` |
-| Execução local | 04/11/2026, Windows, Node.js, diretório `frontend/` |
+| Código funcional | tag `entrega-2-2026-2-revisao-1`; código integrado em `5181371` |
+| Execução local | 11/11/2026, Windows, Node.js, diretório `frontend/` |
 | Comando | `npm test` → `node --test` |
-| Obtido | 101 testes; 101 aprovados; 0 falhas, cancelados ou ignorados |
-| Banco | 33 cenários PostgreSQL/PGlite isolados, com rollback |
-| CI | [Execução 41924749997](https://github.com/terpsandlups/BRASA_BURGER_CRUD_ERP/actions/runs/41924749997), 04/11/2026, três jobs com conclusão success |
+| Obtido | 117 testes; 117 aprovados; 0 falhas, cancelados ou ignorados |
+| Banco | 36 cenários PostgreSQL/PGlite isolados, com rollback |
+| CI | [Execução 43116523681](https://github.com/terpsandlups/BRASA_BURGER_CRUD_ERP/actions/runs/43116523681), 11/11/2026, três jobs com conclusão success |
 | Passos do CI | Instalação pelo lockfile, testes, build e auditoria de dependências |
 | Limite | Não comprova carga, e-mail externo ou trajetos físicos |
 
-A revisão documental posterior não altera nem reatribui esses resultados. Os testes não acessam o Supabase operacional. O novo teste de bootstrap usa a sequência integral, sem a fixture operacional. A API/Auth foi verificada separadamente na stack local do runner. Os caminhos abaixo são relativos à raiz do repositório; os nomes localizam as asserções e os dados completos. A tabela é um recorte da suíte.
+A tag original conserva o registro de 04/11; esta tabela identifica a revisão de 11/11 e suas novas verificações. Os testes não acessam o Supabase operacional. O novo teste de bootstrap usa a sequência integral, sem a fixture operacional. A API/Auth foi verificada separadamente na stack local do runner. Os caminhos abaixo são relativos à raiz do repositório; os nomes localizam as asserções e os dados completos. A tabela é um recorte da suíte.
 
 ## Casos automatizados executados
 
@@ -50,7 +50,7 @@ Arquivos: `frontend/test/entrega.test.js`, `dashboard.test.js`, `operacaoBanco.t
 | HM04 | Gerente de outra unidade e consumidores | Negar leitura/alteração alheia | Aprovado em SQL e API; isolamento entre empresas adicionalmente coberto por PGlite |
 | HM05 | Cancelar com devolução e estoque insuficiente | Repor uma vez, preservar histórico e reverter falha | Nativo: 850 g para 1000 g; API: 98 para 100. Rollback insuficiente aprovado no nativo e suíte SQL |
 | HM06 | Endereços reais e rotas físicas | Distância/taxa compatíveis | Não executado em campo. Fórmula e falhas de cobertura testadas |
-| HM07 | Origem HTTPS e e-mail externo | Confirmação retorna ao portal | Não executado; ERP externo não publicado |
+| HM07 | Origem HTTPS e rota direta | Abrir catálogo e cadastro CPF | Publicado no GitHub Pages e conferido no navegador; CPF dispensa envio de e-mail |
 | HM08 | Catálogo e carrinho na interface | Carregar unidade/itens e somar preços | Aprovado em 04/11: 2 x 26,90 = 53,80. Capturas não mostram envio |
 
 Resultados sanitizados: `resultado-postgres.json` e `resultado-api-local.json`. A stack Auth/API foi criada e destruída no runner isolado. Nenhuma conta ou pedido sintético foi criado no Supabase compartilhado.
@@ -78,3 +78,9 @@ Interpretação: aprovado, reprovado ou bloqueado; justificativa.
 Evidência: arquivo, captura, log sanitizado, consulta ou URL.
 Limites e ação decorrente:
 ```
+
+## Revisão para a aula, 11/11/2026
+
+Cadastro direto CPF/senha com limite de rede, senha validada pelo Auth, identificador interno sem e-mail pessoal, CPF imutável no perfil, resolução de conta restrita ao servidor e negação de dados de outra unidade. O aviso Realtime de status chegou ao titular no ensaio real. Consulta ViaCEP e tratamento de falhas foram verificados. Frontend e apresentação publicados por GitHub Actions; capturas HTTPS não criaram contas ou pedidos.
+
+CI integrado: https://github.com/terpsandlups/BRASA_BURGER_CRUD_ERP/actions/runs/43116523681 . Deploy: https://github.com/terpsandlups/BRASA_BURGER_CRUD_ERP/actions/runs/43114129902 .

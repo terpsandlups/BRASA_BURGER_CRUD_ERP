@@ -1,4 +1,4 @@
-import { createClient } from 'npm:@supabase/supabase-js@2.45.0'
+import { createClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { criarAcessoCliente } from './handler.mjs'
 
 const options={auth:{persistSession:false,autoRefreshToken:false}}

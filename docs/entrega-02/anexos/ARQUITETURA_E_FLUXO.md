@@ -21,7 +21,7 @@ flowchart LR
     M --> E
 ```
 
-React é a interface no navegador. Node.js executa Vite e testes, sem API intermediária própria. PostgREST e RPCs aplicam o acesso permitido; o servidor confere titular, empresa/unidade, preços e estoque. A função de entrega valida a sessão e consulta o provedor com segredo no servidor. O mapa permite confirmar pontos. O frontend HTTPS externo ainda não está publicado.
+React é a interface no navegador. Node.js executa Vite e testes, sem API intermediária própria. PostgREST e RPCs aplicam o acesso permitido; o servidor confere titular, empresa/unidade, preços e estoque. A função de entrega valida a sessão e consulta o provedor com segredo no servidor. O mapa permite confirmar pontos. O frontend está publicado em HTTPS no GitHub Pages. A função acesso-cliente resolve CPF no servidor e usa Supabase Auth para cadastrar e conferir senha; o perfil privado nunca concede acesso de equipe.
 
 ## Figura 2 — pedido móvel
 

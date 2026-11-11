@@ -4,7 +4,7 @@
 
 Caso Brasa Burger. Entrega 2, 2026/2. Jundiaí/SP, novembro de 2026.
 
-Versão de referência: tag `entrega-2-2026-2` do repositório público https://github.com/terpsandlups/BRASA_BURGER_CRUD_ERP. A Entrega 1 permanece preservada como histórico.
+Versão de referência: tag `entrega-2-2026-2-revisao-1` do repositório público https://github.com/terpsandlups/BRASA_BURGER_CRUD_ERP. A Entrega 1 permanece preservada como histórico.
 
 ## 1. Identificação e resumo
 
@@ -18,7 +18,7 @@ Versão de referência: tag `entrega-2-2026-2` do repositório público https://
 | Integrantes | Gabriel Rodrigues do Prado, 3º semestre; Rafaela Rodrigues Oliveira, 1º semestre |
 | Modalidade | Continuidade de protótipo acadêmico |
 
-**Resumo.** O projeto integra consumidor, atendimento e gestão de operações de alimentação. Convívium identifica a plataforma personalizável; Brasa Burger identifica a empresa do caso de aplicação. A interface React/JavaScript usa Supabase Auth e PostgREST, enquanto PostgreSQL executa regras de acesso, integridade e transações. O consumidor seleciona uma unidade, monta o carrinho e envia uma solicitação. A equipe autorizada aceita a solicitação e gera venda e consumo de estoque uma única vez. Programação, algoritmos e matemática aparecem em módulos, validações, estruturas de controle e cálculos monetários e gerenciais. A suíte possui 101 testes aprovados e a instalação integral foi reproduzida em bancos vazios. Conexões PostgreSQL independentes confirmaram idempotência, baixa única e reversão. O resultado é um piloto acadêmico funcional, acompanhado de instruções, evidências e limites explícitos para operação externa.
+**Resumo.** O projeto integra consumidor, atendimento e gestão de operações de alimentação. Convívium identifica a plataforma personalizável; Brasa Burger identifica a empresa do caso de aplicação. A interface React/JavaScript usa Supabase Auth e PostgREST, enquanto PostgreSQL executa regras de acesso, integridade e transações. O consumidor seleciona uma unidade, monta o carrinho e envia uma solicitação. A equipe autorizada aceita a solicitação e gera venda e consumo de estoque uma única vez. Programação, algoritmos e matemática aparecem em módulos, validações, estruturas de controle e cálculos monetários e gerenciais. A suíte possui 117 testes aprovados e a instalação integral foi reproduzida em bancos vazios. Conexões PostgreSQL independentes confirmaram idempotência, baixa única e reversão. O resultado é um piloto acadêmico funcional, acompanhado de instruções, evidências e limites explícitos para operação externa.
 
 Palavras-chave: aplicação integrada; JavaScript; algoritmos; matemática computacional; gestão multiunidade.
 
@@ -45,7 +45,7 @@ Os objetivos específicos são separar plataforma, empresas e unidades; permitir
 | Entrega própria | Cotação no servidor, rota e confirmação no mapa | Cobertura depende de endereço e origem válidos |
 | Indicadores | Faturamento, frete separado, ticket, CMV, cobertura e filtros | Custo usa ficha atual; margem não é lucro líquido |
 
-Pagamento online, integração automática com marketplaces, financeiro/fiscal completo, aplicativo nativo, convites por e-mail e personalização integral de tema são evoluções. Os canais externos previstos são lançamentos manuais. HTTPS do ERP, confirmação de e-mail externo e comparação de trajetos físicos permanecem como homologações operacionais posteriores. O site de apresentação fornecido pelo grupo é demonstrativo e não constitui uma publicação do ERP conectado.
+Pagamento online, integração automática com marketplaces, financeiro/fiscal completo, aplicativo nativo, convites por e-mail e personalização integral de tema são evoluções. Os canais externos previstos são lançamentos manuais. O frontend e a apresentação interativa estão publicados em HTTPS no GitHub Pages. O consumidor se cadastra com CPF e senha, usando um identificador interno no Auth, sem depender de envio de e-mail. CPF confere consistência matemática, sem comprovar identidade civil. Trajetos físicos e carga da turma ainda exigem ensaio.
 
 ## 4. Histórico e continuidade
 
@@ -177,7 +177,7 @@ O custo usa a ficha atual e pode mudar com a composição. Margem simplificada n
 
 ## 9. Testes e resultados
 
-A suíte Node.js possui 101 testes aprovados, incluindo 33 testes com PostgreSQL/PGlite. O novo teste de bootstrap instala a sequência integral duas vezes em bancos vazios, sem depender da fixture operacional. Confere primeiro master, ausência de colaborador no cadastro público e proteção dos dados demonstrativos. A compilação Vite passou. A atualização para Vite 6.4.5 corrigiu a vulnerabilidade indicada na auditoria anterior.
+A suíte Node.js possui 117 testes aprovados, incluindo 36 testes com PostgreSQL/PGlite. O novo teste de bootstrap instala a sequência integral duas vezes em bancos vazios, sem depender da fixture operacional. Confere primeiro master, ausência de colaborador no cadastro público e proteção dos dados demonstrativos. A compilação Vite passou. A atualização para Vite 6.4.5 corrigiu a vulnerabilidade indicada na auditoria anterior.
 
 O ensaio PostgreSQL nativo de 29/10/2026 instalou a aplicação em dois bancos vazios e usou conexões independentes. A instalação final também passou no job PostgreSQL 17 do GitHub Actions em 04/11/2026. O contrato Auth desse ensaio é local de teste e não simula e-mail.
 
@@ -191,13 +191,13 @@ O ensaio PostgreSQL nativo de 29/10/2026 instalou a aplicação em dois bancos v
 | HM04 | Gerente de outra unidade | Leitura vazia e alteração negada | Ambas aprovadas |
 | HM05 | Cancelar com devolução | Saldo volta de 850 g a 1000 g | Aprovado, histórico preservado |
 
-Em 04/11/2026, a stack Supabase local descartável do GitHub Actions aprovou Auth, PostgREST e PostgreSQL reais. As funções do frontend enviaram uma solicitação de dois produtos sintéticos de R$ 27,90, total R$ 55,80. O saldo permaneceu 100 durante a espera, caiu para 98 após dois aceites simultâneos e voltou a 100 no cancelamento. O consumidor acompanhou a etapa recebido e o gerente de outra unidade não leu nem avançou o pedido. Evidência: `anexos/resultado-api-local.json` e execução https://github.com/terpsandlups/BRASA_BURGER_CRUD_ERP/actions/runs/41924749997. Essa evidência é de API e sessões reais locais, sem escrita no Supabase operacional.
+Em 11/11/2026, a stack Supabase local descartável do GitHub Actions aprovou cadastro por CPF, Auth, PostgREST, PostgreSQL e Realtime reais. As funções do frontend enviaram uma solicitação de dois produtos sintéticos de R$ 27,90, total R$ 55,80. O saldo permaneceu 100 durante a espera, caiu para 98 após dois aceites simultâneos e voltou a 100 no cancelamento. O consumidor recebeu a atualização em preparo pelo Realtime, sem ler o pedido interno. O gerente de outra unidade não leu nem avançou o pedido. Evidência: `anexos/resultado-api-local.json` e execução https://github.com/terpsandlups/BRASA_BURGER_CRUD_ERP/actions/runs/43116523681. Essa evidência é de API e sessões reais locais, sem escrita no Supabase operacional.
 
 Uma revisão da interface pública em 04/11/2026 verificou catálogo, seleção Japy e carrinho com duas unidades de Bacon Cheese: 2 x R$ 26,90 = R$ 53,80. As capturas anexas não mostram envio nem venda. Esse catálogo público difere do produto sintético usado nos testes de banco; os exemplos não são a mesma venda.
 
 O catálogo completo de casos informa entrada, esperado, obtido, interpretação e arquivos. Rejeições esperadas incluem cotação expirada, preço adulterado, CPF inválido, estoque insuficiente e acesso alheio. No Retiro, uma falha anterior de geocodificação bloqueou envio e ofereceu confirmação no mapa, sem taxa inventada.
 
-Os testes não comprovam carga de produção, trajetos físicos, e-mail externo, fluxo escrito integral pela interface nem hospedagem HTTPS do ERP. A escrita sintética no Supabase compartilhado não foi executada. A abordagem isolada preserva o ambiente operacional e explicita o alcance da evidência.
+A publicação HTTPS foi conferida no navegador, incluindo catálogo, unidade, carrinho e cadastro CPF. O ensaio escrito integrado usa funções do frontend e API real isolada. 30 cadastros e solicitações concorrentes passaram no ambiente isolado, com 30 avisos à fila e saldo 100, 70 e 100 após espera, aceite e cancelamento. Trajetos físicos e o ensaio humano continuam pendentes. A escrita sintética no Supabase compartilhado não foi executada. A abordagem isolada preserva o ambiente operacional e explicita o alcance da evidência.
 
 ## 10. Conclusão
 
@@ -205,18 +205,18 @@ O piloto integra consumidor e operação da loja com regras de acesso, cálculo 
 
 A separação entre plataforma e empresa permite configurar outras operações sem duplicar a interface. No modelo de negócio proposto, o estabelecimento contrata o software e atende seu consumidor com a própria marca. Considera-se assinatura por empresa/faixa de unidades e serviços opcionais de implantação, treinamento e personalização com escopo. Preços, contratos, custos recorrentes e métricas comerciais ainda precisam de validação e não são resultados obtidos pelo piloto.
 
-O pacote reúne trabalho escrito, apresentação com 10 páginas de conteúdo, anexos, instruções, testes e código identificado por tag. As próximas etapas operacionais são publicar e homologar HTTPS, testar e-mail e trajetos reais, validar o ciclo completo pela interface em ambiente de teste e dimensionar carga. A pesquisa aprofundada de concorrentes depende do conector Search/Exa. Ensaio oral e submissão institucional são atos posteriores à preparação dos arquivos.
+O pacote reúne trabalho escrito, apresentação com 10 páginas de conteúdo, anexos, instruções, testes e código identificado por tag. As próximas etapas operacionais são ensaiar o acesso da turma, conferir trajetos reais e dimensionar carga. O portal público e a apresentação interativa acompanham a revisão, com cadastro CPF e atualização por eventos. A pesquisa aprofundada de concorrentes depende do conector Search/Exa. Ensaio oral e submissão institucional são atos posteriores à preparação dos arquivos.
 
 ## 11. Referências
 
 - FACULDADE ANHANGUERA. Projeto Integrado I, II e III, 2026/2: Entrega 2, Aplicação integrada. Enunciado de quatro páginas. Prof. Gilberto Falco Netto. Documento fornecido ao grupo.
 - PRADO, Gabriel Rodrigues do; OLIVEIRA, Rafaela Rodrigues. Brasa Burguer Management: proposta e modelagem integrada de um sistema web de gestão multiunidade para food service. Entrega 1. Jundiaí, 2026.
-- CONVÍVIUM MANAGEMENT SYSTEM. Código-fonte, testes e documentação. Tag entrega-2-2026-2. https://github.com/terpsandlups/BRASA_BURGER_CRUD_ERP/tree/entrega-2-2026-2. Consulta: 04 nov. 2026.
-- ECMA INTERNATIONAL. ECMA-262: ECMAScript 2025 Language Specification. 16. ed., 2025. https://tc39.es/ecma262/2025/. Consulta: 04 nov. 2026. Referência de linguagem e estruturas de controle.
-- NODE.JS. Test runner. Documentação da linha 24. https://nodejs.org/docs/latest-v24.x/api/test.html. Consulta: 04 nov. 2026.
-- POSTGRESQL GLOBAL DEVELOPMENT GROUP. Transaction Isolation. PostgreSQL 18 documentation. https://www.postgresql.org/docs/18/transaction-iso.html. Consulta: 04 nov. 2026.
-- SUPABASE. Row Level Security. https://supabase.com/docs/guides/database/postgres/row-level-security. Consulta: 04 nov. 2026.
+- CONVÍVIUM MANAGEMENT SYSTEM. Código-fonte, testes e documentação. Tag entrega-2-2026-2-revisao-1. https://github.com/terpsandlups/BRASA_BURGER_CRUD_ERP/tree/entrega-2-2026-2-revisao-1. Consulta: 11 nov. 2026.
+- ECMA INTERNATIONAL. ECMA-262: ECMAScript 2025 Language Specification. 16. ed., 2025. https://tc39.es/ecma262/2025/. Consulta: 11 nov. 2026. Referência de linguagem e estruturas de controle.
+- NODE.JS. Test runner. Documentação da linha 24. https://nodejs.org/docs/latest-v24.x/api/test.html. Consulta: 11 nov. 2026.
+- POSTGRESQL GLOBAL DEVELOPMENT GROUP. Transaction Isolation. PostgreSQL 18 documentation. https://www.postgresql.org/docs/18/transaction-iso.html. Consulta: 11 nov. 2026.
+- SUPABASE. Row Level Security. https://supabase.com/docs/guides/database/postgres/row-level-security. Consulta: 11 nov. 2026.
 - CORMEN, Thomas H. et al. Introduction to Algorithms. 4. ed. Cambridge: MIT Press, 2022. Referência conceitual de algoritmos recuperada da Entrega 1.
 - ROSEN, Kenneth H. Discrete Mathematics and Its Applications. 8. ed. New York: McGraw-Hill, 2019. Referência conceitual de matemática recuperada da Entrega 1.
 - MELL, Peter; GRANCE, Timothy. The NIST Definition of Cloud Computing. NIST SP 800-145, 2011. Referência de computação em nuvem recuperada da Entrega 1.
-- BRASA BURGER. Apresentação demonstrativa de 2026. https://brasa-burguer-apresentacao-2026.azurebard4.chatgpt.site/. Consulta: 04 nov. 2026. Referência visual e narrativa, sem comprovação de métricas operacionais.
+- BRASA BURGER. Apresentação demonstrativa de 2026. https://brasa-burguer-apresentacao-2026.azurebard4.chatgpt.site/. Consulta: 11 nov. 2026. Referência visual e narrativa, sem comprovação de métricas operacionais.

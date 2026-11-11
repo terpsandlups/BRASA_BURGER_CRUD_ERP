@@ -5,7 +5,9 @@
       "title": "Convívium\nManagement System",
       "subtitle": "Aplicação integrada para operações de alimentação",
       "detail": "Entrega 2 de 2026/2\nCaso de aplicação: Brasa Burger\nGabriel Rodrigues do Prado e Rafaela Rodrigues Oliveira",
-      "notes": "Abertura, 40 segundos. Faculdade Anhanguera, ADS, Projeto Integrado I, II e III. Prof. Gilberto Falco Netto. Apresentar Convívium como plataforma e Brasa Burger como empresa do caso."
+      "notes": "Abertura, 40 segundos. Faculdade Anhanguera, ADS, Projeto Integrado I, II e III. Prof. Gilberto Falco Netto. Apresentar Convívium como plataforma e Brasa Burger como empresa do caso.",
+      "backgroundImage": "docs/entrega-02/anexos/evidencias/portal-cpf-publicado.jpg",
+      "imageAlt": "Catálogo real do portal público Brasa Burger"
     },
     {
       "title": "Problema e escopo",
@@ -46,10 +48,10 @@
     {
       "kind": "screenshot",
       "title": "Pedido pelo portal da marca",
-      "image": "docs/entrega-02/anexos/evidencias/carrinho-sem-envio.png",
+      "image": "docs/entrega-02/anexos/evidencias/portal-cpf-publicado.jpg",
       "left": "1. Escolher unidade\n2. Montar o carrinho\n3. Conferir total e contato\n4. Enviar à loja",
-      "caption": "Carrinho conferido no navegador. Nenhum pedido enviado nesta captura.",
-      "notes": "2 minutos, incluindo demonstração. A captura mostra duas unidades a R$ 26,90, totalizando R$ 53,80. É cálculo no navegador, sem venda. O aceite e a baixa são demonstrados separadamente pelos testes isolados. Imagem do próprio projeto."
+      "caption": "Portal HTTPS: unidade Japy, carrinho de R$ 53,80. Nenhum envio nesta captura.",
+      "notes": "Captura pública em 11/11/2026. Duas unidades de R$ 26,90. Cadastro por CPF e senha. Nenhuma conta, solicitação ou venda foi criada na captura. A integração escrita foi verificada em Supabase local descartável no CI."
     },
     {
       "title": "Arquitetura implementada",
@@ -113,24 +115,24 @@
     {
       "kind": "number",
       "title": "Verificação reproduzível",
-      "number": "101",
+      "number": "117",
       "lead": "testes automatizados aprovados",
       "body": "Instalação integral em dois bancos vazios.\nDuas conexões PostgreSQL confirmam a mesma venda.\nUma baixa de estoque e rollback em caso de falha.",
-      "notes": "1 minuto. Os 101 testes incluem 33 cenários SQL, contando o bootstrap. A verificação nativa com conexões independentes é uma evidência adicional, sem somar sua contagem ao Node Test Runner. Fonte: resultado-postgres.json, testes e CI da versão final. CI de 04/11/2026: https://github.com/terpsandlups/BRASA_BURGER_CRUD_ERP/actions/runs/41924749997. Auth e API locais reais confirmaram venda única de R$ 55,80, saldo 100 para 98 e retorno a 100 no cancelamento."
+      "notes": "Revisão de novembro: 117 testes locais aprovados, incluindo CPF, ViaCEP, isolamento e eventos mínimos de status. Validação adicional da API e Realtime em stack local descartável no CI. O código e o registro de revisão acompanham os materiais. CI com Auth e Realtime: https://github.com/terpsandlups/BRASA_BURGER_CRUD_ERP/actions/runs/43116523681 . Publicação HTTPS: https://github.com/terpsandlups/BRASA_BURGER_CRUD_ERP/actions/runs/43114129902 ."
     },
     {
       "title": "Resultados e limites",
       "lead": "O fluxo central tem regras e resultados rastreáveis.",
       "leftTitle": "Resultado",
-      "left": "Conta do consumidor separada da equipe.\nVenda e baixa transacionais.\nAutorização por empresa e unidade.",
+      "left": "Cadastro do consumidor por CPF e senha.\nVenda e baixa transacionais.\nAutorização por empresa e unidade.",
       "rightTitle": "Limites conhecidos",
-      "right": "Cobertura de endereços pode exigir mapa.\nHTTPS externo e confirmação de e-mail dependem de homologação.\nPagamento presencial e canais manuais.",
+      "right": "Cobertura de endereços pode exigir mapa.\nCarga simultânea da turma requer ensaio.\nPagamento presencial e canais manuais.",
       "notes": "1 minuto. Apresentar os limites com precisão. Não alegar operação em pico ou escala comercial comprovada. Os testes em ambiente isolado não são ensaio dos integrantes nem validação de todos os trajetos reais."
     },
     {
       "title": "Conclusão e referências",
       "lead": "Programação, algoritmos e matemática sustentam a mesma operação.",
-      "body": "O Convívium evolui a base da Entrega 1 para uma aplicação integrada.\nO Brasa Burger permanece como caso de uso da plataforma.\nCódigo, cálculos e resultados acompanham a versão entrega-2-2026-2.",
+      "body": "O Convívium evolui a base da Entrega 1 para uma aplicação integrada.\nO Brasa Burger permanece como caso de uso da plataforma.\nCódigo, cálculos e resultados acompanham a versão entrega-2-2026-2-revisao-1.",
       "small": "Fontes: repositório do projeto, memória de cálculo, matriz disciplinar, registros de teste e enunciado da Entrega 2.",
       "notes": "1 minuto. Fontes completas no trabalho escrito. Repositório: https://github.com/terpsandlups/BRASA_BURGER_CRUD_ERP . Referência visual complementar: https://brasa-burguer-apresentacao-2026.azurebard4.chatgpt.site/ . Distribuir fala entre os dois integrantes e ensaiar a exposição em até 15 minutos."
     }
@@ -141,7 +143,9 @@
       "title": "Fundamentos\ndo Convívium",
       "subtitle": "Como a aplicação organiza interface, regras e dados",
       "detail": "Complemento técnico da Entrega 2\nGabriel Rodrigues do Prado e Rafaela Rodrigues Oliveira",
-      "notes": "Versão atualizada a partir de Fundamentos Técnicos Brasa Burguer.pptx. Uso como material de apoio, separado da apresentação acadêmica principal."
+      "notes": "Versão atualizada a partir de Fundamentos Técnicos Brasa Burguer.pptx. Uso como material de apoio, separado da apresentação acadêmica principal. Logo: https://www.postgresql.org/about/press/ . Marca PostgreSQL pertencente aos respectivos titulares.",
+      "backgroundImage": "Slides/Entrega-2/assets/postgresql-logo.png",
+      "imageAlt": "Logo oficial PostgreSQL"
     },
     {
       "kind": "table",
@@ -182,9 +186,9 @@
     {
       "kind": "screenshot",
       "title": "JavaScript na experiência de uso",
-      "image": "docs/entrega-02/anexos/evidencias/portal-publico.png",
-      "left": "Componentes React\nEventos de formulário\nEstado do carrinho\nConsulta por unidade",
-      "caption": "Catálogo público da marca carregado no aplicativo.",
+      "image": "docs/entrega-02/anexos/evidencias/carrinho-cpf-publicado.jpg",
+      "left": "Componentes React\nCadastro por CPF\nEstado do carrinho\nEventos de formulário",
+      "caption": "Cadastro CPF e carrinho publicados em HTTPS. Nenhum cadastro ou pedido enviado na captura.",
       "notes": "A captura não contém sessão identificada nem pedido persistido. Não afirmar arrastar cartões: o fluxo atual avança por ações autorizadas. Imagem do próprio projeto."
     },
     {
@@ -194,7 +198,8 @@
       "left": "Scripts legados de carga e simulação.\nNão são API intermediária.\nA instalação final usa SQL e dados sintéticos próprios.",
       "rightTitle": "MySQL",
       "right": "Estudo analítico independente.\nNão substitui o backend Supabase.\nNão é necessário para abrir a interface.",
-      "notes": "Corrige as alegações de ETL contínuo e milhares de produtos dos materiais anteriores. Fonte: python/, mysql/ e guia de execução."
+      "notes": "Corrige as alegações de ETL contínuo e milhares de produtos dos materiais anteriores. Fonte: python/, mysql/ e guia de execução. Logo oficial: https://www.python.org/community/logos/ . Marca Python pertencente à Python Software Foundation.",
+      "decorationImage": "Slides/Entrega-2/assets/python-logo.png"
     },
     {
       "kind": "code",
@@ -208,9 +213,9 @@
       "lead": "Supabase fornece os serviços gerenciados do backend.",
       "leftTitle": "Implementado",
       "left": "Auth, PostgREST e banco relacional.\nFunção de entrega com segredo no servidor.\nRLS e validação por contexto.",
-      "rightTitle": "Ambiente de apresentação",
-      "right": "Frontend pode executar localmente.\nInstalador para um projeto novo.\nPublicação externa requer configuração e homologação.",
-      "notes": "Não alegar deploy Netlify ativo sem evidência. A apresentação web compartilhada é um material demonstrativo, não a hospedagem do ERP."
+      "rightTitle": "Publicação da entrega",
+      "right": "GitHub Pages para a interface.\nSupabase para autenticação e dados.\nPortal público e acesso restrito à equipe.",
+      "notes": "Publicação HTTPS confirmada em 11/11/2026. Fonte: https://github.com/terpsandlups/BRASA_BURGER_CRUD_ERP/actions/runs/43114129902 . Frontend público: https://terpsandlups.github.io/BRASA_BURGER_CRUD_ERP/ ."
     },
     {
       "kind": "number",
@@ -223,7 +228,7 @@
     {
       "title": "Segurança e rastreabilidade",
       "lead": "A sessão identifica a conta. As regras limitam a operação.",
-      "body": "Consumidor acompanha seus pedidos.\nGerente opera sua unidade. Administrador opera sua empresa.\nRPCs validam a escrita e registram o resultado.\nReenvio e aceite repetido preservam uma venda.",
+      "body": "Consumidor entra com CPF e senha e acompanha seus pedidos.\nGerente opera sua unidade. Administrador opera sua empresa.\nEventos atualizam a fila e o acompanhamento.\nReenvio e aceite repetido preservam uma venda.",
       "small": "Fontes: código, migrações, testes e documentação da versão final no GitHub.",
       "notes": "Referências: https://github.com/terpsandlups/BRASA_BURGER_CRUD_ERP ; documentação de Supabase Auth, RLS e PostgREST. O histórico de consumo sustenta a conferência do cancelamento."
     }
@@ -234,7 +239,9 @@
       "title": "Convívium\nModelo de negócio",
       "subtitle": "Plataforma personalizável para operações de alimentação",
       "detail": "Brasa Burger como primeiro caso de aplicação\nProposta comercial em validação",
-      "notes": "Apresentação complementar de negócio. A plataforma está implementada em piloto; assinatura e serviços descritos são proposta comercial, sem preços ou faturamento contratados presumidos."
+      "notes": "Apresentação complementar de negócio. A plataforma está implementada em piloto; assinatura e serviços descritos são proposta comercial, sem preços ou faturamento contratados presumidos. Fotografia ilustrativa recuperada do deck original. Não retrata o Brasa Burger. Fonte e crédito em Slides/Entrega-2/assets/CREDITOS.md.",
+      "backgroundImage": "Slides/Entrega-2/assets/comprovantes-ilustracao.png",
+      "imageAlt": "Fotografia ilustrativa de comprovantes de restaurante"
     },
     {
       "kind": "photo",
@@ -283,7 +290,7 @@
     {
       "title": "Fluxo operacional",
       "lead": "O pedido chega à unidade escolhida pelo consumidor.",
-      "body": "O portal apresenta catálogo, adicionais e total.\nA loja confirma disponibilidade e aceita a solicitação.\nO aceite cria venda e baixa os insumos.\nO cliente acompanha o andamento da operação.",
+      "body": "O consumidor se cadastra com CPF e monta o carrinho.\nA unidade escolhida recebe a solicitação ao vivo.\nO aceite cria venda e baixa os insumos.\nO cliente acompanha os próximos status.",
       "small": "Pagamento atual diretamente à loja. Frete próprio depende de cotação válida.",
       "notes": "A solicitação aguardando não reserva estoque. Não alegar contratação automática de entregador, gateway financeiro ou repasse pela plataforma."
     },
@@ -344,7 +351,7 @@
       "leftTitle": "Disponível no piloto",
       "left": "Empresas e unidades isoladas.\nIdentidade configurável e portal próprio.\nPedidos, estoque e análise gerencial.",
       "rightTitle": "Evolução prevista",
-      "right": "Convites, tema completo e integrações.\nHomologação de acesso externo e operação.\nOferta comercial validada com os estabelecimentos.",
+      "right": "Convites, tema completo e integrações.\nEnsaio da turma e operação acompanhada.\nOferta comercial validada com estabelecimentos.",
       "notes": "Fontes: repositório da versão final, apresentações originais e https://brasa-burguer-apresentacao-2026.azurebard4.chatgpt.site/ . Nenhuma receita, adesão, preço ou resultado de mercado é presumido."
     }
   ]

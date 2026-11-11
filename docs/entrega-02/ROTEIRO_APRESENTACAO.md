@@ -40,7 +40,7 @@ Abertura, 40 segundos. Faculdade Anhanguera, ADS, Projeto Integrado I, II e III.
 
 ## Página 10: Verificação reproduzível
 
-1 minuto. Os 101 testes incluem 33 cenários SQL, contando o bootstrap. A verificação nativa com conexões independentes é uma evidência adicional, sem somar sua contagem ao Node Test Runner. Fonte: resultado-postgres.json, testes e CI da versão final. CI de 04/11/2026: https://github.com/terpsandlups/BRASA_BURGER_CRUD_ERP/actions/runs/41924749997. Auth e API locais reais confirmaram venda única de R$ 55,80, saldo 100 para 98 e retorno a 100 no cancelamento.
+1 minuto. Os 117 testes incluem 36 cenários SQL, contando o bootstrap. A verificação nativa com conexões independentes é uma evidência adicional, sem somar sua contagem ao Node Test Runner. Fonte: resultado-postgres.json, testes e CI da versão final. CI de 11/11/2026: https://github.com/terpsandlups/BRASA_BURGER_CRUD_ERP/actions/runs/43116523681. Auth e API locais reais confirmaram venda única de R$ 55,80, saldo 100 para 98 e retorno a 100 no cancelamento.
 
 ## Página 11: Resultados e limites
 
@@ -49,3 +49,7 @@ Abertura, 40 segundos. Faculdade Anhanguera, ADS, Projeto Integrado I, II e III.
 ## Página 12: Conclusão e referências
 
 1 minuto. Fontes completas no trabalho escrito. Repositório: https://github.com/terpsandlups/BRASA_BURGER_CRUD_ERP . Referência visual complementar: https://brasa-burguer-apresentacao-2026.azurebard4.chatgpt.site/ . Distribuir fala entre os dois integrantes e ensaiar a exposição em até 15 minutos.
+
+## Links durante a apresentação
+
+Abrir https://terpsandlups.github.io/BRASA_BURGER_CRUD_ERP/apresentacao/ para escolher as trilhas acadêmica, técnica ou de negócio. O portal público está em https://terpsandlups.github.io/BRASA_BURGER_CRUD_ERP/pedir/brasa-burger . Cadastro por CPF e senha. A fila da equipe está em /solicitacoes, com autenticação e escopo de empresa/unidade.

@@ -6,7 +6,7 @@ window.CONVIVIUM_SLIDES = {
       "subtitle": "Aplicação integrada para operações de alimentação",
       "detail": "Entrega 2 de 2026/2\nCaso de aplicação: Brasa Burger\nGabriel Rodrigues do Prado e Rafaela Rodrigues Oliveira",
       "notes": "Abertura, 40 segundos. Faculdade Anhanguera, ADS, Projeto Integrado I, II e III. Prof. Gilberto Falco Netto. Apresentar Convívium como plataforma e Brasa Burger como empresa do caso.",
-      "backgroundImage": "assets/portal-publico.png",
+      "backgroundImage": "assets/portal-cpf-publicado.jpg",
       "imageAlt": "Catálogo real do portal público Brasa Burger"
     },
     {
@@ -48,10 +48,10 @@ window.CONVIVIUM_SLIDES = {
     {
       "kind": "screenshot",
       "title": "Pedido pelo portal da marca",
-      "image": "assets/carrinho-sem-envio.png",
+      "image": "assets/portal-cpf-publicado.jpg",
       "left": "1. Escolher unidade\n2. Montar o carrinho\n3. Conferir total e contato\n4. Enviar à loja",
-      "caption": "Carrinho conferido no navegador. Nenhum pedido enviado nesta captura.",
-      "notes": "2 minutos, incluindo demonstração. A captura mostra duas unidades a R$ 26,90, totalizando R$ 53,80. É cálculo no navegador, sem venda. O aceite e a baixa são demonstrados separadamente pelos testes isolados. Imagem do próprio projeto."
+      "caption": "Portal HTTPS: unidade Japy, carrinho de R$ 53,80. Nenhum envio nesta captura.",
+      "notes": "Captura pública em 11/11/2026. Duas unidades de R$ 26,90. Cadastro por CPF e senha. Nenhuma conta, solicitação ou venda foi criada na captura. A integração escrita foi verificada em Supabase local descartável no CI."
     },
     {
       "title": "Arquitetura implementada",
@@ -118,7 +118,7 @@ window.CONVIVIUM_SLIDES = {
       "number": "117",
       "lead": "testes automatizados aprovados",
       "body": "Instalação integral em dois bancos vazios.\nDuas conexões PostgreSQL confirmam a mesma venda.\nUma baixa de estoque e rollback em caso de falha.",
-      "notes": "Revisão de novembro: 117 testes locais aprovados, incluindo CPF, ViaCEP, isolamento e eventos mínimos de status. Validação adicional da API e Realtime em stack local descartável no CI. O código e o registro de revisão acompanham os materiais."
+      "notes": "Revisão de novembro: 117 testes locais aprovados, incluindo CPF, ViaCEP, isolamento e eventos mínimos de status. Validação adicional da API e Realtime em stack local descartável no CI. O código e o registro de revisão acompanham os materiais. CI com Auth e Realtime: https://github.com/terpsandlups/BRASA_BURGER_CRUD_ERP/actions/runs/43116523681 . Publicação HTTPS: https://github.com/terpsandlups/BRASA_BURGER_CRUD_ERP/actions/runs/43114129902 ."
     },
     {
       "title": "Resultados e limites",
@@ -132,7 +132,7 @@ window.CONVIVIUM_SLIDES = {
     {
       "title": "Conclusão e referências",
       "lead": "Programação, algoritmos e matemática sustentam a mesma operação.",
-      "body": "O Convívium evolui a base da Entrega 1 para uma aplicação integrada.\nO Brasa Burger permanece como caso de uso da plataforma.\nCódigo, cálculos e resultados acompanham a versão entrega-2-2026-2.",
+      "body": "O Convívium evolui a base da Entrega 1 para uma aplicação integrada.\nO Brasa Burger permanece como caso de uso da plataforma.\nCódigo, cálculos e resultados acompanham a versão entrega-2-2026-2-revisao-1.",
       "small": "Fontes: repositório do projeto, memória de cálculo, matriz disciplinar, registros de teste e enunciado da Entrega 2.",
       "notes": "1 minuto. Fontes completas no trabalho escrito. Repositório: https://github.com/terpsandlups/BRASA_BURGER_CRUD_ERP . Referência visual complementar: https://brasa-burguer-apresentacao-2026.azurebard4.chatgpt.site/ . Distribuir fala entre os dois integrantes e ensaiar a exposição em até 15 minutos."
     }
@@ -186,9 +186,9 @@ window.CONVIVIUM_SLIDES = {
     {
       "kind": "screenshot",
       "title": "JavaScript na experiência de uso",
-      "image": "assets/portal-publico.png",
-      "left": "Componentes React\nEventos de formulário\nEstado do carrinho\nConsulta por unidade",
-      "caption": "Catálogo público da marca carregado no aplicativo.",
+      "image": "assets/carrinho-cpf-publicado.jpg",
+      "left": "Componentes React\nCadastro por CPF\nEstado do carrinho\nEventos de formulário",
+      "caption": "Cadastro CPF e carrinho publicados em HTTPS. Nenhum cadastro ou pedido enviado na captura.",
       "notes": "A captura não contém sessão identificada nem pedido persistido. Não afirmar arrastar cartões: o fluxo atual avança por ações autorizadas. Imagem do próprio projeto."
     },
     {
@@ -213,9 +213,9 @@ window.CONVIVIUM_SLIDES = {
       "lead": "Supabase fornece os serviços gerenciados do backend.",
       "leftTitle": "Implementado",
       "left": "Auth, PostgREST e banco relacional.\nFunção de entrega com segredo no servidor.\nRLS e validação por contexto.",
-      "rightTitle": "Ambiente de apresentação",
-      "right": "Frontend pode executar localmente.\nInstalador para um projeto novo.\nPublicação externa requer configuração e homologação.",
-      "notes": "Não alegar deploy Netlify ativo sem evidência. A apresentação web compartilhada é um material demonstrativo, não a hospedagem do ERP."
+      "rightTitle": "Publicação da entrega",
+      "right": "GitHub Pages para a interface.\nSupabase para autenticação e dados.\nPortal público e acesso restrito à equipe.",
+      "notes": "Publicação HTTPS confirmada em 11/11/2026. Fonte: https://github.com/terpsandlups/BRASA_BURGER_CRUD_ERP/actions/runs/43114129902 . Frontend público: https://terpsandlups.github.io/BRASA_BURGER_CRUD_ERP/ ."
     },
     {
       "kind": "number",
@@ -351,7 +351,7 @@ window.CONVIVIUM_SLIDES = {
       "leftTitle": "Disponível no piloto",
       "left": "Empresas e unidades isoladas.\nIdentidade configurável e portal próprio.\nPedidos, estoque e análise gerencial.",
       "rightTitle": "Evolução prevista",
-      "right": "Convites, tema completo e integrações.\nHomologação de acesso externo e operação.\nOferta comercial validada com os estabelecimentos.",
+      "right": "Convites, tema completo e integrações.\nEnsaio da turma e operação acompanhada.\nOferta comercial validada com estabelecimentos.",
       "notes": "Fontes: repositório da versão final, apresentações originais e https://brasa-burguer-apresentacao-2026.azurebard4.chatgpt.site/ . Nenhuma receita, adesão, preço ou resultado de mercado é presumido."
     }
   ]
