@@ -110,6 +110,41 @@ try{
  await rpc(admin,'cancelar_pedido_transacional',{p_pedido:p1,p_status_esperado:'em_preparo',p_motivo:'Validação de devolução E2',p_destino:'devolver_estoque',p_pedido_destino:null});
  const final=await admin.from('estoque_lojas').select('quantidade_disponivel').eq('loja_id',loja).single();if(final.error)throw final.error;assert.equal(Number(final.data.quantidade_disponivel),100);
  resultado.push('Cancelamento via API real devolve duas unidades e preserva o histórico');
+ // Ensaio limitado da dinâmica da aula. Somente a stack local descartável.
+ const turma=30;
+ const cpfSintetico=i=>{
+  let cpf='700000'+String(i).padStart(3,'0');
+  for(const tamanho of [9,10]){let soma=0;for(let j=0;j<tamanho;j++)soma+=Number(cpf[j])*(tamanho+1-j);const digito=(soma*10)%11;cpf+=String(digito===10?0:digito)}
+  return cpf;
+ };
+ let resolverFila;
+ const chegada=new Promise(resolve=>{resolverFila=resolve});let recebidas=0;
+ let bancoFilaPronto;
+ const filaPronta=new Promise(resolve=>{bancoFilaPronto=resolve});
+ const canalFila=admin.channel('teste-turma-fila')
+  .on('system',{},e=>{if(e.extension==='postgres_changes' && e.status==='ok')bancoFilaPronto()})
+  .on('postgres_changes',{event:'INSERT',schema:'public',table:'solicitacoes_mobile',filter:`loja_id=eq.${loja}`},()=>{recebidas++;if(recebidas===turma)resolverFila()});
+ canalFila.subscribe();
+ let timeoutFila;
+ try{await Promise.race([filaPronta,new Promise((_,reject)=>{timeoutFila=setTimeout(()=>reject(new Error('Fila da turma não confirmou assinatura.')),20000)})])}finally{clearTimeout(timeoutFila)}
+ const solicitacoesTurma=await Promise.all(Array.from({length:turma},async(_,i)=>{
+  const c=client(anon),cpf=cpfSintetico(i),nome='Aluno Sintético '+String(i+1);
+  await acessarContaCliente(c.auth,{cadastro:true,email:'',senha,nome,cpf,telefone:'11999999999'},functions);
+  const dados=montarSolicitacao({lojaId:loja,tipo:'presencial',pagamento:'pix',cliente:{nome,cpf,telefone:'11999999999'},itens:[{id:v,preco:27.9,quantidade:1,extras:[]}],endereco:{},observacoes:'Aula isolada',troco:''});
+  return criarEnvioTransacional(c,undefined,{funcao:'enviar_solicitacao_mobile'}).enviar(dados);
+ }));
+ let timeoutChegada;
+ try{await Promise.race([chegada,new Promise((_,reject)=>{timeoutChegada=setTimeout(()=>reject(new Error('A fila não recebeu os 30 avisos de solicitação.')),20000)})])}finally{clearTimeout(timeoutChegada)}
+ const filaTurma=await admin.from('solicitacoes_mobile').select('id,loja_id').in('id',solicitacoesTurma);if(filaTurma.error)throw filaTurma.error;
+ assert.equal(filaTurma.data.length,turma);assert.ok(filaTurma.data.every(s=>s.loja_id===loja));
+ const saldoEspera=await admin.from('estoque_lojas').select('quantidade_disponivel').eq('loja_id',loja).single();assert.equal(Number(saldoEspera.data.quantidade_disponivel),100);
+ const pedidosTurma=await Promise.all(solicitacoesTurma.map(id=>rpc(admin,'decidir_solicitacao_mobile',{p_id:id,p_acao:'aceitar',p_motivo:null,p_cotacao:null})));
+ assert.equal(new Set(pedidosTurma).size,turma);
+ const saldoAula=await admin.from('estoque_lojas').select('quantidade_disponivel').eq('loja_id',loja).single();assert.equal(Number(saldoAula.data.quantidade_disponivel),100-turma);
+ await Promise.all(pedidosTurma.map(id=>rpc(admin,'cancelar_pedido_transacional',{p_pedido:id,p_status_esperado:'recebido',p_motivo:'Encerramento da aula isolada',p_destino:'devolver_estoque',p_pedido_destino:null})));
+ const saldoEncerrado=await admin.from('estoque_lojas').select('quantidade_disponivel').eq('loja_id',loja).single();assert.equal(Number(saldoEncerrado.data.quantidade_disponivel),100);
+ await admin.removeChannel(canalFila);
+ resultado.push('Aula isolada: 30 cadastros e solicitações concorrentes, 30 avisos Realtime na fila, 30 vendas únicas; estoque 100 na espera, 70 no aceite e 100 após cancelamento');
  const report={data:new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',dateStyle:'short'}).format(new Date()),ambiente:'Supabase local descartável no GitHub Actions: Auth, PostgREST e PostgreSQL reais',resultado};
  await mkdir('../docs/entrega-02/anexos',{recursive:true});
  await writeFile('../docs/entrega-02/anexos/resultado-api-local.json',JSON.stringify(report,null,2)+'\n');
