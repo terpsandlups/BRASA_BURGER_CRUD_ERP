@@ -55,6 +55,7 @@ function Atendimento({ solicitacao: s, onAtualizar }) {
 }
 
 export default function SolicitacoesMobile() {
+  const { usuario } = useAuth()
   const [lista, setLista] = useState([])
   const [selecionada, setSelecionada] = useState(null)
   const [erro, setErro] = useState('')
@@ -64,9 +65,9 @@ export default function SolicitacoesMobile() {
     let ativo = true
     async function carregar() {
       try {
-        const { data, error } = await supabase.from('solicitacoes_mobile').select('*').eq('status','aguardando').order('criado_em').order('id').limit(100)
+        const { data, error } = await supabase.from('solicitacoes_mobile').select('*, lojas(nome)').eq('status','aguardando').order('criado_em').order('id').limit(100)
         if (error) throw error
-        if (ativo) { setLista(data || []); setErro('') }
+        if (ativo) { setLista(data || []); setSelecionada(atual=>atual ? (data || []).find(s=>s.id===atual.id) || null : null); setErro('') }
       } catch (error) { if (ativo) setErro(mensagemPortal(error)) }
       finally { if (ativo) setCarregando(false) }
     }
@@ -75,9 +76,9 @@ export default function SolicitacoesMobile() {
     return () => { ativo = false; encerrar() }
   }, [revisao])
   return <>
-    <PageHeader titulo="Pedidos do celular" descricao="Solicitações aguardando confirmação da unidade." icone="sacola" acoesSecundarias={<><a href="/pedir" target="_blank" rel="noreferrer" className="text-sm underline">Portal do cliente</a><button className="border border-borda px-4 py-2 rounded-lg" onClick={() => setRevisao(r => r + 1)}>Atualizar</button></>} />
+    <PageHeader titulo="Pedidos dos clientes" descricao="Solicitações aguardando confirmação da unidade." icone="sacola" acoesSecundarias={<><a href={`${import.meta.env.BASE_URL}pedir/${usuario?.empresas?.slug || 'brasa-burger'}`} target="_blank" rel="noreferrer" className="text-sm underline">Portal do cliente</a><button className="border border-borda px-4 py-2 rounded-lg" onClick={() => setRevisao(r => r + 1)}>Atualizar</button></>} />
     {erro && <p role="alert" className="text-brasa mb-4">{erro}</p>}
-    {carregando ? <p role="status">Carregando solicitações…</p> : lista.length === 0 ? <div className="rounded-xl border border-borda bg-branco p-8"><h2 className="text-xl">Nenhum pedido aguardando</h2><p className="text-fumaca mt-2">As solicitações recebidas pelo portal aparecerão aqui.</p></div> : <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">{lista.map(s => <article key={s.id} className="bg-branco border border-borda rounded-xl p-5"><div className="flex justify-between gap-3"><strong>#{codigoPedido(s.id)}</strong><span className="text-xs text-fumaca">{new Date(s.criado_em).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })}</span></div><h2 className="text-lg mt-3">{s.dados.nome}</h2><p className="text-sm text-fumaca">{s.dados.tipo_atendimento === 'delivery' ? 'Entrega · frete a confirmar' : 'Retirada na loja'}</p><p className="mt-3">{dinheiro(s.subtotal)}</p><button className="bg-ambar w-full rounded-lg py-3 mt-4" onClick={() => setSelecionada(s)}>Conferir solicitação</button></article>)}</div>}
+    {carregando ? <p role="status">Carregando solicitações…</p> : lista.length === 0 ? <div className="rounded-xl border border-borda bg-branco p-8"><h2 className="text-xl">Nenhum pedido aguardando</h2><p className="text-fumaca mt-2">As solicitações recebidas pelo portal aparecerão aqui.</p></div> : <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">{lista.map(s => <article key={s.id} className="bg-branco border border-borda rounded-xl p-5"><div className="flex justify-between gap-3"><strong>#{codigoPedido(s.id)}</strong><span className="text-xs text-fumaca">{new Date(s.criado_em).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })}</span></div><p className="text-sm text-ambar mt-3">{s.lojas?.nome}</p><h2 className="text-lg mt-1">{s.dados.nome}</h2><p className="text-sm text-fumaca">{s.dados.tipo_atendimento === 'delivery' ? (s.cotacao_mobile_id ? 'Entrega · frete confirmado' : 'Entrega · frete a confirmar') : 'Retirada na loja'}</p><p className="mt-3">{dinheiro(Number(s.subtotal)+Number(s.cotacao_mobile_id ? s.taxa_entrega : 0))}</p><button className="bg-ambar w-full rounded-lg py-3 mt-4" onClick={() => setSelecionada(s)}>Conferir solicitação</button></article>)}</div>}
     {lista.length === 100 && <p className="mt-4 text-sm text-fumaca">Exibindo as 100 solicitações mais antigas. Atenda a fila para carregar as próximas.</p>}
     <Link to="/pedidos" className="inline-block text-sm text-ambar underline mt-6">Abrir quadro de pedidos confirmados</Link>
     <SidePanel aberto={!!selecionada} onFechar={() => setSelecionada(null)} titulo={selecionada ? `Solicitação #${codigoPedido(selecionada.id)}` : 'Solicitação'}>{selecionada && <Atendimento key={selecionada.id} solicitacao={selecionada} onAtualizar={async () => { setSelecionada(null); setRevisao(r => r + 1) }} />}</SidePanel>

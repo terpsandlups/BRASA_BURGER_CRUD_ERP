@@ -32,20 +32,22 @@ try{
  await owner.query("SELECT erp_privado.provisionar_primeiro_master('master@example.test')");
  const entrar=async(tipo)=>{const c=client(anon);const {error}=await c.auth.signInWithPassword({email:tipo+'@example.test',password:senha});if(error)throw error;return c};
  const admin=await entrar('master'),consumer=client(anon),admin2=await entrar('master');
- const cadastro=await acessarContaCliente(consumer.auth,{cadastro:true,email:' cliente@example.test ',senha,retorno:'http://localhost:5173/pedir/brasa-burger',cpf:'52998224725',nome:'Consumidor Sintético',telefone:'11999999999'});
- assert.ok(cadastro.session,'A stack local de teste deve permitir cadastro sem confirmação de e-mail.');
- const perfil=await owner.query('SELECT id FROM public.usuarios WHERE id=$1',[cadastro.user.id]);
- assert.equal(perfil.rows.length,0,'Cadastro público nunca concede perfil de equipe.');
- resultado.push('Cadastro público real pelo módulo do portal cria sessão de consumidor sem acesso de equipe');
- await consumer.auth.signOut();
  const handler=criarAcessoCliente({allowedOrigins:['http://localhost:5173'],
   resolverConta:async cpf=>{const {data,error}=await service.rpc('preparar_login_cliente',{p_cpf:cpf});if(error)throw error;return data},
-  autenticar:(email,password)=>client(anon).auth.signInWithPassword({email,password})});
+  autenticar:(email,password)=>client(anon).auth.signInWithPassword({email,password}),
+  cadastrar:dados=>service.auth.admin.createUser(dados),
+  limitarCadastro:async chave=>{const {data,error}=await service.rpc('reservar_cadastro_cliente',{p_chave:chave});if(error)throw error;return data===true}});
  const functions={invoke:async(nome,{body})=>{
   assert.equal(nome,'acesso-cliente');
   const resposta=await handler(new Request(url+'/functions/v1/acesso-cliente',{method:'POST',headers:{origin:'http://localhost:5173','Content-Type':'application/json'},body:JSON.stringify(body)}));
   const data=await resposta.json();if(!resposta.ok)throw new Error(data.error);return {data,error:null};
  }};
+ const cadastro=await acessarContaCliente(consumer.auth,{cadastro:true,email:'',senha,retorno:'http://localhost:5173/pedir/brasa-burger',cpf:'52998224725',nome:'Consumidor Sintético',telefone:'11999999999'},functions);
+ assert.ok(cadastro.session,'Cadastro por CPF deve criar sessão sem envio de e-mail.');
+ const perfil=await owner.query('SELECT id FROM public.usuarios WHERE id=$1',[cadastro.user.id]);
+ assert.equal(perfil.rows.length,0,'Cadastro público nunca concede perfil de equipe.');
+ resultado.push('Cadastro público real pelo módulo do portal cria sessão de consumidor sem acesso de equipe');
+ await consumer.auth.signOut();
  await acessarContaCliente(consumer.auth,{cadastro:false,email:'529.982.247-25',senha},functions);
  const proprio=await consumer.rpc('meu_cadastro_cliente');if(proprio.error)throw proprio.error;assert.equal(proprio.data.cpf,'52998224725');
  resultado.push('CPF e senha passam pelo handler do servidor, Auth real e instalação da sessão no módulo do portal');

@@ -5,6 +5,7 @@ import { criarEnvioTransacional } from '../lib/pedidoTransacional.js'
 import { mensagemPortal, montarSolicitacao, totalCarrinho } from '../lib/portalCliente.js'
 import { acessarContaCliente, armazenamentoDaSessao, reenviarConfirmacaoCliente } from '../lib/acessoCliente.js'
 import { acompanharAoVivo } from '../lib/atualizacaoAoVivo.js'
+import { formatarCPF } from '../lib/format.js'
 import { dinheiro, codigoPedido } from '../lib/pedidoApresentacao.js'
 import ConsultaEntrega from '../components/ConsultaEntrega.jsx'
 import Icon from '../components/ui/Icon.jsx'
@@ -143,7 +144,7 @@ export default function PortalCliente() {
   async function autenticar(event) {
     event.preventDefault()
     await executar(async () => {
-      const data = await acessarContaCliente(supabase.auth, { cadastro, email, senha, retorno: `${window.location.origin}/pedir/${marca}`, ...(cadastro ? cliente : {}) },supabase.functions)
+      const data = await acessarContaCliente(supabase.auth, { cadastro, email, senha, retorno: `${window.location.origin}${import.meta.env.BASE_URL}pedir/${marca}`, ...(cadastro ? cliente : {}) },supabase.functions)
       setSenha('')
       if (cadastro && !data.session) setAviso('Confira seu e-mail para confirmar o cadastro e depois entre na sua conta.')
     })
@@ -198,18 +199,18 @@ export default function PortalCliente() {
               <label>CPF do cadastro<input required inputMode="numeric" maxLength={14} value={cliente.cpf} onChange={e=>setCliente(c=>({...c,cpf:e.target.value}))} /></label>
               <label>Telefone de contato<input required type="tel" autoComplete="tel" maxLength={20} value={cliente.telefone} onChange={e=>setCliente(c=>({...c,telefone:e.target.value}))} /></label>
             </>}
-            <label>{cadastro ? 'E-mail para confirmação' : 'CPF ou e-mail'}<input required type={cadastro ? 'email' : 'text'} autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} /></label>
+            {!cadastro && <label>CPF ou e-mail<input required type="text" autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} /></label>}
             <label>Senha<input required minLength={cadastro ? 8 : undefined} type="password" autoComplete={cadastro ? 'new-password' : 'current-password'} value={senha} onChange={e => setSenha(e.target.value)} /></label>
-            {cadastro && <p className="text-xs text-fumaca">Use pelo menos oito caracteres. Se a confirmação estiver habilitada, você receberá um link por e-mail.</p>}
+            {cadastro && <p className="text-xs text-fumaca">Use pelo menos oito caracteres. Seu CPF e sua senha permitem entrar e acompanhar os pedidos.</p>}
             <button disabled={ocupado} className="portal-primary">{ocupado ? 'Aguarde…' : cadastro ? 'Criar conta' : 'Entrar'}</button>
             <button type="button" disabled={ocupado} className="text-sm underline" onClick={() => { setCadastro(v => !v); setErro(''); setSenha('') }}>{cadastro ? 'Já tenho uma conta' : 'Criar uma conta'}</button>
-            <p className="text-xs text-fumaca">Entre com seu CPF e senha. O e-mail confirma e permite recuperar sua conta. Para reenviar a confirmação, informe o e-mail acima.</p>
-            <button type="button" disabled={ocupado || !email.includes('@')} className="text-sm underline" onClick={() => executar(async () => {
-              await reenviarConfirmacaoCliente(supabase.auth, email, `${window.location.origin}/pedir/${marca}`)
+            <p className="text-xs text-fumaca">Cadastro por CPF e senha. Use seus próprios dados. Guarde sua senha para acessar a conta depois.</p>
+            {!cadastro && email.includes('@') && <button type="button" disabled={ocupado || !email.includes('@')} className="text-sm underline" onClick={() => executar(async () => {
+              await reenviarConfirmacaoCliente(supabase.auth, email, `${window.location.origin}${import.meta.env.BASE_URL}pedir/${marca}`)
               setAviso('Se houver um cadastro aguardando confirmação para este e-mail, você receberá um novo link. Confira também o spam.')
-            })}>Reenviar confirmação de e-mail</button>
+            })}>Reenviar confirmação de e-mail</button>}
           </form> : <>
-            <div className="flex justify-between gap-2 text-sm my-4"><span className="break-all">{session.user.email}</span><button type="button" disabled={ocupado} className="underline" onClick={() => executar(async () => { const { error } = await supabase.auth.signOut(); if (error) throw error; setCliente({ nome: '', cpf: '', telefone: '' }); setEndereco({}); setPaginaPedidos(0) })}>Sair</button></div>
+            <div className="flex justify-between gap-2 text-sm my-4"><span className="break-all">{cpfVinculado ? `CPF ${formatarCPF(cpfVinculado)}` : 'Conta do cliente'}</span><button type="button" disabled={ocupado} className="underline" onClick={() => executar(async () => { const { error } = await supabase.auth.signOut(); if (error) throw error; setCliente({ nome: '', cpf: '', telefone: '' }); setEndereco({}); setPaginaPedidos(0) })}>Sair</button></div>
             {tipo === 'delivery' && loja && itens.length > 0 && !pendente && <div className="mb-5"><ConsultaEntrega key={`${loja}:${session.user.id}`} lojaId={loja} modoPedido portal automatico destinoInicial={endereco} onCotacao={setCotacao} onInvalidar={()=>setCotacao(null)} /></div>}
             <form onSubmit={enviar} className="portal-form">
               {pendente ? <p role="alert">O último envio aguarda confirmação. Consulte o resultado antes de enviar outro pedido.</p> : <fieldset disabled={ocupado} className="portal-form">

@@ -23,3 +23,19 @@ test('login CPF recusa origem, corpo excessivo e esgotamento antes de conferir s
   assert.equal((await handler(req({cpf:'52998224725',senha:'teste'}))).status,429)
   assert.equal(chamadas,0)
 })
+
+test('cadastro CPF usa identificador interno e senha no Auth, sem reivindicar e-mail pessoal',async()=>{
+  let criado
+  const handler=criarAcessoCliente({allowedOrigins:[origem],limitarCadastro:async()=>true,cadastrar:async dados=>{criado=dados;return {error:null}},autenticar:async(email,senha)=>{assert.equal(email,criado.email);assert.equal(senha,'SenhaAula123');return {data:{session:{access_token:'novo',refresh_token:'renovar'}}}}})
+  const resposta=await handler(req({acao:'cadastro',cpf:'52998224725',senha:'SenhaAula123',nome:'Cliente Teste',telefone:'11999999999',role:'service_role',email:'terceiro@example.test'}))
+  assert.equal(resposta.status,200);assert.match(criado.email,/^cpf-[a-f0-9]{64}@clientes\.convivium\.invalid$/)
+  assert.deepEqual(criado.user_metadata,{cpf:'52998224725',nome:'Cliente Teste',telefone:'11999999999'})
+  assert.equal(criado.role,undefined);assert.equal(criado.email_confirm,true)
+})
+test('cadastro CPF limita rede e recusa senha curta antes de criar conta',async()=>{
+  let chamadas=0
+  const handler=criarAcessoCliente({allowedOrigins:[origem],limitarCadastro:async()=>false,cadastrar:async()=>{chamadas++}})
+  const dados={acao:'cadastro',cpf:'52998224725',senha:'SenhaAula123',nome:'Cliente Teste',telefone:'11999999999'}
+  assert.equal((await handler(req({...dados,senha:'curta'}))).status,400)
+  assert.equal((await handler(req(dados))).status,429);assert.equal(chamadas,0)
+})

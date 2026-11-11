@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation, Link } from 'react-router-dom'
 import { AuthProvider, useAuth } from './lib/AuthContext.jsx'
 import Sidebar, { Navegacao } from './components/Sidebar.jsx'
 import Topbar from './components/layout/Topbar.jsx'
@@ -46,7 +46,7 @@ function AreaProtegida() {
       <p>{erroUsuario || 'Carregue novamente seu perfil para continuar.'}</p>
       <button className="bg-ambar rounded-lg px-4 py-3 mr-3" onClick={recarregarUsuario}>Tentar novamente</button>
       <button className="underline" onClick={() => sair().catch(() => window.location.reload())}>Voltar ao login</button>
-      <a href="/pedir" className="block underline">Portal do cliente</a>
+      <Link to="/pedir" className="block underline">Portal do cliente</Link>
     </div>
   </div>
 

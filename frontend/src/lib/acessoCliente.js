@@ -15,11 +15,11 @@ export function mensagemAcessoCliente(error) {
 
 export async function acessarContaCliente(auth, { cadastro, email, senha, retorno, cpf, nome, telefone }, functions) {
   const credenciais = { email: email.trim(), password: senha }
-  if (!cadastro && !email.includes('@')) {
-    const documento=email.replace(/\D/g,'')
+  if ((functions && cadastro && cpf) || (!cadastro && !email.includes('@'))) {
+    const documento=(cadastro ? cpf : email).replace(/\D/g,'')
     if(!validarCPF(documento)) throw new Error('Confira o CPF.')
     if(!functions) throw new Error('Acesso por CPF indisponível. Entre com seu e-mail ou contate a loja.')
-    const { data, error }=await functions.invoke('acesso-cliente',{body:{cpf:documento,senha}})
+    const { data, error }=await functions.invoke('acesso-cliente',{body:{cpf:documento,senha,...(cadastro ? {acao:'cadastro',nome:nome?.trim(),telefone:telefone?.replace(/\D/g,'')} : {})}})
     if(error){let mensagem='Não foi possível entrar com CPF. Confira sua conexão e tente novamente.';try{mensagem=(await error.context?.json())?.error || mensagem}catch{/* Falha de transporte. */}throw new Error(mensagem)}
     if(!data?.access_token || !data?.refresh_token) throw new Error('O servidor não confirmou o acesso. Tente novamente.')
     const resposta=await auth.setSession(data)

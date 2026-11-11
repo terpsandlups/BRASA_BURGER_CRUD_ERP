@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../lib/AuthContext.jsx'
 import { supabase } from '../lib/supabaseClient.js'
-import { useLocation } from 'react-router-dom'
+import { useLocation, Link } from 'react-router-dom'
 
 export default function Login() {
   const { entrar } = useAuth()
@@ -63,7 +63,7 @@ export default function Login() {
         >
           {enviando ? 'Entrando...' : 'Entrar'}
         </button>
-        <a href={`/pedir/${marca}`} className="block text-center text-sm text-ambar underline mt-5">Fazer um pedido</a>
+        <Link to={`/pedir/${marca}`} className="block text-center text-sm text-ambar underline mt-5">Fazer um pedido</Link>
       </form>
     </div>
   )

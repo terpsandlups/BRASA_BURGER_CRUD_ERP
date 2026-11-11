@@ -33,6 +33,7 @@ before(async () => {
     '../../sql/migration_configuracao_entrega.sql',
     '../../supabase/migrations/20261025004910_empresas_acesso_frete_cliente.sql',
     '../../supabase/migrations/20261106015840_cadastro_cpf_tempo_real.sql',
+    '../../supabase/migrations/20261111223639_cadastro_cpf_sem_email.sql',
   ]) await db.exec(await sql(path))
 })
 after(async () => { await db?.close() })

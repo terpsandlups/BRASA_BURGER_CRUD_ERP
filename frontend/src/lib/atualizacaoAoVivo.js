@@ -11,6 +11,7 @@ export function acompanharAoVivo(client, nome, tabelas, atualizar, { intervalo =
   const agendar=()=>{if(encerrado)return;ambiente.clearTimeout(agendado);agendado=ambiente.setTimeout(executar,200)}
   let canal=client.channel(nome)
   for(const tabela of tabelas) canal=canal.on('postgres_changes',{event:'*',schema:'public',...(typeof tabela==='string'?{table:tabela}:tabela)},agendar)
+  canal=canal.on('system',{},evento=>{if(evento.extension==='postgres_changes' && evento.status==='ok')agendar()})
   canal.subscribe(status=>{if(status==='SUBSCRIBED')agendar()})
   const timer=ambiente.setInterval(executar,intervalo)
   const aoVoltar=()=>{if(ambiente.document?.visibilityState==='visible')agendar()}

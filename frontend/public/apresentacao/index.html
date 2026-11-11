@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Convívium Management System: aplicação integrada, linguagens e modelo de negócio. Brasa Burger como piloto.">
+  <title>Convívium · Apresentação interativa</title>
+  <link rel="stylesheet" href="estilo.css">
+  <script src="conteudo.js" defer></script><script src="apresentacao.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#slide">Ir ao conteúdo</a>
+  <header>
+    <a class="marca" href="#academica/1">Convívium<span>Management System</span></a>
+    <label>Apresentação<select id="modo"><option value="academica">Entrega 2</option><option value="tecnica">Linguagens e tecnologias</option><option value="negocio">Modelo de negócio</option></select></label>
+    <button id="tela" type="button">Tela cheia</button>
+  </header>
+  <main>
+    <p class="edicao">BRASA BURGER COMO PILOTO <span id="posicao" aria-live="polite"></span></p>
+    <article id="slide" tabindex="-1"></article>
+    <details id="notas"><summary>Notas e fontes</summary><p id="fontes"></p></details>
+    <nav aria-label="Navegação de slides"><button id="anterior" type="button">Anterior</button><label>Página<select id="pagina"></select></label><button id="proxima" type="button">Próxima</button></nav>
+    <progress id="progresso" aria-label="Progresso da apresentação" max="12" value="1"></progress>
+  </main>
+  <footer>
+    <p>Convívium é a plataforma. Brasa Burger é a empresa do piloto.</p>
+    <a href="../pedir/brasa-burger" target="_blank" rel="noopener">Abrir portal do cliente</a>
+    <a href="https://github.com/terpsandlups/BRASA_BURGER_CRUD_ERP/tree/main/Slides/Entrega-2" target="_blank" rel="noopener">PowerPoints e fontes no GitHub</a>
+    <a href="https://brasa-burguer-apresentacao-2026.azurebard4.chatgpt.site/" target="_blank" rel="noopener">Apresentação anterior</a>
+  </footer>
+  <noscript>Ative JavaScript para navegar pelos slides. Os PowerPoints e PDFs estão no GitHub.</noscript>
+</body>
+</html>

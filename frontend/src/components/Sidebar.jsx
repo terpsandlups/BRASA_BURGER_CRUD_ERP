@@ -40,7 +40,7 @@ export default function Sidebar() {
       </div>
 
       <div className="flex-1 px-3 py-6"><Navegacao escuro /></div>
-      <a href={`/pedir/${usuario?.empresas?.slug || 'brasa-burger'}`} target="_blank" rel="noreferrer" className="px-6 pb-4 text-sm text-ambar underline">Abrir portal do cliente</a>
+      <a href={`${import.meta.env.BASE_URL}pedir/${usuario?.empresas?.slug || 'brasa-burger'}`} target="_blank" rel="noreferrer" className="px-6 pb-4 text-sm text-ambar underline">Abrir portal do cliente</a>
       <p className="px-6 pb-6 text-xs text-osso/50">Por Convívium Management System</p>
     </aside>
   )

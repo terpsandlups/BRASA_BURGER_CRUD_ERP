@@ -9,6 +9,15 @@
   </head>
   <body class="bg-osso font-body text-carvao">
     <div id="root"></div>
+    <script>
+      // Recupera rotas diretas em hospedagens estáticas antes de iniciar o Auth.
+      const retorno = new URL(location.href).searchParams.get('__convivium_route');
+      const base = new URL('%BASE_URL%', location.origin).pathname;
+      if (retorno && retorno.startsWith('/') && !retorno.startsWith('//')) {
+        const destino = new URL(base + retorno.slice(1), location.origin);
+        if (destino.pathname.startsWith(base)) history.replaceState(null, '', destino.pathname + destino.search + location.hash);
+      }
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
