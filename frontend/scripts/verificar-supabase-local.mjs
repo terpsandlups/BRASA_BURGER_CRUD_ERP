@@ -82,11 +82,17 @@ try{
  const publicadas=(await owner.query("SELECT tablename FROM pg_publication_tables WHERE pubname='supabase_realtime' AND schemaname='public'")).rows.map(r=>r.tablename);
  assert.ok(publicadas.includes('eventos_pedidos_cliente'),'Publicação precisa conter o aviso ao consumidor.');
  const estadosRealtime=[];
- const canal=consumer.channel('teste-status-titular').on('postgres_changes',{event:'*',schema:'public',table:'eventos_pedidos_cliente',filter:`usuario_id=eq.${cadastro.user.id}`},()=>avisar());
+ let confirmarBanco;
+ const bancoAssinado=new Promise(resolve=>{confirmarBanco=resolve});
+ const canal=consumer.channel('teste-status-titular')
+  .on('system',{},evento=>{if(evento.extension==='postgres_changes'){estadosRealtime.push('postgres:'+evento.status);if(evento.status==='ok')confirmarBanco()}})
+  .on('postgres_changes',{event:'*',schema:'public',table:'eventos_pedidos_cliente',filter:`usuario_id=eq.${cadastro.user.id}`},()=>avisar());
  await new Promise((resolve,reject)=>{
   const timer=setTimeout(()=>reject(new Error('Realtime não confirmou a assinatura.')),15000);
   canal.subscribe(status=>{estadosRealtime.push(status);if(status==='SUBSCRIBED'){clearTimeout(timer);resolve()}else if(['CHANNEL_ERROR','TIMED_OUT'].includes(status)){clearTimeout(timer);reject(new Error('Realtime indisponível no ensaio.'))}});
  });
+ let timerBanco;
+ try{await Promise.race([bancoAssinado,new Promise((_,reject)=>{timerBanco=setTimeout(()=>reject(new Error('Assinatura PostgreSQL não ficou pronta. Estados: '+estadosRealtime.join(','))),20000)})])}finally{clearTimeout(timerBanco)}
  await rpc(admin,'avancar_pedido_transacional',{p_pedido:p1,p_status_esperado:'recebido'});
  const avisoPersistido=await consumer.from('eventos_pedidos_cliente').select('usuario_id').eq('usuario_id',cadastro.user.id);if(avisoPersistido.error)throw avisoPersistido.error;assert.equal(avisoPersistido.data.length,1,'Status precisa persistir aviso visível ao titular.');
  let timerEvento;
