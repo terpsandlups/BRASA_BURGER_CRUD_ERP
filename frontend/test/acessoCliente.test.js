@@ -31,3 +31,10 @@ test('bloqueio do armazenamento do navegador permite continuar sem persistência
   Object.defineProperty(globalThis,'window',{configurable:true,value:{get sessionStorage(){throw new Error('SecurityError')}}})
   try { assert.equal(armazenamentoDaSessao(),null) } finally { if(anterior) Object.defineProperty(globalThis,'window',anterior);else delete globalThis.window }
 })
+
+test('acesso com CPF instala a sessão devolvida pelo servidor sem consultar e-mail',async()=>{
+  const auth={async setSession(tokens){assert.deepEqual(tokens,{access_token:'token',refresh_token:'renovar'});return {data:{session:{user:{id:'cliente'}}}}}}
+  const functions={async invoke(nome,args){assert.equal(nome,'acesso-cliente');assert.deepEqual(args.body,{cpf:'52998224725',senha:'abc123'});return {data:{access_token:'token',refresh_token:'renovar'}}}}
+  const resultado=await acessarContaCliente(auth,{cadastro:false,email:'529.982.247-25',senha:'abc123'},functions)
+  assert.equal(resultado.session.user.id,'cliente')
+})

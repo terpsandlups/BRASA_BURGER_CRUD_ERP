@@ -84,7 +84,7 @@ jobs:
         run: |
           mkdir -p "$SUPABASE_TEST_WORKDIR"
           supabase init --workdir "$SUPABASE_TEST_WORKDIR"
-          supabase start --workdir "$SUPABASE_TEST_WORKDIR" --exclude studio,imgproxy,storage-api,realtime,logflare,vector,supavisor,postgres-meta,edge-runtime > "$RUNNER_TEMP/convivium-stack.log" 2>&1
+          supabase start --workdir "$SUPABASE_TEST_WORKDIR" --exclude studio,imgproxy,storage-api,logflare,vector,supavisor,postgres-meta,edge-runtime > "$RUNNER_TEMP/convivium-stack.log" 2>&1
       - name: Homologar Auth, API, pedido e estoque
         run: node scripts/verificar-supabase-local.mjs
         working-directory: frontend

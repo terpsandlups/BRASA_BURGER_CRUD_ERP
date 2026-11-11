@@ -7,6 +7,7 @@ import { mensagemPortal } from '../lib/portalCliente.js'
 import PageHeader from '../components/layout/PageHeader.jsx'
 import SidePanel from '../components/layout/SidePanel.jsx'
 import ConsultaEntrega from '../components/ConsultaEntrega.jsx'
+import { acompanharAoVivo } from '../lib/atualizacaoAoVivo.js'
 
 function Atendimento({ solicitacao: s, onAtualizar }) {
   const { podeOperar } = useAuth()
@@ -70,8 +71,8 @@ export default function SolicitacoesMobile() {
       finally { if (ativo) setCarregando(false) }
     }
     carregar()
-    const timer = setInterval(carregar, 15000)
-    return () => { ativo = false; clearInterval(timer) }
+    const encerrar=acompanharAoVivo(supabase,'fila-solicitacoes-mobile',['solicitacoes_mobile'],carregar)
+    return () => { ativo = false; encerrar() }
   }, [revisao])
   return <>
     <PageHeader titulo="Pedidos do celular" descricao="Solicitações aguardando confirmação da unidade." icone="sacola" acoesSecundarias={<><a href="/pedir" target="_blank" rel="noreferrer" className="text-sm underline">Portal do cliente</a><button className="border border-borda px-4 py-2 rounded-lg" onClick={() => setRevisao(r => r + 1)}>Atualizar</button></>} />

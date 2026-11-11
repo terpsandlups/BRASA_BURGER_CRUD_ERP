@@ -24,6 +24,7 @@ export const arquivosBootstrap = [
  'sql/edicao_fichas_vigente.sql',
  'supabase/migrations/20261025000912_portal_clientes_convivium.sql',
  'supabase/migrations/20261025004910_empresas_acesso_frete_cliente.sql',
+ 'supabase/migrations/20261106015840_cadastro_cpf_tempo_real.sql',
  'sql/instalacao/finalizar.sql',
 ];
 

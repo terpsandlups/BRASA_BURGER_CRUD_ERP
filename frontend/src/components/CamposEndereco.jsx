@@ -59,7 +59,7 @@ export default function CamposEndereco({ valores, onChange }) {
           className={inputClass}
           autoComplete="off"
         />
-        {buscando && <p className="text-[11px] text-fumaca mt-1">Buscando endereço...</p>}
+        {buscando && <p role="status" className="text-[11px] text-fumaca mt-1">Buscando endereço no ViaCEP...</p>}
         {naoEncontrado && <p className="text-[11px] text-brasa mt-1">CEP não encontrado — preencha manualmente.</p>}
       </div>
       <div>

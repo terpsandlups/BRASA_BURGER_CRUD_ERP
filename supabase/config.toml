@@ -2,3 +2,7 @@
 # A função valida o token do usuário com auth.getUser, antes de consultar o banco.
 # Não confundir desativação da validação do gateway com acesso público ao handler.
 verify_jwt = false
+
+[functions.acesso-cliente]
+# Login é anterior à sessão. Handler confere senha no Auth e limita tentativas no banco.
+verify_jwt = false

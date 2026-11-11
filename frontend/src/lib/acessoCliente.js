@@ -1,3 +1,5 @@
+import { validarCPF } from './format.js'
+
 export function armazenamentoDaSessao() {
   try { return window.sessionStorage } catch { return null }
 }
@@ -11,10 +13,23 @@ export function mensagemAcessoCliente(error) {
   return 'Não foi possível acessar sua conta. Confira sua conexão e tente novamente.'
 }
 
-export async function acessarContaCliente(auth, { cadastro, email, senha, retorno }) {
+export async function acessarContaCliente(auth, { cadastro, email, senha, retorno, cpf, nome, telefone }, functions) {
   const credenciais = { email: email.trim(), password: senha }
+  if (!cadastro && !email.includes('@')) {
+    const documento=email.replace(/\D/g,'')
+    if(!validarCPF(documento)) throw new Error('Confira o CPF.')
+    if(!functions) throw new Error('Acesso por CPF indisponível. Entre com seu e-mail ou contate a loja.')
+    const { data, error }=await functions.invoke('acesso-cliente',{body:{cpf:documento,senha}})
+    if(error){let mensagem='Não foi possível entrar com CPF. Confira sua conexão e tente novamente.';try{mensagem=(await error.context?.json())?.error || mensagem}catch{/* Falha de transporte. */}throw new Error(mensagem)}
+    if(!data?.access_token || !data?.refresh_token) throw new Error('O servidor não confirmou o acesso. Tente novamente.')
+    const resposta=await auth.setSession(data)
+    if(resposta.error) throw new Error(mensagemAcessoCliente(resposta.error))
+    return resposta.data
+  }
+  const perfil=cpf ? {cpf:cpf.replace(/\D/g,''),nome:nome?.trim(),telefone:telefone?.replace(/\D/g,'')} : null
+  if(perfil && (!validarCPF(perfil.cpf) || !perfil.nome || perfil.nome.length<2 || !/^\d{10,11}$/.test(perfil.telefone || ''))) throw new Error('Confira CPF, nome e telefone do cadastro.')
   const { data, error } = cadastro
-    ? await auth.signUp({ ...credenciais, options: { emailRedirectTo: retorno } })
+    ? await auth.signUp({ ...credenciais, options: { emailRedirectTo: retorno, ...(perfil ? {data:perfil} : {}) } })
     : await auth.signInWithPassword(credenciais)
   if (error) throw new Error(mensagemAcessoCliente(error))
   return data

@@ -32,6 +32,7 @@ before(async () => {
     '../../sql/edicao_fichas_vigente.sql',
     '../../sql/migration_configuracao_entrega.sql',
     '../../supabase/migrations/20261025004910_empresas_acesso_frete_cliente.sql',
+    '../../supabase/migrations/20261106015840_cadastro_cpf_tempo_real.sql',
   ]) await db.exec(await sql(path))
 })
 after(async () => { await db?.close() })
@@ -64,6 +65,36 @@ function dadosMobile() {
 const solicitar = (payload = dadosMobile(), chave = randomUUID()) => valor('SELECT enviar_solicitacao_mobile($1,$2::jsonb)', [chave,JSON.stringify(payload)])
 const decidirMobile = (id, acao, cotacao = null, motivo = null) => valor('SELECT decidir_solicitacao_mobile($1,$2,$3,$4)', [id,acao,motivo,cotacao])
 const administrar=(acao,dados)=>valor('SELECT administrar_plataforma($1,$2::jsonb)',[acao,JSON.stringify(dados)])
+
+test('cliente CPF: cadastro é único, privado e nunca cria usuário da equipe',async()=>{
+  await db.query("INSERT INTO auth.users(id,email,raw_user_meta_data) VALUES($1,'cliente@example.test',$2)",[mobileUser,JSON.stringify({cpf:'52998224725',nome:'Consumidor Teste',telefone:'11999999999'})])
+  assert.equal(Number(await valor('SELECT count(*) FROM usuarios WHERE id=$1',[mobileUser])),0)
+  await db.query("SELECT set_config('request.jwt.claim.sub',$1,true)",[mobileUser]);await db.exec('SET LOCAL ROLE authenticated')
+  assert.equal((await valor('SELECT meu_cadastro_cliente()')).cpf,'52998224725')
+  await rejeita("SELECT * FROM erp_privado.contas_consumidor",[],/permission denied/)
+  await rejeita("SELECT preparar_login_cliente('52998224725')",[],/permission denied/)
+  await rejeita("SELECT cadastrar_perfil_cliente('11144477735','Outro CPF','11999999999')",[],/CPF vinculado/)
+  await rejeita('SELECT enviar_solicitacao_mobile($1,$2::jsonb)',[randomUUID(),JSON.stringify({...dadosMobile(),cpf:'11144477735'})],/CPF vinculado/)
+  await db.exec('RESET ROLE')
+  await rejeita("INSERT INTO auth.users(id,raw_user_meta_data) VALUES($1,$2)",[randomUUID(),JSON.stringify({cpf:'52998224725',nome:'Outra Conta',telefone:'11999999999'})],/unique/)
+})
+
+test('cliente CPF: resolver conta é restrito ao servidor e limita também CPF inexistente',async()=>{
+  await db.exec('SET LOCAL ROLE service_role')
+  for(let i=0;i<10;i++) assert.equal(await valor("SELECT preparar_login_cliente('52998224725')"),null)
+  assert.equal(await valor("SELECT preparar_login_cliente('52998224725')"),'__limite__')
+})
+
+test('cliente ao vivo: status gera aviso só do titular sem expor o pedido interno',async()=>{
+  await contaMobile();const s=await solicitar()
+  await db.query("SELECT set_config('request.jwt.claim.sub',$1,true)",[admin]);const id=await decidirMobile(s,'aceitar')
+  await db.query("UPDATE pedidos SET status='em_preparo' WHERE id=$1",[id])
+  await db.query("SELECT set_config('request.jwt.claim.sub',$1,true)",[mobileUser]);await db.exec('SET LOCAL ROLE authenticated')
+  assert.equal(Number(await valor('SELECT count(*) FROM eventos_pedidos_cliente')),1)
+  assert.equal(Number(await valor('SELECT count(*) FROM pedidos')),0)
+  await db.exec('RESET ROLE');await db.query("SELECT set_config('request.jwt.claim.sub',$1,true)",[randomUUID()]);await db.exec('SET LOCAL ROLE authenticated')
+  assert.equal(Number(await valor('SELECT count(*) FROM eventos_pedidos_cliente')),0)
+})
 
 test('mobile: conta sem perfil calcula frete com orçamento próprio e não consulta configuração interna',async()=>{
   await db.query("INSERT INTO configuracoes_entrega(loja_id,cep,endereco,numero,bairro,cidade,estado,valor_km) VALUES($1,'13201000','Rua Exemplo','10','Centro','Jundiaí','SP',1.5)",[loja])
