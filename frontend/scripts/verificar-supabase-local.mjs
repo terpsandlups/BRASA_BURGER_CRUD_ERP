@@ -79,14 +79,23 @@ try{
  resultado.push('Gerente de outra unidade não lê nem avança o pedido');
  let avisar;
  const aviso=new Promise(resolve=>{avisar=resolve});
+ const publicadas=(await owner.query("SELECT tablename FROM pg_publication_tables WHERE pubname='supabase_realtime' AND schemaname='public'")).rows.map(r=>r.tablename);
+ assert.ok(publicadas.includes('eventos_pedidos_cliente'),'Publicação precisa conter o aviso ao consumidor.');
+ const estadosRealtime=[];
  const canal=consumer.channel('teste-status-titular').on('postgres_changes',{event:'*',schema:'public',table:'eventos_pedidos_cliente',filter:`usuario_id=eq.${cadastro.user.id}`},()=>avisar());
  await new Promise((resolve,reject)=>{
   const timer=setTimeout(()=>reject(new Error('Realtime não confirmou a assinatura.')),15000);
-  canal.subscribe(status=>{if(status==='SUBSCRIBED'){clearTimeout(timer);resolve()}else if(['CHANNEL_ERROR','TIMED_OUT'].includes(status)){clearTimeout(timer);reject(new Error('Realtime indisponível no ensaio.'))}});
+  canal.subscribe(status=>{estadosRealtime.push(status);if(status==='SUBSCRIBED'){clearTimeout(timer);resolve()}else if(['CHANNEL_ERROR','TIMED_OUT'].includes(status)){clearTimeout(timer);reject(new Error('Realtime indisponível no ensaio.'))}});
  });
  await rpc(admin,'avancar_pedido_transacional',{p_pedido:p1,p_status_esperado:'recebido'});
+ const avisoPersistido=await consumer.from('eventos_pedidos_cliente').select('usuario_id').eq('usuario_id',cadastro.user.id);if(avisoPersistido.error)throw avisoPersistido.error;assert.equal(avisoPersistido.data.length,1,'Status precisa persistir aviso visível ao titular.');
  let timerEvento;
- try{await Promise.race([aviso,new Promise((_,reject)=>{timerEvento=setTimeout(()=>reject(new Error('Status não chegou ao consumidor por Realtime.')),15000)})])}finally{clearTimeout(timerEvento)}
+ try{await Promise.race([aviso,new Promise((_,reject)=>{timerEvento=setTimeout(()=>reject(new Error('Status não chegou ao consumidor por Realtime. Estados: '+estadosRealtime.join(','))),15000)})])}
+ catch(error){
+  const slots=(await owner.query('SELECT active FROM pg_replication_slots')).rows;
+  const assinaturas=(await owner.query('SELECT count(*)::int AS n FROM realtime.subscription')).rows;
+  console.log(JSON.stringify({diagnosticoRealtime:{publicadas,slots,assinaturas,estados:estadosRealtime}}));throw error;
+ }finally{clearTimeout(timerEvento)}
  const aoVivo=await rpc(consumer,'acompanhar_solicitacoes_mobile',{p_pagina:0});assert.equal(aoVivo[0].etapa,'em_preparo');
  resultado.push('Evento Realtime real avisa o consumidor do status em preparo sem liberar leitura do pedido interno');
  await consumer.removeChannel(canal);
