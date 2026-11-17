@@ -22,6 +22,7 @@ export default function EditarCardapio({ produto, empresaId, categorias, onSalvo
     }catch(error){setErro('Não foi possível salvar o cardápio: '+error.message)}
     finally{trava.current=false;setSalvando(false)}
   }
+  if(!Object.hasOwn(produto,'imagem_url') || !Object.hasOwn(produto,'destaque')) return <div className="space-y-3"><h2 className="text-xl">Personalização do cardápio</h2><p className="text-sm text-fumaca">A edição de fotos e destaques aguarda ativação pelo administrador da plataforma. O cardápio e os pedidos continuam disponíveis.</p></div>
   return <form onSubmit={salvar} className="space-y-5">
     <p className="text-sm text-fumaca">Estas informações aparecem no portal da sua empresa. Preços e adicionais são os cadastrados nas variações.</p>
     {erro && <p role="alert" className="text-brasa text-sm">{erro}</p>}

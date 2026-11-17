@@ -26,8 +26,8 @@ Nesta entrega, a navegação integrada e a apresentação são mantidas para a a
 
 1. **Identidade e públicos:** apresentação explica plataforma, empresa contratante e consumidor. Brasa Burger permanece como piloto com identidade própria.
 2. **Aplicações paralelas:** sessões independentes de consumidor e equipe, inclusive quando abertas ao mesmo tempo no mesmo navegador; links preservam a base da hospedagem.
-3. **Cardápio real:** barra fixa de categorias retornadas pelo banco, busca sem acentos, destaques, descrições, fotos e cards padronizados. Categorias vazias não são inventadas para o piloto.
-4. **Pedido real:** detalhe do produto, adicionais, adição rápida, quantidades e totais do carrinho. O envio continua pelo fluxo transacional existente até a unidade escolhida, com cotação de frete do servidor e confirmação da loja.
+3. **Cardápio real:** categorias, busca sem acentos, destaques, descrições, fotos e ícones por família. A revisão do fluxo organiza o catálogo legado do Brasa pelas famílias dos SKUs existentes, com prioridade para as categorias configuradas pela empresa. Assim os filtros funcionam no piloto mesmo antes da migração de metadados.
+4. **Pedido real:** cardápio, carrinho, identificação e confirmação em telas próprias; detalhes, adicionais, adição rápida, quantidades e totais. O envio continua pelo fluxo transacional existente até a unidade escolhida, com cotação de frete do servidor e confirmação da loja.
 5. **Personalização no ERP:** Produtos → Ver detalhes → Editar apresentação no cardápio permite salvar nome comercial, categoria, descrição, foto HTTPS, destaque e disponibilidade para entrega/retirada, respeitando a empresa e a permissão de edição.
 6. **Operação e indicadores:** corrigida a referência ausente ao usuário na tela de Pedidos. O dashboard passa a reler dados autorizados com avisos Realtime e recuperação periódica. O quadro de pedidos existente continua usando os status e transações reais.
 7. **Ficha técnica:** custo de cada ingrediente, custo total, CMV e margem sobre insumos calculados a partir dos dados salvos. Custos ausentes não viram zero. Essa margem não representa lucro líquido.
@@ -50,7 +50,7 @@ Orientações de impressão e o endereço atual estão em `output/aula/README.md
 
 ## Ativação no deploy desta revisão
 
-As alterações desta revisão não foram aplicadas ao banco operacional nem publicadas na branch `main`. O envio para `main` dispara a publicação automática já configurada; por isso esta revisão deve permanecer em sua branch de trabalho até a finalização.
+Quando preparada, esta revisão não foi aplicada ao banco operacional nem publicada na branch `main`. O envio para `main` dispara a publicação automática já configurada. A revisão deve passar pelas verificações da branch antes desse envio; o resultado da publicação é registrado no workflow do GitHub. A migração do banco é uma ativação independente.
 
 1. Conferir a validação automatizada da branch, inclusive a homologação isolada com Auth, PostgREST e Realtime.
 2. Aplicar somente `supabase/migrations/20261116000100_cardapio_visual.sql` ao ambiente de destino, uma vez, depois das migrações anteriores. Ela adiciona `imagem_url`, `destaque` e os metadados públicos ao catálogo. Não reinstalar `sql/instalacao/convivium-completo.sql` no banco existente.
@@ -59,7 +59,7 @@ As alterações desta revisão não foram aplicadas ao banco operacional nem pub
 5. Validar com contas autorizadas: consumidor envia para a unidade escolhida, equipe recebe e aceita uma vez, estoque é atualizado, status volta ao titular e outra unidade/empresa não acessa o pedido.
 6. Disponibilizar o link do portal aos alunos depois dessa validação no ambiente publicado.
 
-Até aplicar a migração, o servidor anterior não fornece as novas categorias, imagens ou destaques. A interface permanece compatível: mostra os produtos existentes, com categoria “Outros” e sem inventar metadados. A edição dos novos campos depende da migração.
+Até aplicar a migração, o servidor anterior não fornece os novos metadados. A interface permanece compatível: no piloto Brasa Burger, usa as famílias dos SKUs existentes para organizar Lanches, Acompanhamentos, Bebidas e Sobremesas, com ícones. Isso não cadastra produtos, não muda preços e não aplica a classificação a outras empresas. A edição dos novos campos depende da migração.
 
 Na primeira utilização da sessão separada, consumidores que estavam logados na versão anterior podem precisar entrar novamente no portal. As credenciais existentes permanecem válidas.
 
@@ -73,3 +73,5 @@ Na primeira utilização da sessão separada, consumidores que estavam logados n
 - Os PowerPoints e o pacote acadêmico da revisão anterior são preservados. A nova revisão visual é entregue em arquivos separados, sem substituir os arquivos da release anterior.
 
 Imagens e prompts: `frontend/public/imagens/cardapio/CREDITOS.md` e `Slides/Entrega-2/assets/CREDITOS-AULA-VISUAL.md`.
+
+O detalhamento atualizado das solicitações, entregas e pendências está em `docs/SOLICITACOES_ENTREGAS_E_PENDENCIAS.md`.

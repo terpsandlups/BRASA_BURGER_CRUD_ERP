@@ -15,6 +15,8 @@ O foco acadêmico atual é a **Entrega 2**. O [plano completo](docs/entrega-02/R
 
 Portal público: https://terpsandlups.github.io/BRASA_BURGER_CRUD_ERP/pedir/brasa-burger . [Apresentação interativa](https://terpsandlups.github.io/BRASA_BURGER_CRUD_ERP/apresentacao/). [Roteiro da aula e revisão](docs/entrega-02/REVISAO_AULA.md).
 
+[Solicitações, entregas e pendências atualizadas](docs/SOLICITACOES_ENTREGAS_E_PENDENCIAS.md): fluxo do consumidor em etapas, categorias e ícones do piloto, limites e próximos passos. [Slides visuais para a aula](Slides/Aula-Visual-2026/) e [cartazes com QR](output/aula/).
+
 ## Identificação acadêmica
 
 | Campo | Informação |
