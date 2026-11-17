@@ -1,0 +1,15 @@
+import fs from 'node:fs/promises';
+import vm from 'node:vm';
+const root=new URL('../',import.meta.url);
+const args=process.argv.slice(2);
+const url=new URL(args.includes('--url') ? args[args.indexOf('--url')+1] : 'https://terpsandlups.github.io/BRASA_BURGER_CRUD_ERP/pedir/brasa-burger');
+if(url.protocol!=='https:' || url.username || url.password || url.href.length>500)throw new Error('Use o endereço público HTTPS do portal do consumidor.');
+const contexto=vm.createContext({});
+vm.runInContext(await fs.readFile(new URL('scripts/vendor/qrcode.js',root),'utf8'),contexto);
+const qr=contexto.qrcode(0,'M');qr.addData(url.href,'Byte');qr.make();
+const n=qr.getModuleCount(),matriz=Array.from({length:n},(_,r)=>Array.from({length:n},(_,c)=>qr.isDark(r,c)));
+await fs.mkdir(new URL('output/aula/',root),{recursive:true});
+await fs.mkdir(new URL('.entrega-02-build/aula/',root),{recursive:true});
+await fs.writeFile(new URL('output/aula/qr-pedidos.svg',root),qr.createSvgTag({cellSize:10,margin:40,scalable:true}));
+await fs.writeFile(new URL('.entrega-02-build/aula/qr-matriz.json',root),JSON.stringify({url:url.href,matriz,gerador:'qrcode-generator 2.0.4, Kazuhiko Arase, MIT'}));
+console.log('QR do consumidor gerado: '+url.href);

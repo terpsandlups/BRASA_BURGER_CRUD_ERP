@@ -1,236 +1,151 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import { supabase } from '../lib/supabaseClient.js'
-import { criarEnvioTransacional } from '../lib/pedidoTransacional.js'
-import { mensagemPortal, montarSolicitacao, totalCarrinho } from '../lib/portalCliente.js'
-import { acessarContaCliente, armazenamentoDaSessao, reenviarConfirmacaoCliente } from '../lib/acessoCliente.js'
-import { acompanharAoVivo } from '../lib/atualizacaoAoVivo.js'
-import { formatarCPF } from '../lib/format.js'
+import { useCallback, useEffect, useRef } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
+import usePortalCliente, { ESTADOS } from '../lib/usePortalCliente.js'
+import { supabasePortal as supabase } from '../lib/supabasePortal.js'
+import { reenviarConfirmacaoCliente } from '../lib/acessoCliente.js'
+import { agruparCatalogoPublico, iconeCategoria } from '../lib/catalogoPublico.js'
 import { dinheiro, codigoPedido } from '../lib/pedidoApresentacao.js'
-import ConsultaEntrega from '../components/ConsultaEntrega.jsx'
+import { formatarCPF } from '../lib/format.js'
 import Icon from '../components/ui/Icon.jsx'
+import ProdutoPortal, { DetalheProduto } from '../components/ProdutoPortal.jsx'
+import ResumoPedidoPortal from '../components/ResumoPedidoPortal.jsx'
+import ConsultaEntrega from '../components/ConsultaEntrega.jsx'
+import SidePanel from '../components/layout/SidePanel.jsx'
 import './portalCliente.css'
 
-const ESTADOS = { aguardando: 'Aguardando confirmação da loja', aceita: 'Confirmado pela loja', recusada: 'Recusado pela loja', cancelada: 'Cancelado por você', recebido: 'Recebido', em_preparo: 'Em preparo', pronto: 'Pronto', saiu_entrega: 'Saiu para entrega', entregue: 'Entregue', cancelado: 'Cancelado' }
-
-function Produto({ produto, onAdicionar, desabilitado }) {
-  const [extras, setExtras] = useState([])
-  return <article className="portal-product">
-    <div className="portal-product-icon"><Icon nome="produto" size={28} /></div>
-    <div className="flex-1 min-w-0"><h3>{produto.nome}</h3><p className="text-sm text-fumaca">{produto.variacao}</p>
-      {produto.adicionais.length > 0 && <details className="mt-3"><summary className="text-sm cursor-pointer">Adicionais</summary>
-        {produto.adicionais.map(a => <label className="flex gap-2 items-center text-sm mt-2" key={a.id}><input type="checkbox" checked={extras.some(e => e.id === a.id)} onChange={e => setExtras(prev => e.target.checked ? [...prev, a] : prev.filter(x => x.id !== a.id))} />{a.nome} · {dinheiro(a.preco)}</label>)}
-      </details>}
-    </div>
-    <div className="text-right"><strong>{dinheiro(Number(produto.preco) + extras.reduce((s, a) => s + Number(a.preco), 0))}</strong><button type="button" disabled={desabilitado} className="portal-add" onClick={() => onAdicionar(produto, extras)} aria-label={`Adicionar ${produto.nome}, ${produto.variacao}`}><Icon nome="mais" size={18} />Adicionar</button></div>
-  </article>
-}
+const ETAPAS = ['cardapio','carrinho','identificacao','finalizar','pedidos']
+const PASSOS = [['cardapio','Cardápio'],['carrinho','Carrinho'],['identificacao','Identificação'],['finalizar','Confirmar']]
+const MENSAGENS = {Lanches:'O principal do seu pedido.',Acompanhamentos:'Para completar a sua escolha.',Bebidas:'Escolha o que vai acompanhar.',Sobremesas:'Um doce para finalizar.'}
 
 export default function PortalCliente() {
-  const { marca = 'brasa-burger' } = useParams()
-  const [catalogo, setCatalogo] = useState({ lojas: [], itens: [] })
-  const [carregando, setCarregando] = useState(true)
-  const [erro, setErro] = useState('')
-  const [aviso, setAviso] = useState('')
-  const [loja, setLoja] = useState('')
-  const [tipo, setTipo] = useState('presencial')
-  const [busca, setBusca] = useState('')
-  const [itens, setItens] = useState([])
-  const [session, setSession] = useState(null)
-  const [sessaoPronta, setSessaoPronta] = useState(false)
-  const [cadastro, setCadastro] = useState(false)
-  const [email, setEmail] = useState('')
-  const [senha, setSenha] = useState('')
-  const [cliente, setCliente] = useState({ nome: '', cpf: '', telefone: '' })
-  const [cpfVinculado, setCpfVinculado] = useState('')
-  const [endereco, setEndereco] = useState({})
-  const [pagamento, setPagamento] = useState('pix')
-  const [observacoes, setObservacoes] = useState('')
-  const [troco, setTroco] = useState('')
-  const [cotacao, setCotacao] = useState(null)
-  const [ocupado, setOcupado] = useState(false)
-  const [pendente, setPendente] = useState(false)
-  const [pedidos, setPedidos] = useState([])
-  const [erroPedidos, setErroPedidos] = useState('')
-  const [paginaPedidos, setPaginaPedidos] = useState(0)
-  const trava = useRef(false)
-  const consultaCatalogo=useRef(0)
-  const ultimaConta=useRef(null)
-  const envio = useMemo(() => criarEnvioTransacional(supabase, undefined, {
-    storage: armazenamentoDaSessao(), chave: `convivium.mobile.${session?.user.id || 'anon'}.${marca}`, funcao: 'enviar_solicitacao_mobile',
-  }), [session?.user.id,marca])
-  useEffect(() => { setPendente(envio.temPendente()) }, [envio])
-
-  async function carregarCardapio() {
-    const consulta=++consultaCatalogo.current
-    setCarregando(true); setErro('')
-    try {
-      const { data, error } = await supabase.rpc('cardapio_mobile', { p_slug:marca })
-      if (error) throw error
-      if(consulta!==consultaCatalogo.current) return
-      if (!data?.empresa) throw new Error('Estabelecimento indisponível.')
-      setCatalogo(data)
-    } catch (error) { if(consulta===consultaCatalogo.current) setErro(mensagemPortal(error)) }
-    finally { if(consulta===consultaCatalogo.current) setCarregando(false) }
+  const p = usePortalCliente()
+  const [parametros,setParametros] = useSearchParams()
+  const etapa = ETAPAS.includes(parametros.get('etapa')) ? parametros.get('etapa') : 'cardapio'
+  const retorno = ['cardapio','finalizar','pedidos'].includes(parametros.get('retorno')) ? parametros.get('retorno') : 'cardapio'
+  const tituloEtapa = useRef(null)
+  const irPara = useCallback((destino, depois) => {
+    setParametros(atuais => {
+      const novos=new URLSearchParams(atuais)
+      if(destino==='cardapio')novos.delete('etapa');else novos.set('etapa',destino)
+      if(depois)novos.set('retorno',depois);else novos.delete('retorno')
+      return novos
+    })
+  },[setParametros])
+  useEffect(() => {
+    tituloEtapa.current?.focus({preventScroll:true})
+    window.scrollTo({top:0,behavior:'instant'})
+  },[etapa])
+  useEffect(() => {
+    if(!p.sessaoPronta)return
+    if(etapa==='identificacao' && p.session)irPara(retorno)
+    else if((etapa==='finalizar'||etapa==='pedidos') && !p.session)irPara('identificacao',etapa)
+    else if(etapa==='finalizar' && !p.itens.length && !p.pendente)irPara('carrinho')
+  },[etapa,p.sessaoPronta,p.session?.user.id,p.itens.length,p.pendente,retorno,irPara])
+  const continuar = () => p.session ? irPara('finalizar') : irPara('identificacao','finalizar')
+  const grupos = agruparCatalogoPublico(p.visiveis,p.tipo)
+  const passoAtual = PASSOS.findIndex(([id])=>id===etapa)
+  const bloqueado = p.ocupado || p.pendente
+  function quantidade(item,delta) {
+    if(bloqueado)return
+    if(delta>0)p.adicionar(item,item.extras)
+    else p.setItens(atuais=>atuais.map(i=>i.chave===item.chave ? {...i,quantidade:i.quantidade-1} : i).filter(i=>i.quantidade>0))
   }
-  useEffect(() => { setCatalogo({lojas:[],itens:[]});setLoja('');setItens([]);setCotacao(null);carregarCardapio();return()=>{consultaCatalogo.current++} }, [marca])
-  useEffect(() => { setCotacao(null) }, [session?.user.id,loja,tipo])
-  useEffect(() => {
-    const atual=session?.user.id || null
-    if (ultimaConta.current && ultimaConta.current !== atual) {
-      setCliente({ nome:'', cpf:'', telefone:'' }); setEndereco({}); setObservacoes(''); setTroco(''); setAviso('')
-    }
-    ultimaConta.current=atual
-    setPaginaPedidos(0)
-  }, [session?.user.id])
-  useEffect(() => {
-    let ativo=true
-    setCpfVinculado('')
-    if(!session?.user.id) return
-    supabase.rpc('meu_cadastro_cliente').then(({data,error})=>{
-      if(!ativo) return
-      if(error){setErro('Não foi possível carregar seu cadastro. Atualize a página ou contate a loja.');return}
-      if(data){setCliente(data);setCpfVinculado(data.cpf)}
-    }).catch(()=>{if(ativo)setErro('Não foi possível carregar seu cadastro.')})
-    return()=>{ativo=false}
-  },[session?.user.id])
-  useEffect(() => {
-    if (!cotacao) return
-    const timer=setTimeout(()=>setCotacao(null),Math.max(0,Date.parse(cotacao.expira_em)-Date.now()))
-    return ()=>clearTimeout(timer)
-  },[cotacao])
-  useEffect(() => {
-    let ativo = true
-    let eventoRecebido = false
-    supabase.auth.getSession().then(({ data, error }) => {
-      if (ativo && !eventoRecebido) { if (error) setErro('Não foi possível recuperar sua sessão.'); setSession(data?.session || null); setSessaoPronta(true) }
-    }).catch(() => { if (ativo) { setErro('Não foi possível conectar.'); setSessaoPronta(true) } })
-    const { data } = supabase.auth.onAuthStateChange((_event, atual) => { if (ativo) { eventoRecebido=true; setSession(atual); setSessaoPronta(true) } })
-    return () => { ativo = false; data.subscription.unsubscribe() }
-  }, [])
-  useEffect(() => {
-    setPedidos([]); setErroPedidos('')
-    if (!session?.user.id) return
-    let ativo = true
-    async function atualizar() {
-      const { data, error } = await supabase.rpc('acompanhar_solicitacoes_mobile', { p_pagina: paginaPedidos })
-      if (!ativo) return
-      if (error) setErroPedidos(mensagemPortal(error))
-      else { setPedidos(data || []); setErroPedidos('') }
-    }
-    const encerrar=acompanharAoVivo(supabase,`cliente-pedidos:${session.user.id}`,[
-      {table:'solicitacoes_mobile',filter:`usuario_id=eq.${session.user.id}`},
-      {table:'eventos_pedidos_cliente',filter:`usuario_id=eq.${session.user.id}`},
-    ],()=>atualizar().catch(() => { if (ativo) setErroPedidos('Não foi possível atualizar seus pedidos.') }))
-    return () => { ativo = false; encerrar() }
-  }, [session?.user.id, aviso, paginaPedidos])
-
-  const unidade = catalogo.lojas.find(l => l.id === loja)
-  const subtotal = totalCarrinho(itens)
-  const visiveis = catalogo.itens.filter(p => p[tipo] && `${p.nome} ${p.variacao}`.toLocaleLowerCase('pt-BR').includes(busca.toLocaleLowerCase('pt-BR')))
-  function escolherLoja(id) { setLoja(id); setItens([]); if (catalogo.lojas.find(l => l.id === id)?.tipo_operacao === 'delivery_only') setTipo('delivery') }
-  function adicionar(produto, extras) {
-    const chave = `${produto.id}:${extras.map(a => a.id).sort().join(',')}`
-    setItens(prev => prev.some(i => i.chave === chave)
-      ? prev.map(i => i.chave === chave ? { ...i, quantidade: Math.min(99, i.quantidade + 1) } : i)
-      : [...prev, { ...produto, extras, chave, quantidade: 1 }])
-  }
-  async function executar(acao) {
-    if (trava.current) return
-    trava.current = true; setOcupado(true); setErro(''); setAviso('')
-    try { await acao() } catch (error) { setErro(mensagemPortal(error)) }
-    finally { trava.current = false; setOcupado(false) }
-  }
-  async function autenticar(event) {
-    event.preventDefault()
-    await executar(async () => {
-      const data = await acessarContaCliente(supabase.auth, { cadastro, email, senha, retorno: `${window.location.origin}${import.meta.env.BASE_URL}pedir/${marca}`, ...(cadastro ? cliente : {}) },supabase.functions)
-      setSenha('')
-      if (cadastro && !data.session) setAviso('Confira seu e-mail para confirmar o cadastro e depois entre na sua conta.')
+  async function sair() {
+    await p.executar(async()=>{
+      const {error}=await supabase.auth.signOut({scope:'local'})
+      if(error)throw error
+      p.setCliente({nome:'',cpf:'',telefone:''});p.setEndereco({});p.setPaginaPedidos(0)
+      irPara('cardapio')
     })
   }
-  async function enviar(event) {
-    event.preventDefault()
-    if (!session) { setErro('Entre na sua conta para enviar.'); return }
-    await executar(async () => {
-      try {
-        const dados = pendente ? null : montarSolicitacao({ lojaId: loja, tipo, pagamento, cliente, itens, endereco:cotacao?.endereco || endereco, observacoes, troco, cotacaoId:cotacao?.cotacao_id, taxaEntrega:cotacao?.taxa || 0 })
-        if(!pendente){
-          const {data,error}=await supabase.rpc('cadastrar_perfil_cliente',{p_cpf:dados.cpf,p_nome:dados.nome,p_telefone:dados.telefone})
-          if(error) throw error
-          setCpfVinculado(data.cpf)
-        }
-        const id = await envio.enviar(dados)
-        if(cotacao?.endereco) setEndereco(cotacao.endereco)
-        setCotacao(null)
-        setItens([]); setPaginaPedidos(0); setAviso(`Solicitação #${codigoPedido(id)} enviada. Aguarde a confirmação da loja.`)
-      } finally { setPendente(envio.temPendente()) }
-    })
-  }
-  return <div className="app-shell portal-shell min-h-screen" style={{'--ui-gold':catalogo.empresa?.cor || '#e4ae65'}}>
-    <header className="portal-header"><Link to={`/pedir/${marca}`} className="portal-brand">{catalogo.empresa?.logo_url && <img src={catalogo.empresa.logo_url} alt="" className="h-12 w-12 object-contain inline-block mr-3" />}{catalogo.empresa?.nome || 'Brasa Burger'}<span>Pedidos online</span></Link><Link className="text-sm text-fumaca" to={`/?marca=${marca}`}>Acesso da equipe</Link></header>
-    <main className="portal-main">
-      <section className="portal-intro"><p className="portal-eyebrow">SEU PRÓXIMO PEDIDO</p><h1>Feito para o seu momento.</h1><p>Escolha seus favoritos. A loja confirma o pedido e você paga na retirada ou na entrega.</p></section>
-      {erro && <div role="alert" className="portal-notice text-brasa">{erro}<button type="button" className="underline ml-3" onClick={carregarCardapio}>Atualizar cardápio</button></div>}
-      {aviso && <p role="status" className="portal-notice text-oliva">{aviso}</p>}
-      {carregando && <p role="status">Carregando cardápio…</p>}
-      <div className="portal-grid">
-        <section aria-label="Cardápio">
-          <fieldset disabled={pendente || ocupado} className="portal-filters">
-            <label>Unidade<select value={loja} onChange={e => escolherLoja(e.target.value)}><option value="">Selecione a unidade</option>{catalogo.lojas.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}</select></label>
-            <label>Atendimento<select value={tipo} onChange={e => { setTipo(e.target.value); setItens([]) }}><option value="presencial" disabled={unidade?.tipo_operacao === 'delivery_only'}>Retirada na loja</option><option value="delivery">Entrega</option></select></label>
-            <label className="portal-search">Buscar no cardápio<input type="search" value={busca} onChange={e => setBusca(e.target.value)} placeholder="Produto ou variação" /></label>
-          </fieldset>
-          <div className="portal-catalog">{visiveis.map(p => <Produto key={p.id} produto={p} onAdicionar={adicionar} desabilitado={!loja || pendente || ocupado} />)}</div>
-          {!carregando && !visiveis.length && <p className="portal-notice">Nenhum produto disponível.</p>}
-        </section>
-        <aside className="portal-checkout" id="carrinho">
-          <h2>Seu pedido <Icon nome="sacola" /></h2>
-          {!itens.length && <p className="text-fumaca text-sm my-4">Escolha os itens do cardápio.</p>}
-          <fieldset disabled={pendente || ocupado}>{itens.map(i => <div key={i.chave} className="portal-cart-item"><div><strong>{i.nome}</strong><p className="text-sm text-fumaca">{i.variacao}{i.extras.length ? ` · ${i.extras.map(a => a.nome).join(', ')}` : ''}</p><span>{dinheiro(totalCarrinho([i]))}</span></div><div className="portal-quantity"><button type="button" aria-label={`Diminuir ${i.nome}`} onClick={() => setItens(prev => prev.map(x => x.chave === i.chave ? { ...x, quantidade: x.quantidade - 1 } : x).filter(x => x.quantidade > 0))}>−</button><span>{i.quantidade}</span><button type="button" aria-label={`Aumentar ${i.nome}`} disabled={i.quantidade >= 99} onClick={() => adicionar(i, i.extras)}>+</button></div></div>)}</fieldset>
-          <div className="portal-total"><span>Itens</span><strong>{dinheiro(subtotal)}</strong></div>
-          {tipo === 'delivery' && <div className="flex justify-between text-sm mb-3"><span>Frete</span><strong>{cotacao ? dinheiro(cotacao.taxa) : 'Informe o endereço'}</strong></div>}
-          <div className="flex justify-between mb-5"><span>{tipo === 'delivery' && !cotacao ? 'Subtotal sem frete' : 'Total'}</span><strong>{dinheiro(subtotal + Number(cotacao?.taxa || 0))}</strong></div>
-          {!loja && <p className="text-sm text-fumaca mb-4">Selecione a unidade para adicionar produtos.</p>}
-          {!sessaoPronta ? <p role="status">Carregando sua conta…</p> : !session ? <form onSubmit={autenticar} className="portal-form">
-            <h3>{cadastro ? 'Criar conta' : 'Entre para pedir'}</h3>
-            {cadastro && <>
-              <label>Nome completo<input required autoComplete="name" maxLength={120} value={cliente.nome} onChange={e=>setCliente(c=>({...c,nome:e.target.value}))} /></label>
-              <label>CPF do cadastro<input required inputMode="numeric" maxLength={14} value={cliente.cpf} onChange={e=>setCliente(c=>({...c,cpf:e.target.value}))} /></label>
-              <label>Telefone de contato<input required type="tel" autoComplete="tel" maxLength={20} value={cliente.telefone} onChange={e=>setCliente(c=>({...c,telefone:e.target.value}))} /></label>
-            </>}
-            {!cadastro && <label>CPF ou e-mail<input required type="text" autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} /></label>}
-            <label>Senha<input required minLength={cadastro ? 8 : undefined} type="password" autoComplete={cadastro ? 'new-password' : 'current-password'} value={senha} onChange={e => setSenha(e.target.value)} /></label>
-            {cadastro && <p className="text-xs text-fumaca">Use pelo menos oito caracteres. Seu CPF e sua senha permitem entrar e acompanhar os pedidos.</p>}
-            <button disabled={ocupado} className="portal-primary">{ocupado ? 'Aguarde…' : cadastro ? 'Criar conta' : 'Entrar'}</button>
-            <button type="button" disabled={ocupado} className="text-sm underline" onClick={() => { setCadastro(v => !v); setErro(''); setSenha('') }}>{cadastro ? 'Já tenho uma conta' : 'Criar uma conta'}</button>
-            <p className="text-xs text-fumaca">Cadastro por CPF e senha. Use seus próprios dados. Guarde sua senha para acessar a conta depois.</p>
-            {!cadastro && email.includes('@') && <button type="button" disabled={ocupado || !email.includes('@')} className="text-sm underline" onClick={() => executar(async () => {
-              await reenviarConfirmacaoCliente(supabase.auth, email, `${window.location.origin}${import.meta.env.BASE_URL}pedir/${marca}`)
-              setAviso('Se houver um cadastro aguardando confirmação para este e-mail, você receberá um novo link. Confira também o spam.')
-            })}>Reenviar confirmação de e-mail</button>}
-          </form> : <>
-            <div className="flex justify-between gap-2 text-sm my-4"><span className="break-all">{cpfVinculado ? `CPF ${formatarCPF(cpfVinculado)}` : 'Conta do cliente'}</span><button type="button" disabled={ocupado} className="underline" onClick={() => executar(async () => { const { error } = await supabase.auth.signOut(); if (error) throw error; setCliente({ nome: '', cpf: '', telefone: '' }); setEndereco({}); setPaginaPedidos(0) })}>Sair</button></div>
-            {tipo === 'delivery' && loja && itens.length > 0 && !pendente && <div className="mb-5"><ConsultaEntrega key={`${loja}:${session.user.id}`} lojaId={loja} modoPedido portal automatico destinoInicial={endereco} onCotacao={setCotacao} onInvalidar={()=>setCotacao(null)} /></div>}
-            <form onSubmit={enviar} className="portal-form">
-              {pendente ? <p role="alert">O último envio aguarda confirmação. Consulte o resultado antes de enviar outro pedido.</p> : <fieldset disabled={ocupado} className="portal-form">
-                <label>Nome<input required maxLength={120} autoComplete="name" value={cliente.nome} onChange={e => setCliente(c => ({ ...c, nome: e.target.value }))} /></label><label>CPF<input required inputMode="numeric" maxLength={14} readOnly={!!cpfVinculado} value={cliente.cpf} onChange={e => setCliente(c => ({ ...c, cpf: e.target.value }))} /></label><label>Telefone<input required type="tel" autoComplete="tel" maxLength={20} value={cliente.telefone} onChange={e => setCliente(c => ({ ...c, telefone: e.target.value }))} /></label>
-                <label>Pagamento na {tipo === 'delivery' ? 'entrega' : 'retirada'}<select value={pagamento} onChange={e => setPagamento(e.target.value)}><option value="pix">Pix</option><option value="credito">Cartão de crédito</option><option value="debito">Cartão de débito</option><option value="dinheiro">Dinheiro</option></select></label>
-                {pagamento === 'dinheiro' && <label>Troco para (opcional)<input inputMode="decimal" value={troco} onChange={e => setTroco(e.target.value)} /></label>}
-                <label>Observações<textarea maxLength={500} value={observacoes} onChange={e => setObservacoes(e.target.value)} /></label>
-              </fieldset>}
-              <p className="text-xs text-fumaca">Seus dados serão usados pela loja para atender este pedido. O envio depende da confirmação de disponibilidade. Pagamento diretamente à loja.</p>
-              <button disabled={ocupado || (!pendente && (!itens.length || (tipo==='delivery' && !cotacao)))} className="portal-primary">{ocupado ? 'Enviando…' : pendente ? 'Confirmar último envio' : 'Enviar pedido à loja'}</button>
-            </form>
-          </>}
-        </aside>
-      </div>
-      {session && <section className="portal-orders"><h2>Meus pedidos</h2>{erroPedidos && <p role="alert" className="text-brasa">{erroPedidos}</p>}{!pedidos.length && !erroPedidos && <p className="text-fumaca">Nenhum pedido nesta página.</p>}
-        {pedidos.map(p => <article className="portal-order" key={p.id}><div><strong>#{codigoPedido(p.id)} · {p.loja}</strong><p className="text-sm text-fumaca">{new Date(p.criado_em).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</p><p>{ESTADOS[p.etapa || p.status]}</p>{p.motivo && <p>{p.motivo}</p>}<p>{p.total !== null ? `Total confirmado: ${dinheiro(p.total)} · Frete: ${dinheiro(p.frete)}` : `Subtotal: ${dinheiro(p.subtotal)}`}</p></div>{p.status === 'aguardando' && <button type="button" disabled={ocupado} className="underline" onClick={() => executar(async () => { const { error } = await supabase.rpc('decidir_solicitacao_mobile', { p_id: p.id, p_acao: 'cancelar' }); if (error) throw error; setAviso(`Solicitação #${codigoPedido(p.id)} cancelada.`) })}>Cancelar solicitação</button>}</article>)}
-        <div className="flex gap-4 mt-4"><button disabled={paginaPedidos === 0} onClick={() => setPaginaPedidos(p => p - 1)}>Anterior</button><span>Página {paginaPedidos + 1}</span><button disabled={pedidos.length < 20} onClick={() => setPaginaPedidos(p => p + 1)}>Próxima</button></div>
-      </section>}
-      <footer className="portal-footer">{catalogo.empresa?.nome || 'Brasa Burger'} · Por Convívium Management System</footer>
+  const resumo = editar => <ResumoPedidoPortal itens={p.itens} unidade={p.unidade} tipo={p.tipo} cotacao={p.cotacao} editar={editar} bloqueado={bloqueado} onQuantidade={quantidade} />
+  const titulo = (sobretitulo,texto,descricao) => <div className="portal-page-heading"><p className="portal-eyebrow">{sobretitulo}</p><h1 tabIndex={-1} ref={tituloEtapa}>{texto}</h1>{descricao && <p>{descricao}</p>}</div>
+
+  return <div className="app-shell portal-shell" style={{'--ui-gold':p.catalogo.empresa?.cor || '#e4ae65','--ui-action':p.catalogo.empresa?.cor || '#e4ae65'}}>
+    <a href="#portal-conteudo" className="portal-skip">Ir ao conteúdo</a>
+    <header className="portal-header"><Link to={'/pedir/'+p.marca} className="portal-brand">
+      {p.catalogo.empresa?.logo_url ? <img src={p.catalogo.empresa.logo_url} alt="" /> : <span className="portal-brand-icon"><Icon nome="produto" size={26} /></span>}
+      <span>{p.catalogo.empresa?.nome || (p.carregando ? 'Carregando loja…' : 'Pedidos online')}<small>Seu pedido, direto com a loja</small></span>
+    </Link><nav className="portal-header-actions" aria-label="Sua navegação">
+      <button type="button" aria-current={etapa==='cardapio' ? 'page' : undefined} onClick={()=>irPara('cardapio')} className="portal-menu-link">Cardápio</button>
+      <button type="button" aria-current={etapa==='carrinho' ? 'page' : undefined} onClick={()=>irPara('carrinho')} aria-label={'Carrinho, '+p.totalUnidades+(p.totalUnidades===1 ? ' item' : ' itens')}><Icon nome="sacola" size={20} /><span className="portal-action-label">Pedido</span><b>{p.totalUnidades}</b></button>
+      <button type="button" aria-label={p.session ? 'Meus pedidos' : 'Entrar'} onClick={()=>irPara(p.session ? 'pedidos' : 'identificacao',p.session ? undefined : 'pedidos')}><Icon nome="conta" size={20} /><span className="portal-action-label">{p.session ? 'Meus pedidos' : 'Entrar'}</span></button>
+    </nav></header>
+    <main className="portal-main" id="portal-conteudo">
+      {etapa!=='pedidos' && <nav className="portal-steps" aria-label="Etapas do pedido">{PASSOS.map(([id,nome],indice)=><button key={id} type="button" aria-current={etapa===id ? 'step' : undefined} className={indice<passoAtual ? 'is-complete' : ''} onClick={()=>id==='identificacao' ? irPara(p.session && p.itens.length ? 'finalizar' : 'identificacao','finalizar') : irPara(id)}><span>{indice<passoAtual ? <Icon nome="check" size={14} /> : indice+1}</span>{nome}</button>)}</nav>}
+      {p.erro && <div role="alert" className="portal-notice is-error"><Icon nome="alerta" size={20} /><p>{p.erro}</p>{!p.catalogo.empresa && <button type="button" onClick={p.carregarCardapio}>Tentar novamente</button>}<button type="button" aria-label="Fechar aviso" onClick={()=>p.setErro('')}>×</button></div>}
+      {p.aviso && <p role="status" className="portal-notice is-success"><Icon nome="check" size={20} />{p.aviso}</p>}
+      {p.pendente && etapa!=='finalizar' && <div className="portal-notice"><p>Um envio aguarda confirmação. Consulte o resultado para continuar.</p><button type="button" onClick={()=>irPara('finalizar')}>Consultar envio</button></div>}
+
+      {etapa==='cardapio' && <>
+        <section className="portal-intro"><div><p className="portal-eyebrow">FEITO PARA O SEU MOMENTO</p><h1 tabIndex={-1} ref={tituloEtapa}>Seu pedido.<br /><span>Do seu jeito.</span></h1><p>Escolha seus favoritos. A loja cuida do resto.</p><div className="portal-intro-badges"><span><Icon nome="sacola" size={15} /> Retirada ou entrega</span><span>Canal próprio da loja</span></div></div><div className="portal-intro-visual" aria-label="Ilustração de hambúrguer"><span className="portal-hero-sticker sticker-fries"><Icon nome="batata" size={34} /></span><img src={import.meta.env.BASE_URL+'imagens/cardapio/burger.webp'} alt="Hambúrguer ilustrativo" /><span className="portal-hero-sticker sticker-drink"><Icon nome="bebida" size={32} /></span><small>Imagem ilustrativa</small></div></section>
+        <section className="portal-service" aria-label="Escolha da unidade" id="escolha-unidade"><div className="portal-service-copy"><Icon nome="local" size={23} /><div><h2>De qual unidade você vai pedir?</h2><p>{p.loja ? 'Seu pedido será enviado para esta unidade.' : 'Selecione para começar a montar o pedido.'}</p></div></div><fieldset disabled={bloqueado} className="portal-service-fields"><label>Unidade<select value={p.loja} onChange={e=>p.escolherLoja(e.target.value)}><option value="">Selecione a unidade</option>{p.catalogo.lojas.map(l=><option key={l.id} value={l.id}>{l.nome}</option>)}</select></label><label>Como receber<select value={p.tipo} onChange={e=>{p.setTipo(e.target.value);p.setItens([]);p.setCategoria('todos')}}><option value="presencial" disabled={p.unidade?.tipo_operacao==='delivery_only'}>Retirar na loja</option><option value="delivery">Receber em casa</option></select></label></fieldset></section>
+        <div className="portal-menu-heading"><div><p className="portal-eyebrow">ESCOLHA POR CATEGORIA</p><h2>O que vai ser hoje?</h2></div><label className="portal-search"><Icon nome="busca" size={19} /><input aria-label="Buscar no cardápio" type="search" value={p.busca} onChange={e=>p.setBusca(e.target.value)} placeholder="Buscar um favorito…" /></label></div>
+        <nav className="portal-categories" aria-label="Categorias do cardápio">
+          <button type="button" aria-pressed={p.categoria==='todos'} onClick={()=>p.setCategoria('todos')}><span className="portal-category-icon"><Icon nome="ajuste" size={24} /></span><span>Todos</span></button>
+          {p.catalogo.itens.some(i=>i[p.tipo]&&i.destaque) && <button type="button" aria-pressed={p.categoria==='destaques'} onClick={()=>p.setCategoria('destaques')}><span className="portal-category-icon">✦</span><span>Destaques</span></button>}
+          {p.categorias.map(c=><button key={c} type="button" aria-pressed={p.categoria===c} onClick={()=>p.setCategoria(c)}><span className={'portal-category-icon food-'+iconeCategoria(c)}><Icon nome={iconeCategoria(c)} size={28} /></span><span>{c}</span></button>)}
+        </nav>
+        {p.carregando && <p role="status" className="portal-loading">Preparando o cardápio…</p>}
+        {!p.carregando && !p.visiveis.length && <div className="portal-empty"><Icon nome="busca" size={44} /><h2>Nenhum favorito por aqui ainda.</h2><p>Tente outra busca ou categoria.</p><button className="portal-secondary" type="button" onClick={()=>{p.setBusca('');p.setCategoria('todos')}}>Ver todo o cardápio</button></div>}
+        <div className="portal-menu-sections">{grupos.map(grupo=><section className="portal-menu-section" key={grupo.categoria} aria-label={grupo.categoria}><div className="portal-catalog-heading"><span className={'portal-section-icon food-'+iconeCategoria(grupo.categoria)}><Icon nome={iconeCategoria(grupo.categoria)} size={25} /></span><div><h2>{grupo.categoria}</h2><p>{MENSAGENS[grupo.categoria] || 'Explore as opções desta categoria.'}</p></div><span className="portal-option-count">{grupo.itens.length} {grupo.itens.length===1 ? 'opção' : 'opções'}</span></div><div className="portal-catalog">{grupo.itens.map(produto=><ProdutoPortal key={produto.id} produto={produto} onAdicionar={p.adicionar} onDetalhar={p.setProdutoAberto} desabilitado={p.adicaoBloqueada} />)}</div></section>)}</div>
+      </>}
+
+      {etapa==='carrinho' && <>
+        {titulo('02 / SEU PEDIDO','Tudo certo por aqui?','Revise os itens antes de continuar.')}
+        {!p.itens.length ? <div className="portal-empty"><Icon nome="sacola" size={54} /><h2>Seu carrinho está esperando.</h2><p>Encontre algo gostoso no cardápio para começar.</p><button type="button" className="portal-primary" onClick={()=>irPara('cardapio')}>Escolher meus favoritos <Icon nome="seta" size={18} /></button></div> : <div className="portal-flow-grid"><div>{resumo(true)}<button className="portal-text-link" type="button" onClick={()=>irPara('cardapio')}>+ Adicionar mais itens</button></div><aside className="portal-next-card"><span className="portal-round-icon"><Icon nome="check" size={24} /></span><h2>Falta pouco!</h2><p>{p.session ? 'Na próxima etapa, confira seus dados e escolha como pagar.' : 'Agora você entra na conta ou cria seu cadastro, sem perder o carrinho.'}</p><button type="button" className="portal-primary" disabled={bloqueado} onClick={continuar}>Continuar pedido <Icon nome="seta" size={18} /></button><small>Pagamento diretamente à loja.</small></aside></div>}
+      </>}
+
+      {etapa==='identificacao' && !p.session && <div className="portal-auth-layout"><section className="portal-auth-card">
+        {titulo('03 / SUA CONTA',p.cadastro ? 'Sua primeira vez?' : 'Que bom ter você aqui.',p.cadastro ? 'Crie a conta e acompanhe seus pedidos.' : 'Entre com CPF e senha para continuar.')}
+        {retorno==='finalizar' && p.itens.length>0 && <p className="portal-auth-cart-note"><Icon nome="sacola" size={18} />Seu carrinho com {p.totalUnidades} itens está guardado nesta navegação.</p>}
+        <form onSubmit={p.autenticar} className="portal-form"><fieldset disabled={p.ocupado} className="portal-form">
+          {p.cadastro ? <><label>Nome completo<input required autoComplete="name" maxLength={120} value={p.cliente.nome} onChange={e=>p.setCliente(c=>({...c,nome:e.target.value}))} /></label><label>CPF<input required inputMode="numeric" maxLength={14} value={p.cliente.cpf} onChange={e=>p.setCliente(c=>({...c,cpf:formatarCPF(e.target.value)}))} /></label><label>Telefone<input required type="tel" autoComplete="tel" maxLength={20} value={p.cliente.telefone} onChange={e=>p.setCliente(c=>({...c,telefone:e.target.value}))} /></label></> : <label>CPF ou e-mail<input required type="text" autoComplete="username" value={p.email} onChange={e=>p.setEmail(e.target.value)} placeholder="Seu CPF ou e-mail cadastrado" /></label>}
+          <label>Senha<input required minLength={p.cadastro ? 8 : undefined} type="password" autoComplete={p.cadastro ? 'new-password' : 'current-password'} value={p.senha} onChange={e=>p.setSenha(e.target.value)} placeholder={p.cadastro ? 'Pelo menos 8 caracteres' : 'Sua senha'} /></label>
+          <button className="portal-primary" disabled={p.ocupado || !p.sessaoPronta}>{p.ocupado ? 'Aguarde…' : p.cadastro ? 'Criar minha conta' : 'Entrar e continuar'}<Icon nome="seta" size={18} /></button>
+          <button type="button" className="portal-secondary" onClick={()=>{p.setCadastro(v=>!v);p.setErro('');p.setSenha('')}}>{p.cadastro ? 'Já tenho uma conta' : 'Sou novo, quero me cadastrar'}</button>
+          {!p.cadastro && p.email.includes('@') && <button type="button" className="portal-text-link" onClick={()=>p.executar(async()=>{await reenviarConfirmacaoCliente(supabase.auth,p.email,window.location.origin+import.meta.env.BASE_URL+'pedir/'+p.marca);p.setAviso('Se houver um cadastro aguardando confirmação, você receberá um novo link por e-mail.')})}>Reenviar confirmação de e-mail</button>}
+        </fieldset><p className="portal-form-note">Use seus próprios dados. A conta permite acompanhar os pedidos feitos às lojas.</p></form>
+        <button type="button" className="portal-text-link" onClick={()=>irPara(retorno==='finalizar' ? 'carrinho' : 'cardapio')}>← {retorno==='finalizar' ? 'Voltar ao carrinho' : 'Explorar o cardápio'}</button>
+      </section><aside className="portal-auth-aside"><span className="portal-big-sticker"><Icon nome="produto" size={104} /></span><h2>Do cardápio<br />até a sua mesa.</h2><p>Escolha. Personalize. Acompanhe.</p><div><Icon nome="check" size={18} /> Pedido direto com a loja</div><div><Icon nome="check" size={18} /> Seus favoritos, do seu jeito</div></aside></div>}
+
+      {etapa==='finalizar' && p.session && <>
+        {titulo('04 / CONFIRMAÇÃO','Seu próximo favorito está quase aí.','Confira como receber e os dados do pedido.')}
+        <div className="portal-flow-grid"><div className="portal-checkout-details">
+          <section className="portal-checkout-card"><div className="portal-card-heading"><Icon nome="local" size={23} /><h2>{p.tipo==='delivery' ? 'Entrega na sua casa' : 'Retirada na loja'}</h2></div><p className="portal-checkout-unit">{p.unidade?.nome}</p>{!p.pendente && <button type="button" className="portal-text-link" onClick={()=>irPara('cardapio')}>Alterar unidade ou atendimento</button>}
+            {p.tipo==='delivery' && p.loja && p.itens.length>0 && !p.pendente && <ConsultaEntrega clienteApi={supabase} key={p.loja+':'+p.session.user.id} lojaId={p.loja} modoPedido portal automatico destinoInicial={p.endereco} onCotacao={cotacao=>{p.setCotacao(cotacao);if(cotacao?.endereco)p.setEndereco(cotacao.endereco)}} onInvalidar={()=>p.setCotacao(null)} />}
+            {p.tipo!=='delivery' && <p className="portal-form-note">Acompanhe o pedido. A loja informa quando estiver pronto para retirar.</p>}
+          </section>
+          <form onSubmit={async event=>{if(await p.enviar(event))irPara('pedidos')}} className="portal-checkout-card portal-form">
+            {p.pendente ? <div role="alert"><h2>Consultar o último envio</h2><p>A confirmação consulta o mesmo envio e evita repetir seu pedido.</p></div> : <fieldset disabled={p.ocupado} className="portal-form">
+              <div className="portal-card-heading"><Icon nome="conta" size={22} /><h2>Dados de quem vai receber</h2></div>
+              <label>Nome<input required maxLength={120} autoComplete="name" value={p.cliente.nome} onChange={e=>p.setCliente(c=>({...c,nome:e.target.value}))} /></label>
+              <div className="portal-form-columns"><label>CPF<input required inputMode="numeric" maxLength={14} readOnly={!!p.cpfVinculado} value={p.cliente.cpf} onChange={e=>p.setCliente(c=>({...c,cpf:formatarCPF(e.target.value)}))} /></label><label>Telefone<input required type="tel" autoComplete="tel" maxLength={20} value={p.cliente.telefone} onChange={e=>p.setCliente(c=>({...c,telefone:e.target.value}))} /></label></div>
+              <div className="portal-card-heading portal-payment-heading"><Icon nome="cartao" size={22} /><h2>Como você vai pagar?</h2></div>
+              <label>Pagamento na {p.tipo==='delivery' ? 'entrega' : 'retirada'}<select value={p.pagamento} onChange={e=>p.setPagamento(e.target.value)}><option value="pix">Pix</option><option value="credito">Cartão de crédito</option><option value="debito">Cartão de débito</option><option value="dinheiro">Dinheiro</option></select></label>
+              {p.pagamento==='dinheiro' && <label>Troco para (opcional)<input inputMode="decimal" value={p.troco} onChange={e=>p.setTroco(e.target.value)} /></label>}
+              <label>Alguma observação? <span className="portal-optional">Opcional</span><textarea maxLength={500} rows={3} value={p.observacoes} onChange={e=>p.setObservacoes(e.target.value)} placeholder="Uma informação para a equipe da loja…" /></label>
+            </fieldset>}
+            <p className="portal-form-note">Seus dados serão usados para atender este pedido. A loja confirma a disponibilidade. Pagamento diretamente à loja.</p>
+            <button disabled={p.ocupado || (!p.pendente && (!p.itens.length || (p.tipo==='delivery'&&!p.cotacao)))} className="portal-primary">{p.ocupado ? 'Enviando…' : p.pendente ? 'Consultar último envio' : 'Enviar pedido à loja'}<Icon nome="seta" size={18} /></button>
+            {p.tipo==='delivery'&&!p.cotacao&&!p.pendente && <p className="portal-form-note">Preencha o endereço e aguarde o cálculo do frete para enviar.</p>}
+          </form>
+        </div><aside className="portal-final-summary">{resumo(false)}{!p.pendente && <button type="button" className="portal-text-link" onClick={()=>irPara('carrinho')}>Editar meu pedido</button>}</aside></div>
+      </>}
+
+      {etapa==='pedidos' && p.session && <>
+        {titulo('SUA CONTA','Meus pedidos','Acompanhe a confirmação e o preparo pela loja.')}
+        <div className="portal-account-strip"><span><Icon nome="conta" size={18} />{p.cpfVinculado ? 'CPF '+formatarCPF(p.cpfVinculado) : 'Conta do consumidor'}</span><button type="button" disabled={p.ocupado} onClick={sair}>Sair da conta</button></div>
+        {p.erroPedidos && <p role="alert" className="portal-notice is-error">{p.erroPedidos}</p>}
+        {!p.pedidos.length&&!p.erroPedidos && <div className="portal-empty"><Icon nome="pedido" size={48} /><h2>Seu primeiro favorito está no cardápio.</h2><p>Os pedidos desta conta aparecem aqui depois do envio.</p><button type="button" className="portal-primary" onClick={()=>irPara('cardapio')}>Fazer um pedido</button></div>}
+        <div className="portal-orders">{p.pedidos.map(pedido=><article className="portal-order" key={pedido.id}><div className="portal-order-top"><span><Icon nome="pedido" size={18} />#{codigoPedido(pedido.id)}</span><span className="portal-order-state">{ESTADOS[pedido.etapa||pedido.status] || pedido.status}</span></div><h2>{pedido.loja}</h2><p>{new Date(pedido.criado_em).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'})}</p>{pedido.motivo && <p>{pedido.motivo}</p>}<strong>{pedido.total!==null ? 'Total confirmado: '+dinheiro(pedido.total)+' · Frete: '+dinheiro(pedido.frete) : 'Subtotal: '+dinheiro(pedido.subtotal)}</strong>{pedido.status==='aguardando' && <button type="button" disabled={p.ocupado} className="portal-text-link" onClick={()=>p.executar(async()=>{const {error}=await supabase.rpc('decidir_solicitacao_mobile',{p_id:pedido.id,p_acao:'cancelar'});if(error)throw error;p.setAviso('Solicitação #'+codigoPedido(pedido.id)+' cancelada.')})}>Cancelar solicitação</button>}</article>)}</div>
+        {p.pedidos.length>0 && <nav className="portal-pagination" aria-label="Páginas de pedidos"><button disabled={p.paginaPedidos===0} onClick={()=>p.setPaginaPedidos(n=>n-1)}>Anterior</button><span>Página {p.paginaPedidos+1}</span><button disabled={p.pedidos.length<20} onClick={()=>p.setPaginaPedidos(n=>n+1)}>Próxima</button></nav>}
+      </>}
+      {!p.sessaoPronta && etapa!=='cardapio' && etapa!=='carrinho' && <p role="status" className="portal-loading">Carregando sua conta…</p>}
+      <footer className="portal-footer"><Icon nome="produto" size={20} /><span>{p.catalogo.empresa?.nome || 'Pedidos online'}<small>Tecnologia Convívium Management System</small></span><span>Seu pedido começa aqui.</span></footer>
     </main>
-    {itens.length > 0 && <a className="portal-cart-link" href="#carrinho"><Icon nome="sacola" size={18} />Ver pedido · {dinheiro(subtotal)}</a>}
+    <p role="status" className="sr-only">{p.ultimoAdicionado}</p>
+    <SidePanel aberto={!!p.produtoAberto} onFechar={()=>p.setProdutoAberto(null)} titulo={p.produtoAberto?.nome || 'Produto'}>{p.produtoAberto && <DetalheProduto key={p.produtoAberto.id} produto={p.produtoAberto} desabilitado={p.adicaoBloqueada} onAdicionar={(produto,extras)=>{p.adicionar(produto,extras);p.setProdutoAberto(null)}} />}</SidePanel>
+    {etapa==='cardapio' && p.itens.length>0 && <button type="button" className="portal-cart-link" onClick={()=>irPara('carrinho')}><span>{p.totalUnidades}</span><Icon nome="sacola" size={20} />Ver meu pedido<strong>{dinheiro(p.subtotal)}</strong><Icon nome="seta" size={18} /></button>}
   </div>
 }

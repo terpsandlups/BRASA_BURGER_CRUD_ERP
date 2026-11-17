@@ -34,6 +34,7 @@ before(async () => {
     '../../supabase/migrations/20261025004910_empresas_acesso_frete_cliente.sql',
     '../../supabase/migrations/20261106015840_cadastro_cpf_tempo_real.sql',
     '../../supabase/migrations/20261111223639_cadastro_cpf_sem_email.sql',
+    '../../supabase/migrations/20261116000100_cardapio_visual.sql',
   ]) await db.exec(await sql(path))
 })
 after(async () => { await db?.close() })
@@ -151,6 +152,25 @@ test('empresas: master cadastra empresa/unidade, troca contexto e CPF se repete 
   assert.equal(catalogo.lojas.length,1);assert.equal(catalogo.itens.length,0)
   await administrar('selecionar_empresa',{id:'a0000000-0000-0000-0000-000000000001'})
   assert.equal(await valor("SELECT nome FROM clientes WHERE cpf='12345678900'"),'Cliente fictício')
+})
+
+test('cardápio público preserva preço e metadados sem cruzar empresas',async()=>{
+  await db.exec("ALTER TABLE produtos ADD COLUMN descricao text, ADD COLUMN nome_comercial text, ADD COLUMN categoria_id uuid")
+  await db.query("INSERT INTO categorias(id,nome) VALUES('90000000-0000-0000-0000-000000000001','Lanches')")
+  await db.query("UPDATE produtos SET descricao='Receita da casa',nome_comercial='Burger da Casa',categoria_id='90000000-0000-0000-0000-000000000001',imagem_url='https://example.test/burger.webp',destaque=true WHERE sku='LAN001'")
+  const antes=await valor("SELECT cardapio_mobile('brasa-burger')")
+  await administrar('empresa',{nome:'Outra marca',slug:'outra-marca'})
+  await db.exec('SET LOCAL ROLE anon')
+  const depois=await valor("SELECT cardapio_mobile('brasa-burger')")
+  assert.equal(depois.itens.length,antes.itens.length)
+  assert.equal(depois.itens[0].preco,antes.itens[0].preco)
+  assert.equal(depois.itens[0].nome,'Burger da Casa')
+  assert.equal(depois.itens[0].categoria,'Lanches')
+  assert.equal(depois.itens[0].destaque,true)
+  assert.equal(depois.itens[0].imagem_url,'https://example.test/burger.webp')
+  assert.equal(depois.itens[0].descricao,'Receita da casa')
+  assert.equal((await valor("SELECT cardapio_mobile('outra-marca')")).itens.length,0)
+  await rejeita('SELECT * FROM produtos',[],/permission denied/)
 })
 
 test('empresas: administrador da marca vê suas unidades, gerente vê só a sua e não provisiona contas',async()=>{

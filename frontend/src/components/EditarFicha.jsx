@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabaseClient.js'
 import { useAuth } from '../lib/AuthContext.jsx'
 import { carregarTodasPaginas } from '../lib/dashboard.js'
-import { validarQuantidadeFicha, validarVariacao } from '../lib/fichaTecnica.js'
+import { validarQuantidadeFicha, validarVariacao, resumirFicha } from '../lib/fichaTecnica.js'
+import { dinheiro } from '../lib/pedidoApresentacao.js'
 const campo = 'w-full border border-borda px-2 py-1.5 text-sm'
 
 export default function EditarFicha({ variacao, onSalvo }) {
@@ -23,7 +24,7 @@ export default function EditarFicha({ variacao, onSalvo }) {
     let atual = true
     setCarregando(true)
     carregarTodasPaginas(() => supabase.from('fichas_tecnicas')
-      .select('id,peso_quantidade,ingredientes(nome,unidade_medida,ativo)').eq('variacao_id', variacao.id).order('id'))
+      .select('id,peso_quantidade,ingredientes(nome,unidade_medida,ativo,custo_unitario)').eq('variacao_id', variacao.id).order('id'))
       .then(dados => {
         if (!atual) return
         setFicha(dados)
@@ -47,6 +48,7 @@ export default function EditarFicha({ variacao, onSalvo }) {
       setErro(error.code === 'PGRST202' ? 'Edição temporariamente indisponível. Contate o administrador.' : error.message)
     } finally { trava.current = false; setSalvando(false) }
   }
+  const resumo = resumirFicha(ficha, variacao.preco_venda)
   return (
     <div className="space-y-4">
       <p className="text-sm text-fumaca">Catálogo compartilhado: alterações valem para todas as lojas. Quantidades por uma unidade da variação, na medida indicada (g/ml/un).</p>
@@ -63,9 +65,11 @@ export default function EditarFicha({ variacao, onSalvo }) {
         })}>{salvando ? 'Salvando...' : 'Salvar variação'}</button>
       </fieldset>
       <h3 className="font-display text-xl">Ingredientes da ficha</h3>
+      {!carregando && <div className="grid grid-cols-3 gap-2 text-xs" aria-label="Custos da ficha salva"><div className="ui-kpi"><p>Custo de insumos</p><strong className="block mt-2 text-lg">{resumo.custoCentavos === null ? '—' : dinheiro(resumo.custoCentavos/100)}</strong></div><div className="ui-kpi"><p>CMV</p><strong className="block mt-2 text-lg">{resumo.cmv === null ? '—' : resumo.cmv.toFixed(1)+'%'}</strong></div><div className="ui-kpi"><p>Margem sobre insumos</p><strong className="block mt-2 text-lg">{resumo.margem === null ? '—' : resumo.margem.toFixed(1)+'%'}</strong></div><p className="col-span-3 text-fumaca">Valores salvos. A margem sobre insumos não inclui taxas, despesas ou frete e não representa lucro líquido.</p></div>}
       {carregando ? <p>Carregando...</p> : ficha.length === 0 ? <p className="text-sm">Nenhum ingrediente carregado.</p> : ficha.map(item => (
         <fieldset disabled={!permitido || salvando} key={item.id} className="border-t border-borda pt-3 space-y-2">
           <p className="text-sm font-medium">{item.ingredientes?.nome || 'Ingrediente indisponível'}{item.ingredientes?.ativo === false ? ' (inativo)' : ''}</p>
+          <p className="text-xs text-fumaca">Custo por {item.ingredientes?.unidade_medida || 'unidade'}: {item.ingredientes?.custo_unitario == null ? 'não cadastrado' : Number(item.ingredientes.custo_unitario).toLocaleString('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:4})} · Na receita: {resumo.linhas.find(l=>l.id===item.id)?.custoCentavos == null ? '—' : dinheiro(resumo.linhas.find(l=>l.id===item.id).custoCentavos/100)}</p>
           <label className="block text-sm">Quantidade em {item.ingredientes?.unidade_medida || 'unidade cadastrada'}
             <input className={campo} inputMode="decimal" value={quantidades[item.id] || ''} onChange={e => setQuantidades(q => ({ ...q, [item.id]: e.target.value }))} />
           </label>

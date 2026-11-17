@@ -4,7 +4,7 @@ import MapaPonto from './MapaPonto.jsx'
 import { supabase } from '../lib/supabaseClient.js'
 
 export default function ConsultaEntrega({ lojaId, pontoSalvo, origemPendente, modoPedido = false,
-  clienteCpf = '', destinoInicial = {}, onCotacao, onInvalidar, portal = false, automatico = false }) {
+  clienteCpf = '', destinoInicial = {}, onCotacao, onInvalidar, portal = false, automatico = false, clienteApi = supabase }) {
   const [destino, setDestino] = useState(destinoInicial)
   const [ponto, setPonto] = useState(null)
   const [pontoConfirmado, setPontoConfirmado] = useState(false)
@@ -45,7 +45,7 @@ export default function ConsultaEntrega({ lojaId, pontoSalvo, origemPendente, mo
     setErroMapa('')
     setResultado(null)
     try {
-      const { data, error } = await supabase.functions.invoke('calcular-entrega', {
+      const { data, error } = await clienteApi.functions.invoke('calcular-entrega', {
         body: { acao: 'sugerir_mapa', ...(portal ? { portal:true } : {}), loja_id: lojaId, destino },
       })
       if (error) {
@@ -77,7 +77,7 @@ export default function ConsultaEntrega({ lojaId, pontoSalvo, origemPendente, mo
     setErro('')
     try {
       // A tarifa e a origem são carregadas no servidor, nunca aceitas do navegador.
-      const { data, error } = await supabase.functions.invoke('calcular-entrega', {
+      const { data, error } = await clienteApi.functions.invoke('calcular-entrega', {
         body: { ...(modoPedido ? (portal ? { acao:'cotar_mobile',portal:true } : { acao: 'cotar_pedido', cliente_cpf: clienteCpf }) : {}),
           loja_id: lojaId, destino: { ...destino,
           ...(ponto ? { latitude: ponto.latitude, longitude: ponto.longitude } : {}) } },
