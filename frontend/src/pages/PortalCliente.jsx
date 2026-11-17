@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { supabase } from '../lib/supabaseClient.js'
+import { supabasePortal as supabase } from '../lib/supabasePortal.js'
 import { criarEnvioTransacional } from '../lib/pedidoTransacional.js'
 import { mensagemPortal, montarSolicitacao, totalCarrinho } from '../lib/portalCliente.js'
 import { acessarContaCliente, armazenamentoDaSessao, reenviarConfirmacaoCliente } from '../lib/acessoCliente.js'
@@ -9,32 +9,26 @@ import { formatarCPF } from '../lib/format.js'
 import { dinheiro, codigoPedido } from '../lib/pedidoApresentacao.js'
 import ConsultaEntrega from '../components/ConsultaEntrega.jsx'
 import Icon from '../components/ui/Icon.jsx'
+import ProdutoPortal, { DetalheProduto } from '../components/ProdutoPortal.jsx'
+import SidePanel from '../components/layout/SidePanel.jsx'
+import { categoriasPublicas, filtrarCatalogoPublico } from '../lib/catalogoPublico.js'
 import './portalCliente.css'
 
 const ESTADOS = { aguardando: 'Aguardando confirmação da loja', aceita: 'Confirmado pela loja', recusada: 'Recusado pela loja', cancelada: 'Cancelado por você', recebido: 'Recebido', em_preparo: 'Em preparo', pronto: 'Pronto', saiu_entrega: 'Saiu para entrega', entregue: 'Entregue', cancelado: 'Cancelado' }
-
-function Produto({ produto, onAdicionar, desabilitado }) {
-  const [extras, setExtras] = useState([])
-  return <article className="portal-product">
-    <div className="portal-product-icon"><Icon nome="produto" size={28} /></div>
-    <div className="flex-1 min-w-0"><h3>{produto.nome}</h3><p className="text-sm text-fumaca">{produto.variacao}</p>
-      {produto.adicionais.length > 0 && <details className="mt-3"><summary className="text-sm cursor-pointer">Adicionais</summary>
-        {produto.adicionais.map(a => <label className="flex gap-2 items-center text-sm mt-2" key={a.id}><input type="checkbox" checked={extras.some(e => e.id === a.id)} onChange={e => setExtras(prev => e.target.checked ? [...prev, a] : prev.filter(x => x.id !== a.id))} />{a.nome} · {dinheiro(a.preco)}</label>)}
-      </details>}
-    </div>
-    <div className="text-right"><strong>{dinheiro(Number(produto.preco) + extras.reduce((s, a) => s + Number(a.preco), 0))}</strong><button type="button" disabled={desabilitado} className="portal-add" onClick={() => onAdicionar(produto, extras)} aria-label={`Adicionar ${produto.nome}, ${produto.variacao}`}><Icon nome="mais" size={18} />Adicionar</button></div>
-  </article>
-}
 
 export default function PortalCliente() {
   const { marca = 'brasa-burger' } = useParams()
   const [catalogo, setCatalogo] = useState({ lojas: [], itens: [] })
   const [carregando, setCarregando] = useState(true)
+  useEffect(() => { document.title = `${catalogo.empresa?.nome || 'Pedidos online'} · Pedidos` }, [catalogo.empresa?.nome])
   const [erro, setErro] = useState('')
   const [aviso, setAviso] = useState('')
   const [loja, setLoja] = useState('')
   const [tipo, setTipo] = useState('presencial')
   const [busca, setBusca] = useState('')
+  const [categoria, setCategoria] = useState('todos')
+  const [produtoAberto, setProdutoAberto] = useState(null)
+  const [ultimoAdicionado, setUltimoAdicionado] = useState('')
   const [itens, setItens] = useState([])
   const [session, setSession] = useState(null)
   const [sessaoPronta, setSessaoPronta] = useState(false)
@@ -73,7 +67,7 @@ export default function PortalCliente() {
     } catch (error) { if(consulta===consultaCatalogo.current) setErro(mensagemPortal(error)) }
     finally { if(consulta===consultaCatalogo.current) setCarregando(false) }
   }
-  useEffect(() => { setCatalogo({lojas:[],itens:[]});setLoja('');setItens([]);setCotacao(null);carregarCardapio();return()=>{consultaCatalogo.current++} }, [marca])
+  useEffect(() => { setCatalogo({lojas:[],itens:[]});setLoja('');setItens([]);setCotacao(null);setCategoria('todos');setProdutoAberto(null);setBusca('');carregarCardapio();return()=>{consultaCatalogo.current++} }, [marca])
   useEffect(() => { setCotacao(null) }, [session?.user.id,loja,tipo])
   useEffect(() => {
     const atual=session?.user.id || null
@@ -127,13 +121,18 @@ export default function PortalCliente() {
 
   const unidade = catalogo.lojas.find(l => l.id === loja)
   const subtotal = totalCarrinho(itens)
-  const visiveis = catalogo.itens.filter(p => p[tipo] && `${p.nome} ${p.variacao}`.toLocaleLowerCase('pt-BR').includes(busca.toLocaleLowerCase('pt-BR')))
+  const categorias = categoriasPublicas(catalogo.itens, tipo)
+  const visiveis = filtrarCatalogoPublico(catalogo.itens, { tipo, categoria, busca })
+  const totalUnidades = itens.reduce((s, i) => s + i.quantidade, 0)
+  const adicaoBloqueada = !loja || pendente || ocupado
   function escolherLoja(id) { setLoja(id); setItens([]); if (catalogo.lojas.find(l => l.id === id)?.tipo_operacao === 'delivery_only') setTipo('delivery') }
   function adicionar(produto, extras) {
+    if (adicaoBloqueada) return
     const chave = `${produto.id}:${extras.map(a => a.id).sort().join(',')}`
     setItens(prev => prev.some(i => i.chave === chave)
       ? prev.map(i => i.chave === chave ? { ...i, quantidade: Math.min(99, i.quantidade + 1) } : i)
       : [...prev, { ...produto, extras, chave, quantidade: 1 }])
+    setUltimoAdicionado(`${produto.nome} adicionado ao pedido.`)
   }
   async function executar(acao) {
     if (trava.current) return
@@ -167,10 +166,10 @@ export default function PortalCliente() {
       } finally { setPendente(envio.temPendente()) }
     })
   }
-  return <div className="app-shell portal-shell min-h-screen" style={{'--ui-gold':catalogo.empresa?.cor || '#e4ae65'}}>
-    <header className="portal-header"><Link to={`/pedir/${marca}`} className="portal-brand">{catalogo.empresa?.logo_url && <img src={catalogo.empresa.logo_url} alt="" className="h-12 w-12 object-contain inline-block mr-3" />}{catalogo.empresa?.nome || 'Brasa Burger'}<span>Pedidos online</span></Link><Link className="text-sm text-fumaca" to={`/?marca=${marca}`}>Acesso da equipe</Link></header>
+  return <div className="app-shell portal-shell min-h-screen" style={{'--ui-gold':catalogo.empresa?.cor || '#e4ae65','--ui-action':catalogo.empresa?.cor || '#e4ae65'}}>
+    <header className="portal-header"><Link to={`/pedir/${marca}`} className="portal-brand">{catalogo.empresa?.logo_url && <img src={catalogo.empresa.logo_url} alt="" className="h-12 w-12 object-contain inline-block mr-3" />}{catalogo.empresa?.nome || (carregando ? 'Carregando loja…' : 'Pedidos online')}<span>Seu pedido, direto com a loja</span></Link><div className="portal-header-actions">{session && <a href="#meus-pedidos">Meus pedidos</a>}<a href="#carrinho"><Icon nome="sacola" size={18} />Pedido{totalUnidades > 0 && <b>{totalUnidades}</b>}</a></div></header>
     <main className="portal-main">
-      <section className="portal-intro"><p className="portal-eyebrow">SEU PRÓXIMO PEDIDO</p><h1>Feito para o seu momento.</h1><p>Escolha seus favoritos. A loja confirma o pedido e você paga na retirada ou na entrega.</p></section>
+      <section className="portal-intro"><div><p className="portal-eyebrow">DO CARDÁPIO PARA O SEU DIA</p><h1>Seu próximo favorito<br /><span>está aqui.</span></h1><p>Escolha a unidade, encontre o que você gosta e peça direto à loja.</p><div className="portal-intro-badges"><span><Icon nome="sacola" size={15} /> Retirada ou entrega</span><span>Pagamento direto à loja</span></div></div><div className="portal-intro-visual" aria-hidden="true"><span className="portal-orbit" /><Icon nome="produto" size={100} /><span className="portal-visual-caption">{catalogo.empresa?.nome || 'Pedidos online'}<small>Feito para o seu momento.</small></span></div></section>
       {erro && <div role="alert" className="portal-notice text-brasa">{erro}<button type="button" className="underline ml-3" onClick={carregarCardapio}>Atualizar cardápio</button></div>}
       {aviso && <p role="status" className="portal-notice text-oliva">{aviso}</p>}
       {carregando && <p role="status">Carregando cardápio…</p>}
@@ -178,15 +177,18 @@ export default function PortalCliente() {
         <section aria-label="Cardápio">
           <fieldset disabled={pendente || ocupado} className="portal-filters">
             <label>Unidade<select value={loja} onChange={e => escolherLoja(e.target.value)}><option value="">Selecione a unidade</option>{catalogo.lojas.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}</select></label>
-            <label>Atendimento<select value={tipo} onChange={e => { setTipo(e.target.value); setItens([]) }}><option value="presencial" disabled={unidade?.tipo_operacao === 'delivery_only'}>Retirada na loja</option><option value="delivery">Entrega</option></select></label>
+            <label>Atendimento<select value={tipo} onChange={e => { setTipo(e.target.value); setItens([]); setCategoria('todos') }}><option value="presencial" disabled={unidade?.tipo_operacao === 'delivery_only'}>Retirada na loja</option><option value="delivery">Entrega</option></select></label>
             <label className="portal-search">Buscar no cardápio<input type="search" value={busca} onChange={e => setBusca(e.target.value)} placeholder="Produto ou variação" /></label>
           </fieldset>
-          <div className="portal-catalog">{visiveis.map(p => <Produto key={p.id} produto={p} onAdicionar={adicionar} desabilitado={!loja || pendente || ocupado} />)}</div>
-          {!carregando && !visiveis.length && <p className="portal-notice">Nenhum produto disponível.</p>}
+          <nav className="portal-categories" aria-label="Categorias do cardápio"><button type="button" aria-pressed={categoria === 'todos'} onClick={() => setCategoria('todos')}>Cardápio completo</button>{catalogo.itens.some(p => p[tipo] && p.destaque) && <button type="button" aria-pressed={categoria === 'destaques'} onClick={() => setCategoria('destaques')}>✦ Destaques</button>}{categorias.map(c => <button type="button" key={c} aria-pressed={categoria === c} onClick={() => setCategoria(c)}>{c}</button>)}</nav>
+          <div className="portal-catalog-heading"><h2>{categoria === 'todos' ? 'Escolha seu favorito' : categoria === 'destaques' ? 'Destaques da casa' : categoria}</h2><span>{visiveis.length} {visiveis.length === 1 ? 'opção' : 'opções'}</span></div>
+          <div className="portal-catalog">{visiveis.map(p => <ProdutoPortal key={p.id} produto={p} onAdicionar={adicionar} onDetalhar={setProdutoAberto} desabilitado={adicaoBloqueada} />)}</div>
+          {!carregando && !visiveis.length && <div className="portal-notice"><p>Nenhum produto encontrado para estes filtros.</p><button type="button" className="text-ambar underline mt-2" onClick={() => { setBusca(''); setCategoria('todos') }}>Ver todo o cardápio</button></div>}
         </section>
         <aside className="portal-checkout" id="carrinho">
-          <h2>Seu pedido <Icon nome="sacola" /></h2>
-          {!itens.length && <p className="text-fumaca text-sm my-4">Escolha os itens do cardápio.</p>}
+          <h2>Seu pedido <span className="portal-cart-count">{totalUnidades || <Icon nome="sacola" size={18} />}</span></h2>
+          {loja && <p className="portal-cart-store">{unidade?.nome} · {tipo === 'delivery' ? 'Entrega' : 'Retirada'}</p>}
+          {!itens.length && <div className="portal-empty-cart"><Icon nome="sacola" size={36} /><strong>Um bom pedido começa aqui.</strong><p>Adicione seus favoritos ao carrinho.</p></div>}
           <fieldset disabled={pendente || ocupado}>{itens.map(i => <div key={i.chave} className="portal-cart-item"><div><strong>{i.nome}</strong><p className="text-sm text-fumaca">{i.variacao}{i.extras.length ? ` · ${i.extras.map(a => a.nome).join(', ')}` : ''}</p><span>{dinheiro(totalCarrinho([i]))}</span></div><div className="portal-quantity"><button type="button" aria-label={`Diminuir ${i.nome}`} onClick={() => setItens(prev => prev.map(x => x.chave === i.chave ? { ...x, quantidade: x.quantidade - 1 } : x).filter(x => x.quantidade > 0))}>−</button><span>{i.quantidade}</span><button type="button" aria-label={`Aumentar ${i.nome}`} disabled={i.quantidade >= 99} onClick={() => adicionar(i, i.extras)}>+</button></div></div>)}</fieldset>
           <div className="portal-total"><span>Itens</span><strong>{dinheiro(subtotal)}</strong></div>
           {tipo === 'delivery' && <div className="flex justify-between text-sm mb-3"><span>Frete</span><strong>{cotacao ? dinheiro(cotacao.taxa) : 'Informe o endereço'}</strong></div>}
@@ -210,8 +212,8 @@ export default function PortalCliente() {
               setAviso('Se houver um cadastro aguardando confirmação para este e-mail, você receberá um novo link. Confira também o spam.')
             })}>Reenviar confirmação de e-mail</button>}
           </form> : <>
-            <div className="flex justify-between gap-2 text-sm my-4"><span className="break-all">{cpfVinculado ? `CPF ${formatarCPF(cpfVinculado)}` : 'Conta do cliente'}</span><button type="button" disabled={ocupado} className="underline" onClick={() => executar(async () => { const { error } = await supabase.auth.signOut(); if (error) throw error; setCliente({ nome: '', cpf: '', telefone: '' }); setEndereco({}); setPaginaPedidos(0) })}>Sair</button></div>
-            {tipo === 'delivery' && loja && itens.length > 0 && !pendente && <div className="mb-5"><ConsultaEntrega key={`${loja}:${session.user.id}`} lojaId={loja} modoPedido portal automatico destinoInicial={endereco} onCotacao={setCotacao} onInvalidar={()=>setCotacao(null)} /></div>}
+            <div className="flex justify-between gap-2 text-sm my-4"><span className="break-all">{cpfVinculado ? `CPF ${formatarCPF(cpfVinculado)}` : 'Conta do cliente'}</span><button type="button" disabled={ocupado} className="underline" onClick={() => executar(async () => { const { error } = await supabase.auth.signOut({ scope: 'local' }); if (error) throw error; setCliente({ nome: '', cpf: '', telefone: '' }); setEndereco({}); setPaginaPedidos(0) })}>Sair</button></div>
+            {tipo === 'delivery' && loja && itens.length > 0 && !pendente && <div className="mb-5"><ConsultaEntrega clienteApi={supabase} key={`${loja}:${session.user.id}`} lojaId={loja} modoPedido portal automatico destinoInicial={endereco} onCotacao={setCotacao} onInvalidar={()=>setCotacao(null)} /></div>}
             <form onSubmit={enviar} className="portal-form">
               {pendente ? <p role="alert">O último envio aguarda confirmação. Consulte o resultado antes de enviar outro pedido.</p> : <fieldset disabled={ocupado} className="portal-form">
                 <label>Nome<input required maxLength={120} autoComplete="name" value={cliente.nome} onChange={e => setCliente(c => ({ ...c, nome: e.target.value }))} /></label><label>CPF<input required inputMode="numeric" maxLength={14} readOnly={!!cpfVinculado} value={cliente.cpf} onChange={e => setCliente(c => ({ ...c, cpf: e.target.value }))} /></label><label>Telefone<input required type="tel" autoComplete="tel" maxLength={20} value={cliente.telefone} onChange={e => setCliente(c => ({ ...c, telefone: e.target.value }))} /></label>
@@ -225,12 +227,14 @@ export default function PortalCliente() {
           </>}
         </aside>
       </div>
-      {session && <section className="portal-orders"><h2>Meus pedidos</h2>{erroPedidos && <p role="alert" className="text-brasa">{erroPedidos}</p>}{!pedidos.length && !erroPedidos && <p className="text-fumaca">Nenhum pedido nesta página.</p>}
+      {session && <section className="portal-orders" id="meus-pedidos"><h2>Meus pedidos</h2>{erroPedidos && <p role="alert" className="text-brasa">{erroPedidos}</p>}{!pedidos.length && !erroPedidos && <p className="text-fumaca">Nenhum pedido nesta página.</p>}
         {pedidos.map(p => <article className="portal-order" key={p.id}><div><strong>#{codigoPedido(p.id)} · {p.loja}</strong><p className="text-sm text-fumaca">{new Date(p.criado_em).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</p><p>{ESTADOS[p.etapa || p.status]}</p>{p.motivo && <p>{p.motivo}</p>}<p>{p.total !== null ? `Total confirmado: ${dinheiro(p.total)} · Frete: ${dinheiro(p.frete)}` : `Subtotal: ${dinheiro(p.subtotal)}`}</p></div>{p.status === 'aguardando' && <button type="button" disabled={ocupado} className="underline" onClick={() => executar(async () => { const { error } = await supabase.rpc('decidir_solicitacao_mobile', { p_id: p.id, p_acao: 'cancelar' }); if (error) throw error; setAviso(`Solicitação #${codigoPedido(p.id)} cancelada.`) })}>Cancelar solicitação</button>}</article>)}
         <div className="flex gap-4 mt-4"><button disabled={paginaPedidos === 0} onClick={() => setPaginaPedidos(p => p - 1)}>Anterior</button><span>Página {paginaPedidos + 1}</span><button disabled={pedidos.length < 20} onClick={() => setPaginaPedidos(p => p + 1)}>Próxima</button></div>
       </section>}
-      <footer className="portal-footer">{catalogo.empresa?.nome || 'Brasa Burger'} · Por Convívium Management System</footer>
+      <footer className="portal-footer">{catalogo.empresa?.nome || 'Pedidos online'} · Por Convívium Management System</footer>
     </main>
-    {itens.length > 0 && <a className="portal-cart-link" href="#carrinho"><Icon nome="sacola" size={18} />Ver pedido · {dinheiro(subtotal)}</a>}
+    <p role="status" className="sr-only">{ultimoAdicionado}</p>
+    <SidePanel aberto={!!produtoAberto} onFechar={() => setProdutoAberto(null)} titulo={produtoAberto?.nome || 'Produto'}>{produtoAberto && <DetalheProduto key={produtoAberto.id} produto={produtoAberto} desabilitado={adicaoBloqueada} onAdicionar={(produto, extras) => { adicionar(produto, extras); setProdutoAberto(null) }} />}</SidePanel>
+    {itens.length > 0 && <a className="portal-cart-link" href="#carrinho"><span>{totalUnidades}</span><Icon nome="sacola" size={18} />Ver pedido<strong>{dinheiro(subtotal)}</strong></a>}
   </div>
 }

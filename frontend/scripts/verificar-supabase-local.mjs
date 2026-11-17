@@ -8,6 +8,7 @@ import {aplicarBootstrap} from './bootstrap.mjs';
 import {montarSolicitacao} from '../src/lib/portalCliente.js';
 import {criarEnvioTransacional} from '../src/lib/pedidoTransacional.js';
 import {acessarContaCliente} from '../src/lib/acessoCliente.js';
+import {opcoesSessao} from '../src/lib/sessoesAplicacoes.js';
 import {criarAcessoCliente} from '../../supabase/functions/acesso-cliente/handler.mjs';
 
 // A homologação só aceita a stack LOCAL criada pelo CLI no runner descartável.
@@ -18,7 +19,7 @@ const url=vars.API_URL;const dbUrl=vars.DB_URL;
 for(const valor of [url,dbUrl]) if(!valor || !['127.0.0.1','localhost','[::1]'].includes(new URL(valor).hostname)) throw new Error('A homologação recusa projetos remotos.');
 const owner=new pg.Client({connectionString:dbUrl});await owner.connect();
 const clients=[];const resultado=[];
-const client=(key)=>{const c=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});clients.push(c);return c};
+const client=(key,auth={})=>{const c=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false,...auth}});clients.push(c);return c};
 try{
  assert.equal((await owner.query("SELECT to_regclass('public.empresas') AS tabela")).rows[0].tabela,null,'Use stack vazia.');
  await aplicarBootstrap(sql=>owner.query(sql));
@@ -30,8 +31,10 @@ try{
   if(error)throw error;users[tipo]=data.user;
  }
  await owner.query("SELECT erp_privado.provisionar_primeiro_master('master@example.test')");
- const entrar=async(tipo)=>{const c=client(anon);const {error}=await c.auth.signInWithPassword({email:tipo+'@example.test',password:senha});if(error)throw error;return c};
- const admin=await entrar('master'),consumer=client(anon),admin2=await entrar('master');
+ const armazenamento=new Map();
+ const storage={getItem:chave=>armazenamento.get(chave) ?? null,setItem:(chave,valor)=>armazenamento.set(chave,valor),removeItem:chave=>armazenamento.delete(chave)};
+ const entrar=async(tipo,auth)=>{const c=client(anon,auth);const {error}=await c.auth.signInWithPassword({email:tipo+'@example.test',password:senha});if(error)throw error;return c};
+ const admin=await entrar('master',{...opcoesSessao('erp','/').auth,persistSession:true,storage,storageKey:'convivium-erp-teste'}),consumer=client(anon,{...opcoesSessao('consumidor','/pedir/brasa-burger').auth,persistSession:true,storage}),admin2=await entrar('master');
  const handler=criarAcessoCliente({allowedOrigins:['http://localhost:5173'],
   resolverConta:async cpf=>{const {data,error}=await service.rpc('preparar_login_cliente',{p_cpf:cpf});if(error)throw error;return data},
   autenticar:(email,password)=>client(anon).auth.signInWithPassword({email,password}),
@@ -47,7 +50,11 @@ try{
  const perfil=await owner.query('SELECT id FROM public.usuarios WHERE id=$1',[cadastro.user.id]);
  assert.equal(perfil.rows.length,0,'Cadastro público nunca concede perfil de equipe.');
  resultado.push('Cadastro público real pelo módulo do portal cria sessão de consumidor sem acesso de equipe');
- await consumer.auth.signOut();
+ assert.ok(armazenamento.has('convivium-erp-teste') && armazenamento.has('convivium-consumidor-v1'));
+ await consumer.auth.signOut({scope:'local'});
+ assert.equal((await admin.auth.getSession()).data.session.user.id,users.master.id,'Sair do consumidor deve preservar a sessão da equipe no mesmo armazenamento.');
+ assert.ok(armazenamento.has('convivium-erp-teste'));assert.equal(armazenamento.has('convivium-consumidor-v1'),false);
+ resultado.push('Portal e ERP persistem sessões distintas no mesmo armazenamento; sair do consumidor preserva a equipe');
  await acessarContaCliente(consumer.auth,{cadastro:false,email:'529.982.247-25',senha},functions);
  const proprio=await consumer.rpc('meu_cadastro_cliente');if(proprio.error)throw proprio.error;assert.equal(proprio.data.cpf,'52998224725');
  resultado.push('CPF e senha passam pelo handler do servidor, Auth real e instalação da sessão no módulo do portal');

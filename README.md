@@ -117,6 +117,7 @@ Credenciais e dados pessoais reais devem ficar fora do Git e dos anexos. Use `.e
 ## Documentos
 
 - [Plano e checklist completo da Entrega 2](docs/entrega-02/README.md).
+- [Duas aplicações, personalização e finalização antes do deploy](docs/ARQUITETURA_E_FINALIZACAO.md).
 - [Texto-base do trabalho escrito](docs/entrega-02/TRABALHO_ESCRITO.md).
 - [Guia de execução e demonstração](GUIA_PASSO_A_PASSO.md).
 - [Roadmap de produto e histórico](ROADMAP_EXECUCAO.md).

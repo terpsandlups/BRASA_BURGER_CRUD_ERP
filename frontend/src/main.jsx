@@ -7,7 +7,7 @@ import './index.css'
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter basename={import.meta.env.BASE_URL}>
-      <App />
+      <React.Suspense fallback={<p role="status" className="p-8">Carregando aplicação…</p>}><App /></React.Suspense>
     </BrowserRouter>
   </React.StrictMode>,
 )

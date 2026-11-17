@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabaseClient.js'
 import { useAuth } from '../lib/AuthContext.jsx'
 import PageHeader from '../components/layout/PageHeader.jsx'
+import { enderecoPortal } from '../lib/linksAplicacoes.js'
 import { Link } from 'react-router-dom'
 
 const campo='block w-full border border-borda rounded-lg p-3 mt-2'
@@ -51,7 +52,7 @@ export default function Administracao() {
           <label className="block text-sm">Logo (URL HTTPS)<input type="url" className={campo} value={marca.logo_url} onChange={e=>setMarca(v=>({...v,logo_url:e.target.value}))} /></label>
           <button className="bg-ambar px-4 py-3 rounded-lg">Salvar identidade</button>
         </fieldset>
-        <a className="text-ambar text-sm underline" href={`/pedir/${usuario.empresas.slug}`} target="_blank" rel="noreferrer">Abrir portal de {usuario.empresas.nome}</a>
+        {enderecoPortal(usuario.empresas.slug) && <a className="text-ambar text-sm underline" href={enderecoPortal(usuario.empresas.slug)} target="_blank" rel="noopener">Abrir portal de {usuario.empresas.nome}</a>}
       </form>
       <section className="bg-branco border border-borda rounded-xl p-6"><h2 className="text-xl mb-4">Unidades</h2>
         <ul className="space-y-3 mb-5">{lojas.map(l=><li key={l.id} className="flex gap-4 justify-between text-sm border-b border-borda pb-3"><span>{l.nome} · {l.ativo ? 'Ativa' : 'Inativa'}</span><button disabled={ocupado} className="text-ambar underline" onClick={()=>setLoja(l)}>Editar</button></li>)}</ul>

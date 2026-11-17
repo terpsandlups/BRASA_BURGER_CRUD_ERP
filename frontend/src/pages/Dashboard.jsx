@@ -7,6 +7,7 @@ import { SkeletonLinhas } from '../components/ui/Skeleton.jsx'
 import EmptyState from '../components/ui/EmptyState.jsx'
 import Button from '../components/ui/Button.jsx'
 import { calcularDashboard, carregarTodasPaginas, intervaloDashboard } from '../lib/dashboard.js'
+import { acompanharAoVivo } from '../lib/atualizacaoAoVivo.js'
 
 const CORES_CANAL = ['#E4AE65', '#8FA6CF', '#85B99B', '#B39AC5']
 
@@ -19,6 +20,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState('')
   const [tentativa, setTentativa] = useState(0)
+  const [ultimaAtualizacao, setUltimaAtualizacao] = useState(null)
 
   useEffect(() => {
     supabase.from('lojas').select('*').eq('ativo', true).then(({ data }) => data && setLojas(data))
@@ -26,9 +28,9 @@ export default function Dashboard() {
 
   useEffect(() => {
     let ativo = true
+    let primeira = true
     async function carregar() {
-      setLoading(true)
-      setErro('')
+      if (primeira) setLoading(true)
       const intervalo = intervaloDashboard(periodo)
       try {
         const [ped, cust] = await Promise.all([
@@ -51,17 +53,18 @@ export default function Dashboard() {
         if (!ativo) return
         setPedidos(ped)
         setCustos(cust)
+        setErro('')
+        setUltimaAtualizacao(new Date())
       } catch (e) {
         if (!ativo) return
-        setPedidos([])
-        setCustos([])
         setErro(e?.message || 'Não foi possível carregar os indicadores.')
       } finally {
         if (ativo) setLoading(false)
+        primeira = false
       }
     }
-    carregar()
-    return () => { ativo = false }
+    const encerrar = acompanharAoVivo(supabase, `dashboard:${lojaFiltro}:${periodo}`, ['pedidos','itens_pedido'], carregar, {intervalo:30000})
+    return () => { ativo = false; encerrar() }
   }, [lojaFiltro, periodo, tentativa])
 
   const metrica = useMemo(() => {
@@ -73,7 +76,7 @@ export default function Dashboard() {
     <div>
       <PageHeader
         icone="painel" titulo="Painel Geral"
-        descricao="Visão consolidada da rede"
+        descricao={ultimaAtualizacao ? `Operação da empresa · atualizado às ${ultimaAtualizacao.toLocaleTimeString('pt-BR')}` : 'Visão consolidada da empresa'}
         acaoPrincipal={
           <div className="flex flex-wrap items-center gap-2">
             <select aria-label="Período" value={periodo} onChange={(e) => setPeriodo(Number(e.target.value))}

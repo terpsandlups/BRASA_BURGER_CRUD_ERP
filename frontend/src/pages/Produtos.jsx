@@ -5,6 +5,7 @@ import PageHeader from '../components/layout/PageHeader.jsx'
 import Button from '../components/ui/Button.jsx'
 import SidePanel from '../components/layout/SidePanel.jsx'
 import EditarFicha from '../components/EditarFicha.jsx'
+import EditarCardapio from '../components/EditarCardapio.jsx'
 import { validarVariacao, validarQuantidadeFicha } from '../lib/fichaTecnica.js'
 
 const TONS = {
@@ -41,6 +42,8 @@ export default function Produtos() {
   const [filtroCategoria, setFiltroCategoria] = useState('todas')
   const [expandido, setExpandido] = useState(null)
   const [editandoId, setEditandoId] = useState(null)
+  const [cardapioSku, setCardapioSku] = useState(null)
+  const produtoCardapio = produtos.find(p => p.sku === cardapioSku)
   const variacaoEditada = variacoes.find(v => v.id === editandoId)
 
   const [mostrarNovoProduto, setMostrarNovoProduto] = useState(false)
@@ -283,6 +286,7 @@ export default function Produtos() {
         </form>
       )}
 
+      <SidePanel aberto={!!produtoCardapio} onFechar={() => setCardapioSku(null)} titulo="Cardápio do consumidor">{produtoCardapio && <EditarCardapio key={produtoCardapio.sku} produto={produtoCardapio} empresaId={usuario.empresa_id} categorias={categorias} onSalvo={async () => { await carregar(); setCardapioSku(null) }} />}</SidePanel>
       <div className="ui-chip-list mb-6" role="group" aria-label="Categorias de produtos">
         <button aria-pressed={filtroCategoria === 'todas'} onClick={() => setFiltroCategoria('todas')}
           className={`px-3 py-1.5 text-xs ${filtroCategoria === 'todas' ? 'bg-ambar text-carvao' : 'bg-white border border-superficie2/30'}`}>
@@ -332,6 +336,7 @@ export default function Produtos() {
 
             {expandido === produto.sku && (
               <div className="px-5 pb-5">
+                <button type="button" disabled={!podeOperar('produtos','editar')} onClick={() => setCardapioSku(produto.sku)} className="text-sm text-ambar underline mr-5 mb-4">Editar apresentação no cardápio</button>
                 <button
                   disabled={!podeOperar('produtos','editar')}
                   onClick={() => alternarAtivo(produto)}
