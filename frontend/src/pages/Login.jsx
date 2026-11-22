@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../lib/AuthContext.jsx'
 import { supabase } from '../lib/supabaseClient.js'
-import { useLocation } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import Icon from '../components/ui/Icon.jsx'
 import './login.css'
 import { enderecoPortal } from '../lib/linksAplicacoes.js'
+import { mensagemErroLogin } from '../lib/recuperacaoAcesso.js'
 
 export default function Login() {
   const { entrar } = useAuth()
@@ -26,7 +27,7 @@ export default function Login() {
     setEnviando(true)
     try {
       const { error } = await entrar(email, senha)
-      if (error) setErro(error.status === 400 ? 'E-mail ou senha inválidos.' : 'Não foi possível entrar. Confira sua conexão e tente novamente.')
+      if (error) setErro(mensagemErroLogin(error))
     } catch { setErro('Não foi possível conectar. Tente novamente.') }
     finally { emCurso.current = false; setEnviando(false) }
   }
@@ -39,6 +40,7 @@ export default function Login() {
         {identidade?.logo_url && <img src={identidade.logo_url} alt="" className="h-16 w-16 object-contain mb-4" />}
         <h1 className="font-display text-2xl font-semibold text-ambar mb-1">{identidade?.nome || 'Convívium'}</h1>
         <p className="text-xs text-fumaca mb-6">Entre com sua conta para gerenciar a operação.</p>
+        {new URLSearchParams(location.search).get('senha') === 'atualizada' && <p role="status" className="login-notice">Senha atualizada. Entre com sua nova senha.</p>}
 
         <label htmlFor="login-email" className="text-xs uppercase tracking-wide text-fumaca">E-mail</label>
         <input
@@ -68,6 +70,7 @@ export default function Login() {
         >
           {enviando ? 'Entrando...' : 'Entrar'}
         </button>
+        <Link to={`/?acesso=recuperar&marca=${encodeURIComponent(marca)}`} className="login-recovery-link">Esqueci minha senha</Link>
         {enderecoPortal(marca) && <a href={enderecoPortal(marca)} target="_blank" rel="noopener" className="block text-center text-sm text-ambar underline mt-5">Portal do consumidor ↗</a>}
         <p className="text-xs text-fumaca mt-6 text-center">Acesso conforme seu perfil, empresa e unidade.</p>
       </form>
