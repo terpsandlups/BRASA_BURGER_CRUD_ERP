@@ -2,6 +2,12 @@
 
 Consolidação da conversa e do código, atualizada em 22/11/2026. As solicitações foram agrupadas em oito frentes. “Implementado e testado” identifica código e verificações; a publicação é uma etapa própria e não deve ser confundida com um commit no GitHub.
 
+## Publicação autorizada em 22/11/2026
+
+PR #1 integrado em `main`, commit `0f02732`; workflow de publicação `45029614820` concluído com sucesso. Frontend novo já responde no endereço do QR, com etapas e sem atalho de equipe. As duas migrações abaixo foram aplicadas e registradas no histórico do Supabase; a função `calcular-entrega` foi publicada. As verificações preservaram os 14 pedidos e a solicitação já existentes, sem criar contas ou pedidos sintéticos no ambiente operacional. A revisão final reúne no portal as subcategorias históricas do piloto nos quatro grupos aprovados, mantendo o cadastro interno.
+
+Endereço Retiro atualizado por instrução do responsável: Rua do Retiro, 1450, Jardim Paris, CEP 13209-201, Jundiaí/SP; tarifa existente R$ 1,85/km preservada. O CEP/bairro foi conferido na faixa numérica retornada pelo ViaCEP. A geocodificação real não encontrou o imóvel; o ponto preciso de origem ainda depende de confirmação do responsável. Nenhuma coordenada aproximada foi gravada como se fosse exata.
+
 ## Situação encontrada antes desta revisão
 
 O site publicado usava o commit `e8789b3`. A revisão visual `d56d4df` estava apenas na branch `codex/aplicacoes-paralelas-visual`, no PR #1. Por isso a página pública ainda exibia o layout antigo e o acesso da equipe. O catálogo público retornava 44 variações, nas unidades Eloy, Japy e Retiro, sem o campo de categoria. A interface da revisão dependia desse campo e, no servidor anterior, agrupava tudo em “Outros”. Além disso, login, carrinho e finalização ainda estavam reunidos na mesma tela. Esses pontos não estavam finalizados do ponto de vista da experiência do consumidor.
@@ -22,7 +28,7 @@ O site publicado usava o commit `e8789b3`. A revisão visual `d56d4df` estava ap
 
 **Falta/evolução:** recuperação automática de senha das contas baseadas apenas em CPF; convites e gestão comercial mais ampla. A separação em aplicações/publicações independentes foi adiada por solicitação do responsável. Nesta entrega, apresentação, consumidor e ERP continuam reunidos para a aula; autorização de dados permanece no servidor.
 
-**Revisão de conta (22/11):** nome e telefone carregados da conta e apresentados em resumo, com edição opcional. Pedido com dados inalterados não executa novo cadastro. “Meus pedidos” exibe o nome salvo. Cadastro legado pode ser recuperado dos metadados completos ou de pedidos do próprio usuário; CPF ocupado por outra conta não revela nem importa dados. Se nunca houve registro completo, o vínculo é solicitado uma única vez. CPF é identificador da aplicação com validação de dígitos; não existe consulta de identidade à Receita Federal. A recuperação legada depende da nova migração no banco.
+**Revisão de conta (22/11):** nome e telefone carregados da conta e apresentados em resumo, com edição opcional. Pedido com dados inalterados não executa novo cadastro. “Meus pedidos” exibe o nome salvo. Cadastro legado pode ser recuperado dos metadados completos ou de pedidos do próprio usuário; CPF ocupado por outra conta não revela nem importa dados. Se nunca houve registro completo, o vínculo é solicitado uma única vez. CPF é identificador da aplicação com validação de dígitos; não existe consulta de identidade à Receita Federal. A migração de recuperação legada está ativa.
 
 ## 3. Experiência de pedido do consumidor — prioridade desta revisão
 
@@ -33,7 +39,7 @@ O site publicado usava o commit `e8789b3`. A revisão visual `d56d4df` estava ap
 - Cardápio, carrinho, identificação e confirmação em telas próprias, com indicador de etapas. “Meus pedidos” é uma tela própria da conta.
 - O consumidor pode explorar o cardápio antes de entrar. Na continuação do carrinho, entra ou cria a conta. O carrinho permanece durante essa navegação. Também há acesso direto à conta no cabeçalho.
 - Catálogo agrupado em seções, com filtro real e busca por nome/variação/descrição. Bebidas aparecem com bebidas; acompanhamentos com acompanhamentos.
-- Compatibilidade do piloto com o catálogo anterior: as famílias dos SKUs existentes organizam os 44 itens/variações em Lanches (17), Acompanhamentos (9), Bebidas (16) e Sobremesas (2). Categorias configuradas pela empresa têm prioridade. O mapeamento não se aplica a outras empresas.
+- Os 44 itens/variações do piloto são organizados em Lanches (17), Acompanhamentos (9), Bebidas (16) e Sobremesas (2). As subcategorias históricas (Smash, Artesanais, Croquetas, Cervejas, Chopp etc.) se reúnem nesses grupos no portal. Categorias personalizadas fora desse conjunto preservam sua configuração; outras empresas não recebem o mapeamento. Servidor anterior continua compatível pelo SKU.
 - Ícones de hambúrguer, batata, copo e sobremesa nas categorias, nos produtos e no resumo do carrinho; cores por família e ilustração de apoio na abertura.
 - Cards com nome, variação, preço real, botão de adicionar e detalhe com adicionais. Fotos configuradas pela empresa têm prioridade sobre o ícone.
 - Resumo com quantidades, adicionais, subtotal, frete e total; navegação de volta ao cardápio e edição de quantidades.
@@ -57,7 +63,7 @@ O site publicado usava o commit `e8789b3`. A revisão visual `d56d4df` estava ap
 
 **Entregue:** módulos existentes de produtos/variações/adicionais, clientes, estoque, pedidos, fila do portal, preparo, entrega, cancelamento, histórico e indicadores; cadastro/administração de empresas, unidades e equipe conforme permissões. O dashboard relê dados autorizados após avisos Realtime. Foi corrigida uma referência ausente ao usuário em Pedidos. A ficha mostra custo por insumo, custo total, CMV e margem sobre insumos, com indicação de custo ausente. Essa margem não é lucro líquido.
 
-**Preparado, aguardando ativação no banco:** editor de foto HTTPS, destaque e metadados públicos do cardápio. Depende da migração `20261116000100_cardapio_visual.sql`. Em servidor anterior, a edição informa que aguarda ativação, evitando tentativa de salvar colunas inexistentes. O agrupamento/ícones do consumidor desta revisão funcionam com o catálogo antigo do piloto.
+**Ativado no banco em 22/11:** editor de foto HTTPS, destaque e metadados públicos do cardápio pela migração `20261116000100_cardapio_visual.sql`. Fotos comerciais reais ainda dependem de configuração pela empresa; a ilustração e os ícones já fazem parte do portal.
 
 **Conferência de 22/11:** painel e catálogo/ficha carregaram no navegador com a sessão autorizada, sem gravações. Corrigida a moeda para pt-BR no painel e nos resumos de produto; eliminado o arredondamento de exibição que mostrava R$ 10,73 no resumo versus R$ 10,74 no detalhe. O teste transacional em PostgreSQL nativo confirmou aceite simultâneo único e rollback por falta de estoque.
 
@@ -73,7 +79,7 @@ Mapa opcional, carregado sob demanda. Localização do dispositivo exige ação 
 
 Cache de geocodificação confirmada por sete dias e distância por um dia, somente no servidor. Preço usa a tarifa atual e cada consumidor recebe sua própria cotação. Consultas simultâneas iguais são agrupadas dentro da instância da função. Falhas não são guardadas como frete zero. O limite próprio de três consultas/minuto e as cotas do provedor continuam vigentes; não há promessa de disponibilidade ilimitada.
 
-**Ativação pendente:** migração `20261122133234_enderecos_favoritos_e_cache_frete.sql`, função `calcular-entrega` atualizada e frontend desta revisão. Banco operacional não foi alterado durante os testes. A interface informa quando a agenda ainda não está instalada.
+**Ativado em 22/11, após autorização:** migração `20261122133234_enderecos_favoritos_e_cache_frete.sql`, função `calcular-entrega` e frontend. RLS conferida no ambiente operacional: agenda somente do titular; cache inacessível a anon/authenticated e disponível ao servidor. Os testes de gravação/remoção usaram exclusivamente ambientes descartáveis.
 
 **Falta:** conferir os pontos físicos/origens das três unidades e comparar trajetos em campo. ViaCEP não substitui um serviço de rotas. O frete depende de origem correta, cobertura e disponibilidade do serviço. Nome, CPF, telefone e complemento não são enviados ao provedor de rotas.
 
@@ -97,11 +103,11 @@ PowerPoints revisados em `Slides/Aula-Visual-2026/`, PDFs correspondentes em `ou
 
 **Entregue:** cartaz A4 individual e conjunto de quatro páginas (grupos 01–04), fora da navegação do app. O QR aponta somente para o portal público. Os quatro códigos foram decodificados dos PDFs renderizados e conferidos. Materiais em `output/aula/`. Os arquivos anteriores da Entrega 2, ZIP, manifesto e release permanecem disponíveis; a Entrega 1 foi mantida como histórico.
 
-**Verificações de código desta revisão:** 131 testes locais aprovados, instalação integral em dois bancos vazios e ensaio em PostgreSQL nativo. Build Vite com a base do GitHub Pages. Componentes de conta/favoritos conferidos no navegador com API sintética local, sem pedido real; isso não substitui a integração. O workflow isolado foi ampliado para testar favoritos e persistência de perfil com Auth/PostgREST reais. A publicação usa um workflow separado, disparado por atualização de `main`.
+**Verificações:** 131 testes locais na revisão integrada e regressão adicional do agrupamento após ativação. Instalação integral em dois bancos vazios e ensaio em PostgreSQL nativo. Build Vite com a base do GitHub Pages. Componentes de conta/favoritos conferidos no navegador com API sintética local, sem pedido real. Workflow `45029203785` aprovado nas três frentes, incluindo Auth/PostgREST/Realtime reais, favoritos após novo login e turma de 30 consumidores. A publicação usa workflow separado, disparado por atualização de `main`.
 
 **Conferência da publicação:** acompanhar o resultado do workflow de publicação antes de anunciar os links como atualizados. O histórico e os resultados ficam em Actions no GitHub.
 
-**Por que o QR ainda abre a versão antiga:** aponta para o endereço público correto; o merge/publicação anterior foi bloqueado pela revisão automática por exigir autorização explícita para atualizar `main` e o site público. Nenhum deploy foi concluído nesta revisão. Não é necessário reimprimir o QR se esse endereço for mantido. Favoritos e recuperação legada também exigem ativar a migração no Supabase.
+**QR:** a versão antiga persistia porque a revisão anterior ainda estava no PR. Após a autorização, o deploy atualizou o mesmo endereço; não é necessário reimprimir o QR. A conferência pós-publicação confirmou o novo layout e ausência de atalho de equipe. Se o navegador preservar uma aba antiga, recarregar ou reabrir o link.
 
 **Falta humano:** realizar o ensaio em sala, enviar o material institucional e guardar comprovante. A submissão acadêmica não foi feita em nome dos integrantes.
 

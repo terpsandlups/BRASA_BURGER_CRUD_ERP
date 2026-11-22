@@ -42,3 +42,12 @@ test('categoria configurada pela empresa prevalece e o mapeamento do piloto não
   assert.strictEqual(prepararCatalogoPublico([outro],'outra-empresa')[0],outro)
   assert.deepEqual(['Lanches','Acompanhamentos','Bebidas','Sobremesas'].map(iconeCategoria),['produto','batata','bebida','sobremesa'])
 })
+
+test('piloto com metadados ativos reúne subcategorias históricas nos quatro grupos aprovados',()=>{
+  const dados=[['ART001','Burgers Artesanais'],['SM001','Smash Burgers'],['SAND001','Sanduíches'],['CRO001','Croquetas'],['POR001','Porções'],['BEB001','Bebidas'],['CERV001','Cervejas Artesanais'],['CHOPP01','Chopp'],['SOB001','Sobremesas']].map(([sku,categoria])=>({sku,categoria,categoria_ordem:0,presencial:true}))
+  const organizado=prepararCatalogoPublico(dados,'brasa-burger')
+  assert.deepEqual(categoriasPublicas(organizado,'presencial'),['Lanches','Acompanhamentos','Bebidas','Sobremesas'])
+  assert.deepEqual(filtrarCatalogoPublico(organizado,{tipo:'presencial',categoria:'Bebidas'}).map(i=>i.sku),['BEB001','CERV001','CHOPP01'])
+  assert.equal(dados[0].categoria,'Burgers Artesanais')
+  assert.strictEqual(prepararCatalogoPublico(dados,'outra-empresa')[0],dados[0])
+})
