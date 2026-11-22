@@ -10,6 +10,7 @@ import {criarEnvioTransacional} from '../src/lib/pedidoTransacional.js';
 import {acessarContaCliente} from '../src/lib/acessoCliente.js';
 import {opcoesSessao} from '../src/lib/sessoesAplicacoes.js';
 import {criarAcessoCliente} from '../../supabase/functions/acesso-cliente/handler.mjs';
+import {atualizarSenhaRecuperada} from '../src/lib/recuperacaoAcesso.js';
 
 // A homologação só aceita a stack LOCAL criada pelo CLI no runner descartável.
 const workdir=process.env.SUPABASE_TEST_WORKDIR;
@@ -163,6 +164,24 @@ try{
  const saldoEncerrado=await admin.from('estoque_lojas').select('quantidade_disponivel').eq('loja_id',loja).single();assert.equal(Number(saldoEncerrado.data.quantidade_disponivel),100);
  await admin.removeChannel(canalFila);
  resultado.push('Aula isolada: 30 cadastros e solicitações concorrentes, 30 avisos Realtime na fila, 30 vendas únicas; estoque 100 na espera, 70 no aceite e 100 após cancelamento');
+ // Recuperação real apenas na stack descartável, sem enviar e-mail externo.
+ const vinculoAntes=(await owner.query('SELECT perfil_id,empresa_id,loja_id,master,ativo FROM public.usuarios WHERE id=$1',[users.master.id])).rows[0];
+ const recovery=await service.auth.admin.generateLink({type:'recovery',email:'master@example.test',options:{redirectTo:'http://localhost:3000'}});
+ if(recovery.error)throw recovery.error;
+ const redefinicao=client(anon);
+ const validarLink=await redefinicao.auth.verifyOtp({type:'recovery',token_hash:recovery.data.properties.hashed_token});
+ if(validarLink.error)throw validarLink.error;
+ const senhaNova='Recuperada1!'+randomUUID();
+ await atualizarSenhaRecuperada(redefinicao.auth,{senha:senhaNova,confirmacao:senhaNova,usuarioId:users.master.id});
+ await redefinicao.auth.signOut({scope:'local'});
+ const entrarRecuperado=await redefinicao.auth.signInWithPassword({email:'master@example.test',password:senhaNova});
+ if(entrarRecuperado.error)throw entrarRecuperado.error;
+ const vinculoDepois=await redefinicao.from('usuarios').select('perfil_id,empresa_id,loja_id,master,ativo').eq('id',users.master.id).single();
+ if(vinculoDepois.error)throw vinculoDepois.error;
+ assert.deepEqual(vinculoDepois.data,vinculoAntes);
+ const senhaAntiga=await client(anon).auth.signInWithPassword({email:'master@example.test',password:senha});assert.ok(senhaAntiga.error);
+ const reusarLink=await client(anon).auth.verifyOtp({type:'recovery',token_hash:recovery.data.properties.hashed_token});assert.ok(reusarLink.error);
+ resultado.push('Recuperação real local: token de e-mail único, nova senha aceita, anterior e token reutilizado recusados; perfil master, empresa, unidade e estado ativo preservados');
  const report={data:new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',dateStyle:'short'}).format(new Date()),ambiente:'Supabase local descartável no GitHub Actions: Auth, PostgREST e PostgreSQL reais',resultado};
  await mkdir('../docs/entrega-02/anexos',{recursive:true});
  await writeFile('../docs/entrega-02/anexos/resultado-api-local.json',JSON.stringify(report,null,2)+'\n');

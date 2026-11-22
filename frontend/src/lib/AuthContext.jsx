@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from './supabaseClient.js'
 import { temPermissao } from './permissoes.js'
+import { emailEquipe } from './recuperacaoAcesso.js'
 
 const AuthContext = createContext(null)
 
@@ -9,6 +10,7 @@ export function AuthProvider({ children }) {
   const [usuario, setUsuario] = useState(null) // linha da tabela usuarios (perfil, loja)
   const [permissoes, setPermissoes] = useState([])
   const [sessaoPronta, setSessaoPronta] = useState(false)
+  const [recuperandoSenha, setRecuperandoSenha] = useState(false)
   const [carregandoUsuario, setCarregandoUsuario] = useState(true)
   const [erroUsuario, setErroUsuario] = useState('')
   const [tentativa, setTentativa] = useState(0)
@@ -22,7 +24,9 @@ export function AuthProvider({ children }) {
       setSessaoPronta(true)
     }).catch(() => { if (ativo) { setErroUsuario('Não foi possível conectar. Recarregue a página.'); setSessaoPronta(true) } })
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') setRecuperandoSenha(true)
+      if (event === 'SIGNED_OUT') setRecuperandoSenha(false)
       setSession(session)
       setSessaoPronta(true)
     })
@@ -58,7 +62,7 @@ export function AuthProvider({ children }) {
   const carregando = !sessaoPronta || (!!session && (carregandoUsuario || (!usuario && !erroUsuario)))
 
   async function entrar(email, senha) {
-    return supabase.auth.signInWithPassword({ email, password: senha })
+    return supabase.auth.signInWithPassword({ email: emailEquipe(email), password: senha })
   }
 
   async function sair() {
@@ -72,7 +76,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ session, usuario, carregando, erroUsuario, recarregarUsuario: () => setTentativa(n => n + 1), entrar, sair, podeAcessar,
+    <AuthContext.Provider value={{ session, usuario, carregando, sessaoPronta, recuperandoSenha, encerrarRecuperacao: () => setRecuperandoSenha(false), erroUsuario, recarregarUsuario: () => setTentativa(n => n + 1), entrar, sair, podeAcessar,
       podeOperar: (modulo, acao) => temPermissao(usuario, permissoes, modulo, acao) }}>
       {children}
     </AuthContext.Provider>

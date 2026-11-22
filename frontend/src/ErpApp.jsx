@@ -18,6 +18,7 @@ const Entregas = lazy(() => import('./pages/Entregas.jsx'))
 const SolicitacoesMobile = lazy(() => import('./pages/SolicitacoesMobile.jsx'))
 const Integracoes = lazy(() => import('./pages/Integracoes.jsx'))
 const Administracao = lazy(() => import('./pages/Administracao.jsx'))
+const RecuperarAcesso = lazy(() => import('./pages/RecuperarAcesso.jsx'))
 
 function Acesso({ modulo, children }) {
   const { podeOperar } = useAuth()
@@ -28,11 +29,15 @@ function Acesso({ modulo, children }) {
 }
 
 function AreaProtegida() {
-  const { session, usuario, carregando, erroUsuario, recarregarUsuario, sair } = useAuth()
+  const { session, usuario, carregando, sessaoPronta, recuperandoSenha, erroUsuario, recarregarUsuario, sair } = useAuth()
   const [menuAberto, setMenuAberto] = useState(false)
   const location = useLocation()
   useEffect(() => { setMenuAberto(false) }, [location.pathname])
 
+  if (!sessaoPronta) return <p role="status" className="p-8">Carregando acesso…</p>
+  if (recuperandoSenha || new URLSearchParams(location.search).get('acesso') === 'recuperar') {
+    return <Suspense fallback={<p role="status" className="p-8">Carregando recuperação…</p>}><RecuperarAcesso /></Suspense>
+  }
   if (carregando) {
     return <div className="min-h-screen flex items-center justify-center bg-carvao text-osso">Carregando...</div>
   }
