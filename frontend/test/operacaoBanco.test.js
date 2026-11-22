@@ -35,6 +35,7 @@ before(async () => {
     '../../supabase/migrations/20261106015840_cadastro_cpf_tempo_real.sql',
     '../../supabase/migrations/20261111223639_cadastro_cpf_sem_email.sql',
     '../../supabase/migrations/20261116000100_cardapio_visual.sql',
+    '../../supabase/migrations/20261122133234_enderecos_favoritos_e_cache_frete.sql',
   ]) await db.exec(await sql(path))
 })
 after(async () => { await db?.close() })
@@ -67,6 +68,49 @@ function dadosMobile() {
 const solicitar = (payload = dadosMobile(), chave = randomUUID()) => valor('SELECT enviar_solicitacao_mobile($1,$2::jsonb)', [chave,JSON.stringify(payload)])
 const decidirMobile = (id, acao, cotacao = null, motivo = null) => valor('SELECT decidir_solicitacao_mobile($1,$2,$3,$4)', [id,acao,motivo,cotacao])
 const administrar=(acao,dados)=>valor('SELECT administrar_plataforma($1,$2::jsonb)',[acao,JSON.stringify(dados)])
+
+test('conta antiga: recupera dados próprios e mantém CPF imutável sem acessar outro titular',async()=>{
+  await contaMobile()
+  assert.equal(await valor('SELECT meu_cadastro_cliente()'),null)
+  await solicitar()
+  await db.exec('SET LOCAL ROLE authenticated')
+  const cadastro=await valor('SELECT meu_cadastro_cliente()')
+  assert.equal(cadastro.nome,'Cliente Mobile');assert.equal(cadastro.telefone,'11999999999')
+  assert.equal((await valor('SELECT meu_cadastro_cliente()')).cpf,'52998224725')
+  await rejeita("SELECT cadastrar_perfil_cliente('11144477735','Outra Pessoa','11999999999')",[],/CPF vinculado/)
+  await db.exec('RESET ROLE')
+  const outro=randomUUID()
+  await db.query('INSERT INTO auth.users(id) VALUES($1)',[outro])
+  await db.query('UPDATE auth.users SET raw_user_meta_data=$1::jsonb WHERE id=$2',[JSON.stringify({...cadastro}),outro])
+  await db.query("SELECT set_config('request.jwt.claim.sub',$1,true)",[outro]);await db.exec('SET LOCAL ROLE authenticated')
+  assert.equal(await valor('SELECT meu_cadastro_cliente()'),null,'CPF ocupado não pode importar dados da outra conta')
+})
+
+test('conta antiga: recupera metadados pessoais completos sem criar acesso ao ERP',async()=>{
+  await contaMobile()
+  await db.query('UPDATE auth.users SET raw_user_meta_data=$1::jsonb WHERE id=$2',[JSON.stringify({cpf:'52998224725',nome:'Nome Salvo',telefone:'11999999999',master:true}),mobileUser])
+  await db.exec('SET LOCAL ROLE authenticated')
+  assert.equal((await valor('SELECT meu_cadastro_cliente()')).nome,'Nome Salvo')
+  assert.equal(Number(await valor('SELECT count(*) FROM usuarios')),0)
+})
+
+test('favoritos: CRUD só do titular, bloqueia troca de dono e esconde agenda de equipe/terceiros',async()=>{
+  await contaMobile();await db.exec('SET LOCAL ROLE authenticated')
+  const id=await valor("INSERT INTO enderecos_consumidor(apelido,cep,endereco,numero,bairro,cidade,estado) VALUES('Casa','13201000','Rua Teste','10','Centro','Jundiaí','SP') RETURNING id")
+  assert.equal(await valor('SELECT apelido FROM enderecos_consumidor WHERE id=$1',[id]),'Casa')
+  await db.query("UPDATE enderecos_consumidor SET apelido='Trabalho' WHERE id=$1",[id])
+  await rejeita('UPDATE enderecos_consumidor SET usuario_id=$1 WHERE id=$2',[admin,id],/row-level security/)
+  await rejeita("INSERT INTO enderecos_consumidor(usuario_id,apelido,cep,endereco,numero,bairro,cidade,estado) VALUES($1,'Falso','13201000','Rua','10','Centro','Jundiaí','SP')",[admin],/row-level security/)
+  await rejeita('SELECT * FROM cache_rotas_entrega',[],/permission denied/)
+  await db.exec('RESET ROLE');await db.query("SELECT set_config('request.jwt.claim.sub',$1,true)",[admin]);await db.exec('SET LOCAL ROLE authenticated')
+  assert.equal(Number(await valor('SELECT count(*) FROM enderecos_consumidor')),0)
+  assert.equal((await db.query('DELETE FROM enderecos_consumidor WHERE id=$1',[id])).affectedRows,0)
+  await db.exec('RESET ROLE');await db.query("SELECT set_config('request.jwt.claim.sub',$1,true)",[mobileUser]);await db.exec('SET LOCAL ROLE authenticated')
+  assert.equal(await valor('SELECT apelido FROM enderecos_consumidor'),'Trabalho')
+  await db.query('DELETE FROM enderecos_consumidor WHERE id=$1',[id]);assert.equal(Number(await valor('SELECT count(*) FROM enderecos_consumidor')),0)
+  await db.exec('RESET ROLE; SET LOCAL ROLE anon')
+  await rejeita('SELECT * FROM enderecos_consumidor',[],/permission denied/)
+})
 
 test('cliente CPF: cadastro é único, privado e nunca cria usuário da equipe',async()=>{
   await db.query("INSERT INTO auth.users(id,email,raw_user_meta_data) VALUES($1,'cliente@example.test',$2)",[mobileUser,JSON.stringify({cpf:'52998224725',nome:'Consumidor Teste',telefone:'11999999999'})])

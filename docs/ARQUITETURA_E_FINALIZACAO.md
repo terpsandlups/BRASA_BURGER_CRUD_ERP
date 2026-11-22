@@ -1,6 +1,6 @@
 # Duas aplicações, uma operação
 
-Revisão de 16/11/2026. Implementação preparada para finalizar o projeto antes do deploy desta revisão.
+Revisão atualizada em 22/11/2026. Implementação preparada para finalizar o projeto antes do deploy desta revisão.
 
 O Convívium atende empresas. Cada empresa oferece seu próprio portal aos consumidores. Brasa Burger é a empresa piloto, e não o nome da plataforma.
 
@@ -53,8 +53,8 @@ Orientações de impressão e o endereço atual estão em `output/aula/README.md
 Quando preparada, esta revisão não foi aplicada ao banco operacional nem publicada na branch `main`. O envio para `main` dispara a publicação automática já configurada. A revisão deve passar pelas verificações da branch antes desse envio; o resultado da publicação é registrado no workflow do GitHub. A migração do banco é uma ativação independente.
 
 1. Conferir a validação automatizada da branch, inclusive a homologação isolada com Auth, PostgREST e Realtime.
-2. Aplicar somente `supabase/migrations/20261116000100_cardapio_visual.sql` ao ambiente de destino, uma vez, depois das migrações anteriores. Ela adiciona `imagem_url`, `destaque` e os metadados públicos ao catálogo. Não reinstalar `sql/instalacao/convivium-completo.sql` no banco existente.
-3. Publicar o frontend com a URL e chave pública do Supabase. Nunca colocar chave privilegiada no frontend.
+2. Aplicar `supabase/migrations/20261116000100_cardapio_visual.sql` e depois `20261122133234_enderecos_favoritos_e_cache_frete.sql`, uma vez, após as migrações anteriores. A segunda cria favoritos privados, cache de rotas restrito ao servidor e recuperação do perfil legado. Não reinstalar `sql/instalacao/convivium-completo.sql` no banco existente.
+3. Publicar a função `calcular-entrega` desta revisão e o frontend com a URL e chave pública do Supabase. A função mantém `ORS_API_KEY` e chave de serviço somente no servidor. Nunca colocar chave privilegiada no frontend. O banco e a função devem ser ativados antes de anunciar favoritos/recuperação legada como disponíveis.
 4. Configurar ou conferir logo, cor, categorias, descrições e fotos reais da empresa piloto. Imagens de apoio permanecem identificadas como ilustrações.
 5. Validar com contas autorizadas: consumidor envia para a unidade escolhida, equipe recebe e aceita uma vez, estoque é atualizado, status volta ao titular e outra unidade/empresa não acessa o pedido.
 6. Disponibilizar o link do portal aos alunos depois dessa validação no ambiente publicado.

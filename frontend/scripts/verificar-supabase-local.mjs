@@ -69,6 +69,17 @@ try{
   try{card=await rpc(consumer,'cardapio_mobile',{p_slug:'brasa-burger'});break}catch(e){if(n===14)throw e;await new Promise(r=>setTimeout(r,1000))}
  }
  assert.equal(card.lojas.length,3);assert.equal(card.itens.length,1);
+ const enderecoFavorito={apelido:'Casa',cep:'13201000',endereco:'Rua Teste Isolado',numero:'10',complemento:'',bairro:'Centro',cidade:'Jundiaí',estado:'SP',latitude:-23.18,longitude:-46.93};
+ const favorito=await consumer.from('enderecos_consumidor').insert(enderecoFavorito).select().single();if(favorito.error)throw favorito.error;
+ assert.equal(favorito.data.usuario_id,cadastro.user.id);
+ const agendaEquipe=await admin.from('enderecos_consumidor').select('id');if(agendaEquipe.error)throw agendaEquipe.error;assert.equal(agendaEquipe.data.length,0);
+ const alterarDono=await consumer.from('enderecos_consumidor').update({usuario_id:users.master.id}).eq('id',favorito.data.id);assert.ok(alterarDono.error);
+ const editarFavorito=await consumer.from('enderecos_consumidor').update({apelido:'Trabalho'}).eq('id',favorito.data.id).select().single();if(editarFavorito.error)throw editarFavorito.error;assert.equal(editarFavorito.data.apelido,'Trabalho');
+ await consumer.auth.signOut({scope:'local'});await acessarContaCliente(consumer.auth,{cadastro:false,email:'529.982.247-25',senha},functions);
+ const favoritoAposLogin=await consumer.from('enderecos_consumidor').select().eq('id',favorito.data.id).single();if(favoritoAposLogin.error)throw favoritoAposLogin.error;assert.equal(favoritoAposLogin.data.apelido,'Trabalho');
+ const perfilAposLogin=await consumer.rpc('meu_cadastro_cliente');if(perfilAposLogin.error)throw perfilAposLogin.error;assert.equal(perfilAposLogin.data.nome,'Consumidor Sintético');assert.equal(perfilAposLogin.data.telefone,'11999999999');
+ const removerFavorito=await consumer.from('enderecos_consumidor').delete().eq('id',favorito.data.id).select('id');if(removerFavorito.error)throw removerFavorito.error;assert.equal(removerFavorito.data.length,1);
+ resultado.push('Conta real local preserva nome/telefone e favoritos após novo login; RLS impede leitura pela equipe e troca de titular');
  const v=card.itens[0].id;
  resultado.push('Auth real local e catálogo via PostgREST: três unidades e um produto sintético');
  const payload=montarSolicitacao({lojaId:loja,tipo:'presencial',pagamento:'pix',cliente:{nome:'Consumidor Sintético',cpf:'52998224725',telefone:'11999999999'},itens:[{id:v,preco:27.9,quantidade:2,extras:[]}],endereco:{},observacoes:'Homologação E2',troco:''});

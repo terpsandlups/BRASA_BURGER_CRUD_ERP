@@ -9,7 +9,8 @@ import { formatarCPF } from '../lib/format.js'
 import Icon from '../components/ui/Icon.jsx'
 import ProdutoPortal, { DetalheProduto } from '../components/ProdutoPortal.jsx'
 import ResumoPedidoPortal from '../components/ResumoPedidoPortal.jsx'
-import ConsultaEntrega from '../components/ConsultaEntrega.jsx'
+import EntregaConsumidor from '../components/EntregaConsumidor.jsx'
+import PerfilConsumidor from '../components/PerfilConsumidor.jsx'
 import SidePanel from '../components/layout/SidePanel.jsx'
 import './portalCliente.css'
 
@@ -113,21 +114,19 @@ export default function PortalCliente() {
         {titulo('04 / CONFIRMAÇÃO','Seu próximo favorito está quase aí.','Confira como receber e os dados do pedido.')}
         <div className="portal-flow-grid"><div className="portal-checkout-details">
           <section className="portal-checkout-card"><div className="portal-card-heading"><Icon nome="local" size={23} /><h2>{p.tipo==='delivery' ? 'Entrega na sua casa' : 'Retirada na loja'}</h2></div><p className="portal-checkout-unit">{p.unidade?.nome}</p>{!p.pendente && <button type="button" className="portal-text-link" onClick={()=>irPara('cardapio')}>Alterar unidade ou atendimento</button>}
-            {p.tipo==='delivery' && p.loja && p.itens.length>0 && !p.pendente && <ConsultaEntrega clienteApi={supabase} key={p.loja+':'+p.session.user.id} lojaId={p.loja} modoPedido portal automatico destinoInicial={p.endereco} onCotacao={cotacao=>{p.setCotacao(cotacao);if(cotacao?.endereco)p.setEndereco(cotacao.endereco)}} onInvalidar={()=>p.setCotacao(null)} />}
+            {p.tipo==='delivery' && p.loja && p.itens.length>0 && !p.pendente && <EntregaConsumidor api={supabase} key={p.loja+':'+p.session.user.id} usuarioId={p.session.user.id} lojaId={p.loja} endereco={p.endereco} cotacao={p.cotacao} onCotacao={cotacao=>{p.setCotacao(cotacao);if(cotacao?.endereco)p.setEndereco(cotacao.endereco)}} onInvalidar={()=>p.setCotacao(null)} />}
             {p.tipo!=='delivery' && <p className="portal-form-note">Acompanhe o pedido. A loja informa quando estiver pronto para retirar.</p>}
           </section>
           <form onSubmit={async event=>{if(await p.enviar(event))irPara('pedidos')}} className="portal-checkout-card portal-form">
             {p.pendente ? <div role="alert"><h2>Consultar o último envio</h2><p>A confirmação consulta o mesmo envio e evita repetir seu pedido.</p></div> : <fieldset disabled={p.ocupado} className="portal-form">
-              <div className="portal-card-heading"><Icon nome="conta" size={22} /><h2>Dados de quem vai receber</h2></div>
-              <label>Nome<input required maxLength={120} autoComplete="name" value={p.cliente.nome} onChange={e=>p.setCliente(c=>({...c,nome:e.target.value}))} /></label>
-              <div className="portal-form-columns"><label>CPF<input required inputMode="numeric" maxLength={14} readOnly={!!p.cpfVinculado} value={p.cliente.cpf} onChange={e=>p.setCliente(c=>({...c,cpf:formatarCPF(e.target.value)}))} /></label><label>Telefone<input required type="tel" autoComplete="tel" maxLength={20} value={p.cliente.telefone} onChange={e=>p.setCliente(c=>({...c,telefone:e.target.value}))} /></label></div>
+              <PerfilConsumidor key={p.session.user.id} portal={p} />
               <div className="portal-card-heading portal-payment-heading"><Icon nome="cartao" size={22} /><h2>Como você vai pagar?</h2></div>
               <label>Pagamento na {p.tipo==='delivery' ? 'entrega' : 'retirada'}<select value={p.pagamento} onChange={e=>p.setPagamento(e.target.value)}><option value="pix">Pix</option><option value="credito">Cartão de crédito</option><option value="debito">Cartão de débito</option><option value="dinheiro">Dinheiro</option></select></label>
               {p.pagamento==='dinheiro' && <label>Troco para (opcional)<input inputMode="decimal" value={p.troco} onChange={e=>p.setTroco(e.target.value)} /></label>}
               <label>Alguma observação? <span className="portal-optional">Opcional</span><textarea maxLength={500} rows={3} value={p.observacoes} onChange={e=>p.setObservacoes(e.target.value)} placeholder="Uma informação para a equipe da loja…" /></label>
             </fieldset>}
             <p className="portal-form-note">Seus dados serão usados para atender este pedido. A loja confirma a disponibilidade. Pagamento diretamente à loja.</p>
-            <button disabled={p.ocupado || (!p.pendente && (!p.itens.length || (p.tipo==='delivery'&&!p.cotacao)))} className="portal-primary">{p.ocupado ? 'Enviando…' : p.pendente ? 'Consultar último envio' : 'Enviar pedido à loja'}<Icon nome="seta" size={18} /></button>
+            <button disabled={p.ocupado || (!p.pendente && (!p.perfilPronto || !p.itens.length || (p.tipo==='delivery'&&!p.cotacao)))} className="portal-primary">{p.ocupado ? 'Enviando…' : p.pendente ? 'Consultar último envio' : 'Enviar pedido à loja'}<Icon nome="seta" size={18} /></button>
             {p.tipo==='delivery'&&!p.cotacao&&!p.pendente && <p className="portal-form-note">Preencha o endereço e aguarde o cálculo do frete para enviar.</p>}
           </form>
         </div><aside className="portal-final-summary">{resumo(false)}{!p.pendente && <button type="button" className="portal-text-link" onClick={()=>irPara('carrinho')}>Editar meu pedido</button>}</aside></div>
@@ -135,7 +134,8 @@ export default function PortalCliente() {
 
       {etapa==='pedidos' && p.session && <>
         {titulo('SUA CONTA','Meus pedidos','Acompanhe a confirmação e o preparo pela loja.')}
-        <div className="portal-account-strip"><span><Icon nome="conta" size={18} />{p.cpfVinculado ? 'CPF '+formatarCPF(p.cpfVinculado) : 'Conta do consumidor'}</span><button type="button" disabled={p.ocupado} onClick={sair}>Sair da conta</button></div>
+        <div className="portal-account-strip"><span><Icon nome="conta" size={18} />{p.perfilSalvo?.nome || (!p.perfilPronto ? 'Carregando seu nome…' : 'Complete seus dados da conta')}</span><button type="button" disabled={p.ocupado} onClick={sair}>Sair da conta</button></div>
+        <div className="portal-checkout-card portal-form"><PerfilConsumidor key={p.session.user.id} portal={p} /></div>
         {p.erroPedidos && <p role="alert" className="portal-notice is-error">{p.erroPedidos}</p>}
         {!p.pedidos.length&&!p.erroPedidos && <div className="portal-empty"><Icon nome="pedido" size={48} /><h2>Seu primeiro favorito está no cardápio.</h2><p>Os pedidos desta conta aparecem aqui depois do envio.</p><button type="button" className="portal-primary" onClick={()=>irPara('cardapio')}>Fazer um pedido</button></div>}
         <div className="portal-orders">{p.pedidos.map(pedido=><article className="portal-order" key={pedido.id}><div className="portal-order-top"><span><Icon nome="pedido" size={18} />#{codigoPedido(pedido.id)}</span><span className="portal-order-state">{ESTADOS[pedido.etapa||pedido.status] || pedido.status}</span></div><h2>{pedido.loja}</h2><p>{new Date(pedido.criado_em).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'})}</p>{pedido.motivo && <p>{pedido.motivo}</p>}<strong>{pedido.total!==null ? 'Total confirmado: '+dinheiro(pedido.total)+' · Frete: '+dinheiro(pedido.frete) : 'Subtotal: '+dinheiro(pedido.subtotal)}</strong>{pedido.status==='aguardando' && <button type="button" disabled={p.ocupado} className="portal-text-link" onClick={()=>p.executar(async()=>{const {error}=await supabase.rpc('decidir_solicitacao_mobile',{p_id:pedido.id,p_acao:'cancelar'});if(error)throw error;p.setAviso('Solicitação #'+codigoPedido(pedido.id)+' cancelada.')})}>Cancelar solicitação</button>}</article>)}</div>

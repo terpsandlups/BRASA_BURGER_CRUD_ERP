@@ -7,6 +7,7 @@ import { mensagemPortal, montarSolicitacao, totalCarrinho } from './portalClient
 import { acessarContaCliente, armazenamentoDaSessao } from './acessoCliente.js'
 import { acompanharAoVivo } from './atualizacaoAoVivo.js'
 import { categoriasPublicas, filtrarCatalogoPublico, prepararCatalogoPublico } from './catalogoPublico.js'
+import { salvarPerfilConsumidor } from './perfilConsumidor.js'
 
 export const ESTADOS = { aguardando: 'Aguardando confirmação da loja', aceita: 'Confirmado pela loja', recusada: 'Recusado pela loja', cancelada: 'Cancelado por você', recebido: 'Recebido', em_preparo: 'Em preparo', pronto: 'Pronto', saiu_entrega: 'Saiu para entrega', entregue: 'Entregue', cancelado: 'Cancelado' }
 
@@ -31,6 +32,10 @@ export default function usePortalCliente() {
   const [senha, setSenha] = useState('')
   const [cliente, setCliente] = useState({ nome: '', cpf: '', telefone: '' })
   const [cpfVinculado, setCpfVinculado] = useState('')
+  const [perfilSalvo, setPerfilSalvo] = useState(null)
+  const [perfilConta, setPerfilConta] = useState(null)
+  const [erroPerfil, setErroPerfil] = useState('')
+  const [revisaoPerfil, setRevisaoPerfil] = useState(0)
   const [endereco, setEndereco] = useState({})
   const [pagamento, setPagamento] = useState('pix')
   const [observacoes, setObservacoes] = useState('')
@@ -74,14 +79,17 @@ export default function usePortalCliente() {
   useEffect(() => {
     let ativo=true
     setCpfVinculado('')
+    setPerfilSalvo(null); setPerfilConta(null); setErroPerfil('')
     if(!session?.user.id) return
     supabase.rpc('meu_cadastro_cliente').then(({data,error})=>{
       if(!ativo) return
-      if(error){setErro('Não foi possível carregar seu cadastro. Atualize a página ou contate a loja.');return}
-      if(data){setCliente(data);setCpfVinculado(data.cpf)}
-    }).catch(()=>{if(ativo)setErro('Não foi possível carregar seu cadastro.')})
+      if(error){setErroPerfil('Não foi possível carregar seu cadastro. Tente novamente antes de enviar.');return}
+      setCliente(data || {nome:'',cpf:'',telefone:''});setCpfVinculado(data?.cpf || '')
+      setPerfilSalvo(data);setPerfilConta(session.user.id)
+    }).catch(()=>{if(ativo)setErroPerfil('Não foi possível carregar seu cadastro. Tente novamente.')})
     return()=>{ativo=false}
-  },[session?.user.id])
+  },[session?.user.id,revisaoPerfil])
+  const perfilPronto = !!session?.user.id && perfilConta === session.user.id
   useEffect(() => {
     if (!cotacao) return
     const timer=setTimeout(()=>setCotacao(null),Math.max(0,Date.parse(cotacao.expira_em)-Date.now()))
@@ -145,14 +153,16 @@ export default function usePortalCliente() {
   async function enviar(event) {
     event.preventDefault()
     if (!session) { setErro('Entre na sua conta para enviar.'); return }
+    if (!pendente && !perfilPronto) { setErro('Aguarde o carregamento do seu cadastro antes de enviar.'); return }
+    const titular=session.user.id
     let enviado=false
     await executar(async () => {
       try {
         const dados = pendente ? null : montarSolicitacao({ lojaId: loja, tipo, pagamento, cliente, itens, endereco:cotacao?.endereco || endereco, observacoes, troco, cotacaoId:cotacao?.cotacao_id, taxaEntrega:cotacao?.taxa || 0 })
         if(!pendente){
-          const {data,error}=await supabase.rpc('cadastrar_perfil_cliente',{p_cpf:dados.cpf,p_nome:dados.nome,p_telefone:dados.telefone})
-          if(error) throw error
-          setCpfVinculado(data.cpf)
+          const data=await salvarPerfilConsumidor(supabase,cliente,perfilSalvo)
+          if(ultimaConta.current!==titular)throw new Error('A conta mudou. Confira os dados antes de enviar.')
+          setPerfilSalvo(data);setCliente(data);setCpfVinculado(data.cpf)
         }
         const id = await envio.enviar(dados)
         if(cotacao?.endereco) setEndereco(cotacao.endereco)
@@ -163,5 +173,16 @@ export default function usePortalCliente() {
     })
     return enviado
   }
-  return {marca,catalogo,carregando,erro,setErro,aviso,setAviso,loja,tipo,setTipo,busca,setBusca,categoria,setCategoria,produtoAberto,setProdutoAberto,ultimoAdicionado,itens,setItens,session,sessaoPronta,cadastro,setCadastro,email,setEmail,senha,setSenha,cliente,setCliente,cpfVinculado,endereco,setEndereco,pagamento,setPagamento,observacoes,setObservacoes,troco,setTroco,cotacao,setCotacao,ocupado,pendente,pedidos,erroPedidos,paginaPedidos,setPaginaPedidos,unidade,subtotal,categorias,visiveis,totalUnidades,adicaoBloqueada,escolherLoja,adicionar,executar,autenticar,enviar,carregarCardapio}
+  async function salvarPerfil() {
+    if(!perfilPronto) throw new Error('Aguarde o carregamento do seu cadastro.')
+    if(trava.current) throw new Error('Aguarde a operação atual.')
+    const titular=session.user.id
+    trava.current=true;setOcupado(true)
+    try {
+      const data=await salvarPerfilConsumidor(supabase,cliente,perfilSalvo)
+      if(ultimaConta.current!==titular)throw new Error('A conta mudou. Entre novamente para conferir seus dados.')
+      setPerfilSalvo(data);setCliente(data);setCpfVinculado(data.cpf)
+    } finally {trava.current=false;setOcupado(false)}
+  }
+  return {marca,catalogo,carregando,erro,setErro,aviso,setAviso,loja,tipo,setTipo,busca,setBusca,categoria,setCategoria,produtoAberto,setProdutoAberto,ultimoAdicionado,itens,setItens,session,sessaoPronta,cadastro,setCadastro,email,setEmail,senha,setSenha,cliente,setCliente,cpfVinculado,perfilSalvo,perfilPronto,erroPerfil,recarregarPerfil:()=>setRevisaoPerfil(n=>n+1),salvarPerfil,endereco,setEndereco,pagamento,setPagamento,observacoes,setObservacoes,troco,setTroco,cotacao,setCotacao,ocupado,pendente,pedidos,erroPedidos,paginaPedidos,setPaginaPedidos,unidade,subtotal,categorias,visiveis,totalUnidades,adicaoBloqueada,escolherLoja,adicionar,executar,autenticar,enviar,carregarCardapio}
 }

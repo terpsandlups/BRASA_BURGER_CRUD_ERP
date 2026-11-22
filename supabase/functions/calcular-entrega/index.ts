@@ -1,15 +1,33 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.116.0'
 import { criarHandler } from './handler.mjs'
+import { criarCacheCalculos } from './cache.mjs'
 
 // Chave privilegiada permanece somente na Edge Function; o navegador não pode
 // criar cotações nem escolher o valor a ser gravado no pedido.
 const secretKeys = JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS') || '{}')
 const chaveServico = secretKeys.default || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+const admin = chaveServico ? createClient(Deno.env.get('SUPABASE_URL')!, chaveServico,
+  { auth: { persistSession: false, autoRefreshToken: false } }) : null
+const reutilizar = criarCacheCalculos({
+  get: async (chave: string) => {
+    if(!admin)return null
+    const {data,error}=await admin.from('cache_rotas_entrega').select('valor').eq('chave',chave).gt('expira_em',new Date().toISOString()).maybeSingle()
+    if(error)throw error
+    return data?.valor ?? null
+  },
+  set: async (chave: string,tipo: string,valor: unknown,segundos: number) => {
+    if(!admin)return
+    const {error}=await admin.from('cache_rotas_entrega').upsert({chave,tipo,valor,expira_em:new Date(Date.now()+segundos*1000).toISOString()})
+    if(error)throw error
+    await admin.from('cache_rotas_entrega').delete().lt('expira_em',new Date().toISOString())
+  },
+})
 
 Deno.serve(criarHandler({
   // MVP gratuito: nenhuma chave Google é lida e não existe fallback pago.
   provider: 'openrouteservice',
   apiKey: Deno.env.get('ORS_API_KEY'),
+  reutilizar,
   allowedOrigins: [...(Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map(s => s.trim()).filter(Boolean), 'https://terpsandlups.github.io'],
   criarCliente: (authorization: string) => createClient(
     Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!,
@@ -17,9 +35,7 @@ Deno.serve(criarHandler({
   ),
   salvarCotacao: async (cotacao: Record<string, unknown>) => {
     if (!chaveServico) throw new Error('Chave interna indisponível')
-    const admin = createClient(Deno.env.get('SUPABASE_URL')!, chaveServico,
-      { auth: { persistSession: false, autoRefreshToken: false } })
-    const { data, error } = await admin.from(cotacao.portal ? 'cotacoes_mobile' : 'cotacoes_entrega').insert({
+    const { data, error } = await admin!.from(cotacao.portal ? 'cotacoes_mobile' : 'cotacoes_entrega').insert({
       usuario_id: cotacao.usuarioId, loja_id: cotacao.lojaId, ...(cotacao.portal ? {} : { cliente_cpf: cotacao.clienteCpf }),
       origem: cotacao.origem, destino: cotacao.destino,
       distancia_metros: cotacao.distanciaMetros, valor_km: cotacao.valorKm,

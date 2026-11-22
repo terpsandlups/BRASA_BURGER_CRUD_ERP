@@ -7,6 +7,7 @@ import SidePanel from '../components/layout/SidePanel.jsx'
 import EditarFicha from '../components/EditarFicha.jsx'
 import EditarCardapio from '../components/EditarCardapio.jsx'
 import { validarVariacao, validarQuantidadeFicha } from '../lib/fichaTecnica.js'
+import { dinheiro } from '../lib/pedidoApresentacao.js'
 
 const TONS = {
   oliva: 'border-oliva text-oliva',
@@ -351,10 +352,10 @@ export default function Produtos() {
                       <div key={v.id} className="ui-variant border border-superficie2/30 p-4">
                         <p className="font-medium">{v.nome_variacao}</p>
                         <button onClick={() => setEditandoId(v.id)} className="text-xs text-ambar mt-2">Ver / editar variação e ficha</button>
-                        <p className="text-sm text-fumaca mt-1">Venda: R$ {Number(v.preco_venda).toFixed(2)}</p>
+                        <p className="text-sm text-fumaca mt-1">Venda: {dinheiro(v.preco_venda)}</p>
                         {custo ? (
                           <>
-                            <p className="text-sm text-fumaca">Custo: R$ {Number(custo.custo_ficha_tecnica).toFixed(2)}</p>
+                            <p className="text-sm text-fumaca">Custo: {dinheiro(custo.custo_ficha_tecnica)}</p>
                             <p className={`text-sm font-medium mt-1 ${custo.cmv_percentual > 35 ? 'text-brasa' : 'text-oliva'}`}>
                               CMV: {custo.cmv_percentual}%
                             </p>
@@ -421,7 +422,7 @@ export default function Produtos() {
                     <div className="flex flex-wrap gap-2">
                       {adicionaisDoProduto(produto.sku).map((a) => (
                         <span key={a.id} className="text-xs bg-superficie text-osso px-3 py-1.5">
-                          {a.nome} · +R$ {Number(a.preco_adicional).toFixed(2)}
+                          {a.nome} · +{dinheiro(a.preco_adicional)}
                         </span>
                       ))}
                     </div>

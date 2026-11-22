@@ -1,6 +1,6 @@
 # Solicitações, entregas e pendências do Convívium
 
-Consolidação da conversa e do código, em 16/11/2026. As solicitações foram agrupadas em oito frentes. “Implementado e testado” identifica código e verificações; a publicação é uma etapa própria e não deve ser confundida com um commit no GitHub.
+Consolidação da conversa e do código, atualizada em 22/11/2026. As solicitações foram agrupadas em oito frentes. “Implementado e testado” identifica código e verificações; a publicação é uma etapa própria e não deve ser confundida com um commit no GitHub.
 
 ## Situação encontrada antes desta revisão
 
@@ -21,6 +21,8 @@ O site publicado usava o commit `e8789b3`. A revisão visual `d56d4df` estava ap
 **Entregue:** perfis e vínculos com autorização no banco, empresa/unidade e RLS; cadastro e login por CPF, nome, telefone e senha; acesso por e-mail continua compatível. Cadastro público não cria colaborador. Sessões do consumidor e da equipe usam armazenamentos independentes. Sair de uma não encerra a outra. Retornos de autenticação por URL são processados pela aplicação correspondente. O portal do consumidor não contém atalho para a equipe.
 
 **Falta/evolução:** recuperação automática de senha das contas baseadas apenas em CPF; convites e gestão comercial mais ampla. A separação em aplicações/publicações independentes foi adiada por solicitação do responsável. Nesta entrega, apresentação, consumidor e ERP continuam reunidos para a aula; autorização de dados permanece no servidor.
+
+**Revisão de conta (22/11):** nome e telefone carregados da conta e apresentados em resumo, com edição opcional. Pedido com dados inalterados não executa novo cadastro. “Meus pedidos” exibe o nome salvo. Cadastro legado pode ser recuperado dos metadados completos ou de pedidos do próprio usuário; CPF ocupado por outra conta não revela nem importa dados. Se nunca houve registro completo, o vínculo é solicitado uma única vez. CPF é identificador da aplicação com validação de dígitos; não existe consulta de identidade à Receita Federal. A recuperação legada depende da nova migração no banco.
 
 ## 3. Experiência de pedido do consumidor — prioridade desta revisão
 
@@ -57,13 +59,21 @@ O site publicado usava o commit `e8789b3`. A revisão visual `d56d4df` estava ap
 
 **Preparado, aguardando ativação no banco:** editor de foto HTTPS, destaque e metadados públicos do cardápio. Depende da migração `20261116000100_cardapio_visual.sql`. Em servidor anterior, a edição informa que aguarda ativação, evitando tentativa de salvar colunas inexistentes. O agrupamento/ícones do consumidor desta revisão funcionam com o catálogo antigo do piloto.
 
+**Conferência de 22/11:** painel e catálogo/ficha carregaram no navegador com a sessão autorizada, sem gravações. Corrigida a moeda para pt-BR no painel e nos resumos de produto; eliminado o arredondamento de exibição que mostrava R$ 10,73 no resumo versus R$ 10,74 no detalhe. O teste transacional em PostgreSQL nativo confirmou aceite simultâneo único e rollback por falta de estoque.
+
 **Fora do MVP:** integração automática com WhatsApp (registro segue manual pela equipe), sistema fiscal, financeiro completo e cobrança online.
 
 ## 6. CEP, endereço, frete e serviços externos
 
 **Pedido:** simplificar endereço e recalcular frete automaticamente; avaliar ViaCEP em relação à solução existente.
 
-**Entregue:** ViaCEP preenche rua, bairro, cidade e UF a partir do CEP; número e complemento são informados pelo consumidor. openrouteservice calcula rota/distância. Servidor confere origem, tarifa da unidade e validade da cotação. O portal tenta cotar automaticamente após o preenchimento e permite localização no mapa quando necessária.
+**Entregue no código:** ViaCEP preenche o endereço; openrouteservice calcula rota/distância. Servidor confere origem, tarifa e validade da cotação. Cálculo automático aguarda endereço completo e saída dos campos, não consulta durante a edição nem repete sozinho após erro. Cotação válida é preservada ao voltar à confirmação; a expiração pede atualização explícita.
+
+Mapa opcional, carregado sob demanda. Localização do dispositivo exige ação do consumidor, precisão até 100 m e confirmação de correspondência ao endereço. Favoritos com apelido, escolha e remoção na conta; coordenadas confirmadas podem ser reutilizadas. Alterar rua/número/CEP invalida o ponto anterior. RLS impede equipe e terceiros de ler a agenda pessoal.
+
+Cache de geocodificação confirmada por sete dias e distância por um dia, somente no servidor. Preço usa a tarifa atual e cada consumidor recebe sua própria cotação. Consultas simultâneas iguais são agrupadas dentro da instância da função. Falhas não são guardadas como frete zero. O limite próprio de três consultas/minuto e as cotas do provedor continuam vigentes; não há promessa de disponibilidade ilimitada.
+
+**Ativação pendente:** migração `20261122133234_enderecos_favoritos_e_cache_frete.sql`, função `calcular-entrega` atualizada e frontend desta revisão. Banco operacional não foi alterado durante os testes. A interface informa quando a agenda ainda não está instalada.
 
 **Falta:** conferir os pontos físicos/origens das três unidades e comparar trajetos em campo. ViaCEP não substitui um serviço de rotas. O frete depende de origem correta, cobertura e disponibilidade do serviço. Nome, CPF, telefone e complemento não são enviados ao provedor de rotas.
 
@@ -77,6 +87,8 @@ O site publicado usava o commit `e8789b3`. A revisão visual `d56d4df` estava ap
 
 PowerPoints revisados em `Slides/Aula-Visual-2026/`, PDFs correspondentes em `output/pdf/aula-*-visual.pdf`. Os arquivos da release anterior foram preservados. Fontes e prompts acompanham as imagens. O formato integrado da apresentação foi mantido; ela não constitui a separação comercial futura.
 
+**Conferido em 22/11:** navegação das três trilhas no navegador e existência das 13 referências de imagem. Corrigida a resolução de `/apresentacao/` no Vite local, que podia cair na entrada do ERP.
+
 **Falta humano:** ensaio de fala, divisão entre os integrantes e conferência dos slides no equipamento/projetor da sala. Capturas históricas dos PowerPoints são identificadas; a aba interativa apresenta a aplicação atual.
 
 ## 8. QR Code, GitHub e Entrega 2
@@ -85,9 +97,11 @@ PowerPoints revisados em `Slides/Aula-Visual-2026/`, PDFs correspondentes em `ou
 
 **Entregue:** cartaz A4 individual e conjunto de quatro páginas (grupos 01–04), fora da navegação do app. O QR aponta somente para o portal público. Os quatro códigos foram decodificados dos PDFs renderizados e conferidos. Materiais em `output/aula/`. Os arquivos anteriores da Entrega 2, ZIP, manifesto e release permanecem disponíveis; a Entrega 1 foi mantida como histórico.
 
-**Verificações de código desta revisão:** 124 testes locais aprovados e build Vite com a base do GitHub Pages. O workflow de validação inclui testes/build/auditoria de dependências, PostgreSQL nativo e Supabase descartável. A publicação usa um workflow separado, disparado por atualização de `main`.
+**Verificações de código desta revisão:** 131 testes locais aprovados, instalação integral em dois bancos vazios e ensaio em PostgreSQL nativo. Build Vite com a base do GitHub Pages. Componentes de conta/favoritos conferidos no navegador com API sintética local, sem pedido real; isso não substitui a integração. O workflow isolado foi ampliado para testar favoritos e persistência de perfil com Auth/PostgREST reais. A publicação usa um workflow separado, disparado por atualização de `main`.
 
 **Conferência da publicação:** acompanhar o resultado do workflow de publicação antes de anunciar os links como atualizados. O histórico e os resultados ficam em Actions no GitHub.
+
+**Por que o QR ainda abre a versão antiga:** aponta para o endereço público correto; o merge/publicação anterior foi bloqueado pela revisão automática por exigir autorização explícita para atualizar `main` e o site público. Nenhum deploy foi concluído nesta revisão. Não é necessário reimprimir o QR se esse endereço for mantido. Favoritos e recuperação legada também exigem ativar a migração no Supabase.
 
 **Falta humano:** realizar o ensaio em sala, enviar o material institucional e guardar comprovante. A submissão acadêmica não foi feita em nome dos integrantes.
 
