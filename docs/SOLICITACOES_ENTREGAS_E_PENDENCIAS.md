@@ -4,9 +4,9 @@ Consolidação da conversa e do código, atualizada em 22/11/2026. As solicitaç
 
 ## Publicação autorizada em 22/11/2026
 
-PR #1 integrado em `main`, commit `0f02732`; workflow de publicação `45029614820` concluído com sucesso. Frontend novo já responde no endereço do QR, com etapas e sem atalho de equipe. As duas migrações abaixo foram aplicadas e registradas no histórico do Supabase; a função `calcular-entrega` foi publicada. As verificações preservaram os 14 pedidos e a solicitação já existentes, sem criar contas ou pedidos sintéticos no ambiente operacional. A revisão final reúne no portal as subcategorias históricas do piloto nos quatro grupos aprovados, mantendo o cadastro interno.
+PR #1 integrado em `main`, seguido da correção de agrupamento do PR #2, commit `c61d763`. Publicações `45029614820` e `45031021085` concluídas com sucesso. Frontend novo já responde no endereço do QR, com etapas e sem atalho de equipe. As duas migrações abaixo foram aplicadas e registradas no histórico do Supabase; a função `calcular-entrega` foi publicada. As verificações preservaram os 14 pedidos e a solicitação já existentes, sem criar contas ou pedidos sintéticos no ambiente operacional. A revisão final reúne no portal as subcategorias históricas do piloto nos quatro grupos aprovados, mantendo o cadastro interno.
 
-Endereço Retiro atualizado por instrução do responsável: Rua do Retiro, 1450, Jardim Paris, CEP 13209-201, Jundiaí/SP; tarifa existente R$ 1,85/km preservada. O CEP/bairro foi conferido na faixa numérica retornada pelo ViaCEP. A geocodificação real não encontrou o imóvel; o ponto preciso de origem ainda depende de confirmação do responsável. Nenhuma coordenada aproximada foi gravada como se fosse exata.
+Endereço Retiro atualizado por instrução do responsável: Rua do Retiro, 1454, Jardim Paris, CEP 13209-201, Jundiaí/SP; tarifa existente R$ 1,85/km preservada. O CEP/bairro foi conferido na faixa numérica retornada pelo ViaCEP. A geocodificação real não encontrou o imóvel; o ponto preciso de origem ainda depende de confirmação do responsável. Nenhuma coordenada aproximada foi gravada como se fosse exata.
 
 ## Situação encontrada antes desta revisão
 
@@ -103,7 +103,7 @@ PowerPoints revisados em `Slides/Aula-Visual-2026/`, PDFs correspondentes em `ou
 
 **Entregue:** cartaz A4 individual e conjunto de quatro páginas (grupos 01–04), fora da navegação do app. O QR aponta somente para o portal público. Os quatro códigos foram decodificados dos PDFs renderizados e conferidos. Materiais em `output/aula/`. Os arquivos anteriores da Entrega 2, ZIP, manifesto e release permanecem disponíveis; a Entrega 1 foi mantida como histórico.
 
-**Verificações:** 131 testes locais na revisão integrada e regressão adicional do agrupamento após ativação. Instalação integral em dois bancos vazios e ensaio em PostgreSQL nativo. Build Vite com a base do GitHub Pages. Componentes de conta/favoritos conferidos no navegador com API sintética local, sem pedido real. Workflow `45029203785` aprovado nas três frentes, incluindo Auth/PostgREST/Realtime reais, favoritos após novo login e turma de 30 consumidores. A publicação usa workflow separado, disparado por atualização de `main`.
+**Verificações:** 132 testes locais aprovados, incluindo a regressão do agrupamento após ativação. Instalação integral em dois bancos vazios e ensaio em PostgreSQL nativo. Build Vite com a base do GitHub Pages. Componentes de conta/favoritos conferidos no navegador com API sintética local, sem pedido real. Workflow `45029203785` aprovado nas três frentes, incluindo Auth/PostgREST/Realtime reais, favoritos após novo login e turma de 30 consumidores. A publicação usa workflow separado, disparado por atualização de `main`.
 
 **Conferência da publicação:** acompanhar o resultado do workflow de publicação antes de anunciar os links como atualizados. O histórico e os resultados ficam em Actions no GitHub.
 
