@@ -14,11 +14,22 @@ const categoriasPiloto = [
   [/^(COO|SOB)/, 'Sobremesas', 40],
 ]
 
-// Compatibilidade com o catálogo publicado do piloto, que ainda não retorna
-// categorias. A categoria configurada pela empresa sempre tem prioridade.
+const normalizarCategoria = valor => String(valor || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase()
+const gruposPiloto = new Map([
+  ['Lanches',10,['Lanches','Smash Burgers','Burgers Artesanais','Monte Seu Burger','Burgers Especiais','Sanduíches']],
+  ['Acompanhamentos',20,['Acompanhamentos','Croquetas','Porções']],
+  ['Bebidas',30,['Bebidas','Cervejas Artesanais','Chopp']],
+  ['Sobremesas',40,['Sobremesas']],
+].flatMap(([grupo,ordem,nomes])=>nomes.map(nome=>[normalizarCategoria(nome),[grupo,ordem]])))
+
+// O piloto tem subcategorias históricas no ERP. No portal elas compõem quatro
+// grupos; categorias personalizadas e outras empresas preservam sua configuração.
 export function prepararCatalogoPublico(itens, marca) {
   return itens.map(item => {
-    if (marca !== 'brasa-burger' || (item.categoria && item.categoria !== 'Outros')) return item
+    if (marca !== 'brasa-burger') return item
+    const grupo=gruposPiloto.get(normalizarCategoria(item.categoria))
+    if(grupo)return {...item,categoria:grupo[0],categoria_ordem:grupo[1]}
+    if(item.categoria && item.categoria !== 'Outros')return item
     const familia = categoriasPiloto.find(([padrao]) => padrao.test(String(item.sku || '').toUpperCase()))
     return familia ? {...item, categoria:familia[1], categoria_ordem:familia[2]} : item
   })

@@ -50,7 +50,7 @@ Orientações de impressão e o endereço atual estão em `output/aula/README.md
 
 ## Ativação no deploy desta revisão
 
-Quando preparada, esta revisão não foi aplicada ao banco operacional nem publicada na branch `main`. O envio para `main` dispara a publicação automática já configurada. A revisão deve passar pelas verificações da branch antes desse envio; o resultado da publicação é registrado no workflow do GitHub. A migração do banco é uma ativação independente.
+Ativação autorizada e executada em 22/11/2026: PR #1 integrado em `main`, publicação `45029614820` aprovada, duas migrações registradas no banco e função `calcular-entrega` atualizada. A verificação de RLS e permissões confirmou agenda privada e cache restrito ao servidor. Os passos abaixo registram o procedimento usado; não reaplicar essas migrações no ambiente já atualizado.
 
 1. Conferir a validação automatizada da branch, inclusive a homologação isolada com Auth, PostgREST e Realtime.
 2. Aplicar `supabase/migrations/20261116000100_cardapio_visual.sql` e depois `20261122133234_enderecos_favoritos_e_cache_frete.sql`, uma vez, após as migrações anteriores. A segunda cria favoritos privados, cache de rotas restrito ao servidor e recuperação do perfil legado. Não reinstalar `sql/instalacao/convivium-completo.sql` no banco existente.
@@ -59,7 +59,7 @@ Quando preparada, esta revisão não foi aplicada ao banco operacional nem publi
 5. Validar com contas autorizadas: consumidor envia para a unidade escolhida, equipe recebe e aceita uma vez, estoque é atualizado, status volta ao titular e outra unidade/empresa não acessa o pedido.
 6. Disponibilizar o link do portal aos alunos depois dessa validação no ambiente publicado.
 
-Até aplicar a migração, o servidor anterior não fornece os novos metadados. A interface permanece compatível: no piloto Brasa Burger, usa as famílias dos SKUs existentes para organizar Lanches, Acompanhamentos, Bebidas e Sobremesas, com ícones. Isso não cadastra produtos, não muda preços e não aplica a classificação a outras empresas. A edição dos novos campos depende da migração.
+A interface preserva a compatibilidade com o servidor anterior pelo SKU. Com os metadados ativos, reúne as subcategorias históricas do Brasa nos quatro grupos do portal. Categorias personalizadas e outras empresas preservam sua configuração. Isso não altera produtos ou preços no cadastro interno.
 
 Na primeira utilização da sessão separada, consumidores que estavam logados na versão anterior podem precisar entrar novamente no portal. As credenciais existentes permanecem válidas.
 
