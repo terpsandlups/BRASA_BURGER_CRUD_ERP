@@ -6,7 +6,7 @@ Consolidação da conversa e do código, atualizada em 22/11/2026. As solicitaç
 
 PR #1 integrado em `main`, seguido da correção de agrupamento do PR #2, commit `c61d763`. Publicações `45029614820` e `45031021085` concluídas com sucesso. Frontend novo já responde no endereço do QR, com etapas e sem atalho de equipe. As duas migrações abaixo foram aplicadas e registradas no histórico do Supabase; a função `calcular-entrega` foi publicada. As verificações preservaram os 14 pedidos e a solicitação já existentes, sem criar contas ou pedidos sintéticos no ambiente operacional. A revisão final reúne no portal as subcategorias históricas do piloto nos quatro grupos aprovados, mantendo o cadastro interno.
 
-Endereço Retiro atualizado por instrução do responsável: Rua do Retiro, 1454, Jardim Paris, CEP 13209-201, Jundiaí/SP; tarifa existente R$ 1,85/km preservada. O CEP/bairro foi conferido na faixa numérica retornada pelo ViaCEP. A geocodificação real não encontrou o imóvel; o ponto preciso de origem ainda depende de confirmação do responsável. Nenhuma coordenada aproximada foi gravada como se fosse exata.
+Endereço Retiro atualizado por instrução do responsável: Rua do Retiro, 1454, Jardim Paris, CEP 13209-201, Jundiaí/SP; tarifa existente R$ 1,85/km preservada. O CEP/bairro foi conferido na faixa numérica retornada pelo ViaCEP. Como a geocodificação não encontrou o imóvel, o responsável enviou o [ponto no Google Maps](https://maps.app.goo.gl/DWnfufuPJMW6uWoc9), que abriu exatamente esse endereço. Origem gravada e recarregada no ERP: latitude `-23.182998`, longitude `-46.900317`. A consulta real Retiro → ponto já cadastrado da unidade Eloy retornou 9.602 metros e R$ 17,76, pela tarifa de R$ 1,85/km, usando openrouteservice. A conferência não criou pedido, consumidor ou reserva de cotação. O ponto de origem do Retiro deixou de ser pendência.
 
 ## Situação encontrada antes desta revisão
 
@@ -81,7 +81,9 @@ Cache de geocodificação confirmada por sete dias e distância por um dia, some
 
 **Ativado em 22/11, após autorização:** migração `20261122133234_enderecos_favoritos_e_cache_frete.sql`, função `calcular-entrega` e frontend. RLS conferida no ambiente operacional: agenda somente do titular; cache inacessível a anon/authenticated e disponível ao servidor. Os testes de gravação/remoção usaram exclusivamente ambientes descartáveis.
 
-**Falta:** conferir os pontos físicos/origens das três unidades e comparar trajetos em campo. ViaCEP não substitui um serviço de rotas. O frete depende de origem correta, cobertura e disponibilidade do serviço. Nome, CPF, telefone e complemento não são enviados ao provedor de rotas.
+**Verificação operacional de 22/11:** origem do Retiro confirmada pelo link de mapa do responsável e salva; três unidades ativas com ponto e tarifa positiva cadastrados. Rota real Retiro → Eloy validada com pontos salvos (9.602 m; R$ 17,76). A busca apenas pelo endereço de destino da unidade Eloy não encontrou o imóvel na base gratuita; os pontos salvos permitiram calcular a rota sem inventar a localização ou o frete.
+
+**Falta:** comparar trajetos e entradas em campo e realizar o ensaio com os endereços dos participantes. ViaCEP não substitui um serviço de rotas. A cobertura por texto e as cotas do provedor continuam sendo limites; para imóvel ausente na base, o consumidor pode usar ponto confirmado ou endereço favorito com ponto salvo. Nome, CPF, telefone e complemento não são enviados ao provedor de rotas.
 
 **Pesquisa de concorrentes:** a pesquisa aprofundada com Search/Exa continua pendente da conexão desse serviço; não foi apresentada como executada. Ela não impede os ajustes do código e da interface.
 
