@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext.jsx'
 import Icon from './ui/Icon.jsx'
+import { enderecoPortal } from '../lib/linksAplicacoes.js'
 
 const links = [
   { to: '/', label: 'Painel', end: true, modulo: 'vendas', icone: 'painel' },
@@ -40,7 +41,7 @@ export default function Sidebar() {
       </div>
 
       <div className="flex-1 px-3 py-6"><Navegacao escuro /></div>
-      <a href={`${import.meta.env.BASE_URL}pedir/${usuario?.empresas?.slug || 'brasa-burger'}`} target="_blank" rel="noreferrer" className="px-6 pb-4 text-sm text-ambar underline">Abrir portal do cliente</a>
+      {enderecoPortal(usuario?.empresas?.slug) && <a href={enderecoPortal(usuario.empresas.slug)} target="_blank" rel="noopener" className="px-6 pb-4 text-sm text-ambar underline">Abrir portal do consumidor</a>}
       <p className="px-6 pb-6 text-xs text-osso/50">Por Convívium Management System</p>
     </aside>
   )

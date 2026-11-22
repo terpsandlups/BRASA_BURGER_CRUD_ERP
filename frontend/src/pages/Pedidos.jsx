@@ -187,7 +187,7 @@ function DetalhePedido({ pedido, onAvancar, onCancelar, atualizando }) {
 }
 
 export default function Pedidos() {
-  const { session, podeOperar } = useAuth()
+  const { session, usuario, podeOperar } = useAuth()
   const podeAvancar = podeOperar('vendas','criar') || podeOperar('vendas','editar')
   const [lojas, setLojas] = useState([])
   const [produtos, setProdutos] = useState([])

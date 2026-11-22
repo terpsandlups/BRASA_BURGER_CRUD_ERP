@@ -7,6 +7,8 @@ import { SkeletonLinhas } from '../components/ui/Skeleton.jsx'
 import EmptyState from '../components/ui/EmptyState.jsx'
 import Button from '../components/ui/Button.jsx'
 import { calcularDashboard, carregarTodasPaginas, intervaloDashboard } from '../lib/dashboard.js'
+import { acompanharAoVivo } from '../lib/atualizacaoAoVivo.js'
+import { dinheiro } from '../lib/pedidoApresentacao.js'
 
 const CORES_CANAL = ['#E4AE65', '#8FA6CF', '#85B99B', '#B39AC5']
 
@@ -19,6 +21,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState('')
   const [tentativa, setTentativa] = useState(0)
+  const [ultimaAtualizacao, setUltimaAtualizacao] = useState(null)
 
   useEffect(() => {
     supabase.from('lojas').select('*').eq('ativo', true).then(({ data }) => data && setLojas(data))
@@ -26,9 +29,9 @@ export default function Dashboard() {
 
   useEffect(() => {
     let ativo = true
+    let primeira = true
     async function carregar() {
-      setLoading(true)
-      setErro('')
+      if (primeira) setLoading(true)
       const intervalo = intervaloDashboard(periodo)
       try {
         const [ped, cust] = await Promise.all([
@@ -51,17 +54,18 @@ export default function Dashboard() {
         if (!ativo) return
         setPedidos(ped)
         setCustos(cust)
+        setErro('')
+        setUltimaAtualizacao(new Date())
       } catch (e) {
         if (!ativo) return
-        setPedidos([])
-        setCustos([])
         setErro(e?.message || 'Não foi possível carregar os indicadores.')
       } finally {
         if (ativo) setLoading(false)
+        primeira = false
       }
     }
-    carregar()
-    return () => { ativo = false }
+    const encerrar = acompanharAoVivo(supabase, `dashboard:${lojaFiltro}:${periodo}`, ['pedidos','itens_pedido'], carregar, {intervalo:30000})
+    return () => { ativo = false; encerrar() }
   }, [lojaFiltro, periodo, tentativa])
 
   const metrica = useMemo(() => {
@@ -73,7 +77,7 @@ export default function Dashboard() {
     <div>
       <PageHeader
         icone="painel" titulo="Painel Geral"
-        descricao="Visão consolidada da rede"
+        descricao={ultimaAtualizacao ? `Operação da empresa · atualizado às ${ultimaAtualizacao.toLocaleTimeString('pt-BR')}` : 'Visão consolidada da empresa'}
         acaoPrincipal={
           <div className="flex flex-wrap items-center gap-2">
             <select aria-label="Período" value={periodo} onChange={(e) => setPeriodo(Number(e.target.value))}
@@ -106,10 +110,10 @@ export default function Dashboard() {
       ) : (
         <>
           <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mb-6">
-            <KPICard titulo="Faturamento" valor={`R$ ${metrica.faturamentoTotal.toFixed(2)}`} />
-            <KPICard icone="entrega" titulo="Frete cobrado" valor={`R$ ${metrica.receitaFrete.toFixed(2)}`} contexto="Incluído no faturamento total" />
+            <KPICard titulo="Faturamento" valor={dinheiro(metrica.faturamentoTotal)} />
+            <KPICard icone="entrega" titulo="Frete cobrado" valor={dinheiro(metrica.receitaFrete)} contexto="Incluído no faturamento total" />
             <KPICard icone="pedido" titulo="Pedidos" valor={metrica.pedidosTotal} />
-            <KPICard icone="cartao" titulo="Ticket médio" valor={metrica.ticketMedio !== null ? `R$ ${metrica.ticketMedio.toFixed(2)}` : '—'} />
+            <KPICard icone="cartao" titulo="Ticket médio" valor={metrica.ticketMedio !== null ? dinheiro(metrica.ticketMedio) : '—'} />
             <KPICard titulo="CMV estimado" valor={metrica.cmvPercentual !== null ? `${metrica.cmvPercentual.toFixed(1)}%` : '—'} contexto={metrica.coberturaCusto !== null ? `Cobertura: ${metrica.coberturaCusto.toFixed(0)}% da receita dos itens` : 'Sem itens com custo cadastrado'} />
             <KPICard titulo="Margem bruta estimada" valor={metrica.margemPercentual !== null ? `${metrica.margemPercentual.toFixed(1)}%` : '—'} contexto={metrica.itensSemFicha > 0 ? `${metrica.itensSemFicha} item(ns) sem ficha técnica` : 'Todos os itens têm ficha técnica'} />
           </div>
@@ -122,7 +126,7 @@ export default function Dashboard() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#D8D0C4" />
                   <XAxis dataKey="dia" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(v) => [`R$ ${Number(v).toFixed(2)}`, 'Faturamento']} />
+                  <Tooltip formatter={(v) => [dinheiro(v), 'Faturamento']} />
                   <Line type="monotone" dataKey="valor" stroke="#E4AE65" strokeWidth={2} dot={periodo === 1} />
                 </LineChart>
               </ResponsiveContainer>
@@ -135,7 +139,7 @@ export default function Dashboard() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#D8D0C4" />
                   <XAxis dataKey="loja" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(v) => [`R$ ${Number(v).toFixed(2)}`, 'Faturamento']} />
+                  <Tooltip formatter={(v) => [dinheiro(v), 'Faturamento']} />
                   <Bar dataKey="faturamento" fill="#E4AE65" radius={[2, 2, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -158,7 +162,7 @@ export default function Dashboard() {
                     <tr key={p.nome} className="border-b border-borda/50 last:border-0">
                       <td className="py-1.5">{p.nome}</td>
                       <td className="py-1.5 text-right">{p.quantidade}</td>
-                      <td className="py-1.5 text-right">R$ {p.receita.toFixed(2)}</td>
+                      <td className="py-1.5 text-right">{dinheiro(p.receita)}</td>
                     </tr>
                   ))}
                 </tbody>

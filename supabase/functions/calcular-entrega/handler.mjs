@@ -44,7 +44,7 @@ export function precificarDistancia(metros, valorKm, provedor) {
   }
 }
 
-export function criarHandler({ apiKey, provider = 'openrouteservice', allowedOrigins, criarCliente, salvarCotacao, fetchFn = fetch }) {
+export function criarHandler({ apiKey, provider = 'openrouteservice', allowedOrigins, criarCliente, salvarCotacao, reutilizar, fetchFn = fetch }) {
   return async request => {
     const origin = request.headers.get('origin')
     const headers = { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', Vary: 'Origin' }
@@ -97,7 +97,7 @@ export function criarHandler({ apiKey, provider = 'openrouteservice', allowedOri
       const { data: config, error } = await client.rpc(portal ? 'preparar_consulta_rota_mobile' : 'preparar_consulta_rota', { p_loja: body.loja_id })
       if (error) {
         if (error.code === '42501') throw new Falha(403, 'Sem permissão para consultar rotas nesta unidade.')
-        if (error.code === 'P0001') throw new Falha(429, 'Limite de consultas atingido. Aguarde antes de tentar novamente.')
+        if (error.code === 'P0001') throw new Falha(429, 'Você fez várias consultas de frete em sequência. Aguarde um minuto e tente novamente. A cotação não é atualizada enquanto você digita.', {codigo:'limite_aplicacao',tentar_em_segundos:60})
         if (error.code === '22023') throw new Falha(422, portal ? 'Entrega indisponível nesta unidade. Escolha outra unidade ou retirada.' : 'Salve o endereço e a tarifa da loja antes de consultar.')
         throw new Falha(503, 'Não foi possível preparar a consulta. Confira a instalação da migração de rotas.')
       }
@@ -107,7 +107,7 @@ export function criarHandler({ apiKey, provider = 'openrouteservice', allowedOri
         return responder(200, { ...centro, apenas_centro: true })
       }
       if (provider === 'openrouteservice') {
-        const rota = await consultarORS({ apiKey, origem: config, destino: body.destino, textoOrigem: origem, textoDestino: destino, fetchFn })
+        const rota = await consultarORS({ apiKey, origem: config, destino: body.destino, textoOrigem: origem, textoDestino: destino, fetchFn, reutilizar })
         const calculo = precificarDistancia(rota.metros, config.valor_km, 'openrouteservice')
         let cotacao = {}
         if (cotarPedido) {
@@ -132,7 +132,7 @@ export function criarHandler({ apiKey, provider = 'openrouteservice', allowedOri
         }
         return responder(200, { ...calculo, ...cotacao, origem, destino,
           origem_localizada: rota.origemLocalizada, destino_localizado: rota.destinoLocalizado,
-          origem_modo: rota.origemModo, destino_modo: rota.destinoModo })
+          origem_modo: rota.origemModo, destino_modo: rota.destinoModo, ponto_destino: rota.pontoDestino })
       }
       let resposta
       try {
@@ -151,7 +151,7 @@ export function criarHandler({ apiKey, provider = 'openrouteservice', allowedOri
     } catch (error) {
       // Não devolver erros brutos do provedor ou do banco, nem registrar endereços/chaves.
       return responder(error instanceof Falha ? error.status : 500,
-        { error: error instanceof Falha ? error.message : 'Não foi possível calcular a entrega.' })
+        { error: error instanceof Falha ? error.message : 'Não foi possível calcular a entrega.', ...(error instanceof Falha ? error.detalhes : {}) })
     }
   }
 }

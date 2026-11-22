@@ -5,7 +5,9 @@ import PageHeader from '../components/layout/PageHeader.jsx'
 import Button from '../components/ui/Button.jsx'
 import SidePanel from '../components/layout/SidePanel.jsx'
 import EditarFicha from '../components/EditarFicha.jsx'
+import EditarCardapio from '../components/EditarCardapio.jsx'
 import { validarVariacao, validarQuantidadeFicha } from '../lib/fichaTecnica.js'
+import { dinheiro } from '../lib/pedidoApresentacao.js'
 
 const TONS = {
   oliva: 'border-oliva text-oliva',
@@ -41,6 +43,8 @@ export default function Produtos() {
   const [filtroCategoria, setFiltroCategoria] = useState('todas')
   const [expandido, setExpandido] = useState(null)
   const [editandoId, setEditandoId] = useState(null)
+  const [cardapioSku, setCardapioSku] = useState(null)
+  const produtoCardapio = produtos.find(p => p.sku === cardapioSku)
   const variacaoEditada = variacoes.find(v => v.id === editandoId)
 
   const [mostrarNovoProduto, setMostrarNovoProduto] = useState(false)
@@ -283,6 +287,7 @@ export default function Produtos() {
         </form>
       )}
 
+      <SidePanel aberto={!!produtoCardapio} onFechar={() => setCardapioSku(null)} titulo="Cardápio do consumidor">{produtoCardapio && <EditarCardapio key={produtoCardapio.sku} produto={produtoCardapio} empresaId={usuario.empresa_id} categorias={categorias} onSalvo={async () => { await carregar(); setCardapioSku(null) }} />}</SidePanel>
       <div className="ui-chip-list mb-6" role="group" aria-label="Categorias de produtos">
         <button aria-pressed={filtroCategoria === 'todas'} onClick={() => setFiltroCategoria('todas')}
           className={`px-3 py-1.5 text-xs ${filtroCategoria === 'todas' ? 'bg-ambar text-carvao' : 'bg-white border border-superficie2/30'}`}>
@@ -332,6 +337,7 @@ export default function Produtos() {
 
             {expandido === produto.sku && (
               <div className="px-5 pb-5">
+                <button type="button" disabled={!podeOperar('produtos','editar')} onClick={() => setCardapioSku(produto.sku)} className="text-sm text-ambar underline mr-5 mb-4">Editar apresentação no cardápio</button>
                 <button
                   disabled={!podeOperar('produtos','editar')}
                   onClick={() => alternarAtivo(produto)}
@@ -346,10 +352,10 @@ export default function Produtos() {
                       <div key={v.id} className="ui-variant border border-superficie2/30 p-4">
                         <p className="font-medium">{v.nome_variacao}</p>
                         <button onClick={() => setEditandoId(v.id)} className="text-xs text-ambar mt-2">Ver / editar variação e ficha</button>
-                        <p className="text-sm text-fumaca mt-1">Venda: R$ {Number(v.preco_venda).toFixed(2)}</p>
+                        <p className="text-sm text-fumaca mt-1">Venda: {dinheiro(v.preco_venda)}</p>
                         {custo ? (
                           <>
-                            <p className="text-sm text-fumaca">Custo: R$ {Number(custo.custo_ficha_tecnica).toFixed(2)}</p>
+                            <p className="text-sm text-fumaca">Custo: {dinheiro(custo.custo_ficha_tecnica)}</p>
                             <p className={`text-sm font-medium mt-1 ${custo.cmv_percentual > 35 ? 'text-brasa' : 'text-oliva'}`}>
                               CMV: {custo.cmv_percentual}%
                             </p>
@@ -416,7 +422,7 @@ export default function Produtos() {
                     <div className="flex flex-wrap gap-2">
                       {adicionaisDoProduto(produto.sku).map((a) => (
                         <span key={a.id} className="text-xs bg-superficie text-osso px-3 py-1.5">
-                          {a.nome} · +R$ {Number(a.preco_adicional).toFixed(2)}
+                          {a.nome} · +{dinheiro(a.preco_adicional)}
                         </span>
                       ))}
                     </div>

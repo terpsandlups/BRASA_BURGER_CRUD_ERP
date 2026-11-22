@@ -1,5 +1,5 @@
 {
-  "data": "2026-10-29",
+  "data": "2026-11-22",
   "ambiente": "PostgreSQL nativo local, dois bancos vazios e conexões independentes; contrato Auth de teste",
   "resultados": [
     "Instalação integral em banco vazio 1: aprovada",

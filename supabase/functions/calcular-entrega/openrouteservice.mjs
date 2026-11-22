@@ -99,7 +99,7 @@ export async function sugerirCentroMapa({ apiKey, endereco, textoEndereco, fetch
     try {
       resposta = await fetchFn(url.toString(), { signal: AbortSignal.timeout(12000), headers: { Authorization: apiKey } })
     } catch { throw new Falha(502, 'O serviço de localização não respondeu. Mova o mapa manualmente.') }
-    if (resposta.status === 429) throw new Falha(429, 'Cota gratuita de localização atingida. Aguarde a renovação.')
+    if (resposta.status === 429) throw new Falha(429, 'O serviço de localização está no limite de uso. Aguarde um minuto e tente novamente. Se persistir, contate a loja ou escolha retirada.', {codigo:'limite_provedor',tentar_em_segundos:60})
     if (!resposta.ok) throw new Falha(502, 'O serviço de localização está indisponível. Mova o mapa manualmente.')
     let data
     try { data = await resposta.json() } catch { throw new Falha(502, 'Resposta inválida do serviço de localização.') }
@@ -114,12 +114,12 @@ export async function sugerirCentroMapa({ apiKey, endereco, textoEndereco, fetch
   return { latitude, longitude, precisao }
 }
 
-export async function consultarORS({ apiKey, origem, destino, textoOrigem, textoDestino, fetchFn }) {
+export async function consultarORS({ apiKey, origem, destino, textoOrigem, textoDestino, fetchFn, reutilizar = (_tipo,_dados,calcular)=>calcular() }) {
   const signal = AbortSignal.timeout(12000)
   async function consultar(url, options = {}) {
     try {
       const resposta = await fetchFn(url, { ...options, signal, headers: { Authorization: apiKey, 'Content-Type': 'application/json' } })
-      if (resposta.status === 429) throw new Falha(429, 'Cota gratuita do serviço de rotas atingida. Aguarde a renovação; não haverá troca para um serviço pago.')
+      if (resposta.status === 429) throw new Falha(429, 'O serviço de rotas está no limite de uso. Aguarde um minuto e tente novamente. Se persistir, contate a loja ou escolha retirada.', {codigo:'limite_provedor',tentar_em_segundos:60})
       if (!resposta.ok) throw new Falha(502, 'Serviço gratuito indisponível. Confira a chave e as cotas do openrouteservice.')
       return await resposta.json()
     } catch (error) {
@@ -127,9 +127,11 @@ export async function consultarORS({ apiKey, origem, destino, textoOrigem, texto
       throw new Falha(502, 'O serviço gratuito não respondeu. Nenhuma taxa foi calculada.')
     }
   }
-  async function localizar(texto, esperado, etapa) {
+  async function localizar(consultaTexto, esperado, etapa) {
+    const identidade=['endereco','numero','bairro','cidade','estado','cep'].map(c=>c==='cep' ? normalizar(esperado[c]) : texto(esperado[c]))
+    return reutilizar('geocodigo',identidade,async()=>{
     const url = new URL('https://api.heigit.org/pelias/v1/search')
-    url.searchParams.set('text', texto)
+    url.searchParams.set('text', consultaTexto)
     url.searchParams.set('boundary.country', 'BRA')
     url.searchParams.set('layers', 'address')
     url.searchParams.set('size', '5')
@@ -151,6 +153,7 @@ export async function consultarORS({ apiKey, origem, destino, textoOrigem, texto
     estruturada.searchParams.set('layers', 'address')
     estruturada.searchParams.set('size', '5')
     return selecionarEndereco(await consultar(estruturada.toString()), esperado, etapa)
+    })
   }
   // Sem retries: até quatro geocodificações e uma rota por cálculo.
   const origemPonto = pontoManual(origem, 'Endereço da loja (origem)')
@@ -159,6 +162,7 @@ export async function consultarORS({ apiKey, origem, destino, textoOrigem, texto
     { ...await localizar(textoOrigem, origem, 'Endereço da loja (origem)'), modo: 'endereco_confirmado' }
   const chegada = destinoPonto ||
     { ...await localizar(textoDestino, destino, 'Endereço de entrega (destino)'), modo: 'endereco_confirmado' }
+  const metros=await reutilizar('rota',[partida.coordenadas,chegada.coordenadas],async()=>{
   const data = await consultar('https://api.heigit.org/openrouteservice/v2/directions/driving-car/json', {
     method: 'POST', body: JSON.stringify({ coordinates: [partida.coordenadas, chegada.coordenadas],
       units: 'm', instructions: false, geometry: false }),
@@ -167,6 +171,9 @@ export async function consultarORS({ apiKey, origem, destino, textoOrigem, texto
   if (typeof distancia !== 'number' || !Number.isFinite(distancia) || distancia <= 0 || distancia > 1000000) {
     throw new Falha(422, 'Nenhuma rota válida foi encontrada. Nenhuma taxa foi calculada.')
   }
-  return { metros: Math.round(distancia), origemLocalizada: partida.endereco, destinoLocalizado: chegada.endereco,
-    origemModo: partida.modo, destinoModo: chegada.modo }
+  return Math.round(distancia)
+  })
+  return { metros, origemLocalizada: partida.endereco, destinoLocalizado: chegada.endereco,
+    origemModo: partida.modo, destinoModo: chegada.modo,
+    pontoDestino:{latitude:chegada.coordenadas[1],longitude:chegada.coordenadas[0]} }
 }

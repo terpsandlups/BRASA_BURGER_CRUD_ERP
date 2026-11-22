@@ -8,6 +8,7 @@ import {aplicarBootstrap} from './bootstrap.mjs';
 import {montarSolicitacao} from '../src/lib/portalCliente.js';
 import {criarEnvioTransacional} from '../src/lib/pedidoTransacional.js';
 import {acessarContaCliente} from '../src/lib/acessoCliente.js';
+import {opcoesSessao} from '../src/lib/sessoesAplicacoes.js';
 import {criarAcessoCliente} from '../../supabase/functions/acesso-cliente/handler.mjs';
 
 // A homologação só aceita a stack LOCAL criada pelo CLI no runner descartável.
@@ -18,7 +19,7 @@ const url=vars.API_URL;const dbUrl=vars.DB_URL;
 for(const valor of [url,dbUrl]) if(!valor || !['127.0.0.1','localhost','[::1]'].includes(new URL(valor).hostname)) throw new Error('A homologação recusa projetos remotos.');
 const owner=new pg.Client({connectionString:dbUrl});await owner.connect();
 const clients=[];const resultado=[];
-const client=(key)=>{const c=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});clients.push(c);return c};
+const client=(key,auth={})=>{const c=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false,...auth}});clients.push(c);return c};
 try{
  assert.equal((await owner.query("SELECT to_regclass('public.empresas') AS tabela")).rows[0].tabela,null,'Use stack vazia.');
  await aplicarBootstrap(sql=>owner.query(sql));
@@ -30,8 +31,10 @@ try{
   if(error)throw error;users[tipo]=data.user;
  }
  await owner.query("SELECT erp_privado.provisionar_primeiro_master('master@example.test')");
- const entrar=async(tipo)=>{const c=client(anon);const {error}=await c.auth.signInWithPassword({email:tipo+'@example.test',password:senha});if(error)throw error;return c};
- const admin=await entrar('master'),consumer=client(anon),admin2=await entrar('master');
+ const armazenamento=new Map();
+ const storage={getItem:chave=>armazenamento.get(chave) ?? null,setItem:(chave,valor)=>armazenamento.set(chave,valor),removeItem:chave=>armazenamento.delete(chave)};
+ const entrar=async(tipo,auth)=>{const c=client(anon,auth);const {error}=await c.auth.signInWithPassword({email:tipo+'@example.test',password:senha});if(error)throw error;return c};
+ const admin=await entrar('master',{...opcoesSessao('erp','/').auth,persistSession:true,storage,storageKey:'convivium-erp-teste'}),consumer=client(anon,{...opcoesSessao('consumidor','/pedir/brasa-burger').auth,persistSession:true,storage}),admin2=await entrar('master');
  const handler=criarAcessoCliente({allowedOrigins:['http://localhost:5173'],
   resolverConta:async cpf=>{const {data,error}=await service.rpc('preparar_login_cliente',{p_cpf:cpf});if(error)throw error;return data},
   autenticar:(email,password)=>client(anon).auth.signInWithPassword({email,password}),
@@ -47,7 +50,11 @@ try{
  const perfil=await owner.query('SELECT id FROM public.usuarios WHERE id=$1',[cadastro.user.id]);
  assert.equal(perfil.rows.length,0,'Cadastro público nunca concede perfil de equipe.');
  resultado.push('Cadastro público real pelo módulo do portal cria sessão de consumidor sem acesso de equipe');
- await consumer.auth.signOut();
+ assert.ok(armazenamento.has('convivium-erp-teste') && armazenamento.has('convivium-consumidor-v1'));
+ await consumer.auth.signOut({scope:'local'});
+ assert.equal((await admin.auth.getSession()).data.session.user.id,users.master.id,'Sair do consumidor deve preservar a sessão da equipe no mesmo armazenamento.');
+ assert.ok(armazenamento.has('convivium-erp-teste'));assert.equal(armazenamento.has('convivium-consumidor-v1'),false);
+ resultado.push('Portal e ERP persistem sessões distintas no mesmo armazenamento; sair do consumidor preserva a equipe');
  await acessarContaCliente(consumer.auth,{cadastro:false,email:'529.982.247-25',senha},functions);
  const proprio=await consumer.rpc('meu_cadastro_cliente');if(proprio.error)throw proprio.error;assert.equal(proprio.data.cpf,'52998224725');
  resultado.push('CPF e senha passam pelo handler do servidor, Auth real e instalação da sessão no módulo do portal');
@@ -62,6 +69,17 @@ try{
   try{card=await rpc(consumer,'cardapio_mobile',{p_slug:'brasa-burger'});break}catch(e){if(n===14)throw e;await new Promise(r=>setTimeout(r,1000))}
  }
  assert.equal(card.lojas.length,3);assert.equal(card.itens.length,1);
+ const enderecoFavorito={apelido:'Casa',cep:'13201000',endereco:'Rua Teste Isolado',numero:'10',complemento:'',bairro:'Centro',cidade:'Jundiaí',estado:'SP',latitude:-23.18,longitude:-46.93};
+ const favorito=await consumer.from('enderecos_consumidor').insert(enderecoFavorito).select().single();if(favorito.error)throw favorito.error;
+ assert.equal(favorito.data.usuario_id,cadastro.user.id);
+ const agendaEquipe=await admin.from('enderecos_consumidor').select('id');if(agendaEquipe.error)throw agendaEquipe.error;assert.equal(agendaEquipe.data.length,0);
+ const alterarDono=await consumer.from('enderecos_consumidor').update({usuario_id:users.master.id}).eq('id',favorito.data.id);assert.ok(alterarDono.error);
+ const editarFavorito=await consumer.from('enderecos_consumidor').update({apelido:'Trabalho'}).eq('id',favorito.data.id).select().single();if(editarFavorito.error)throw editarFavorito.error;assert.equal(editarFavorito.data.apelido,'Trabalho');
+ await consumer.auth.signOut({scope:'local'});await acessarContaCliente(consumer.auth,{cadastro:false,email:'529.982.247-25',senha},functions);
+ const favoritoAposLogin=await consumer.from('enderecos_consumidor').select().eq('id',favorito.data.id).single();if(favoritoAposLogin.error)throw favoritoAposLogin.error;assert.equal(favoritoAposLogin.data.apelido,'Trabalho');
+ const perfilAposLogin=await consumer.rpc('meu_cadastro_cliente');if(perfilAposLogin.error)throw perfilAposLogin.error;assert.equal(perfilAposLogin.data.nome,'Consumidor Sintético');assert.equal(perfilAposLogin.data.telefone,'11999999999');
+ const removerFavorito=await consumer.from('enderecos_consumidor').delete().eq('id',favorito.data.id).select('id');if(removerFavorito.error)throw removerFavorito.error;assert.equal(removerFavorito.data.length,1);
+ resultado.push('Conta real local preserva nome/telefone e favoritos após novo login; RLS impede leitura pela equipe e troca de titular');
  const v=card.itens[0].id;
  resultado.push('Auth real local e catálogo via PostgREST: três unidades e um produto sintético');
  const payload=montarSolicitacao({lojaId:loja,tipo:'presencial',pagamento:'pix',cliente:{nome:'Consumidor Sintético',cpf:'52998224725',telefone:'11999999999'},itens:[{id:v,preco:27.9,quantidade:2,extras:[]}],endereco:{},observacoes:'Homologação E2',troco:''});

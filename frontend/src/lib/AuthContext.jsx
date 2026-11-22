@@ -62,7 +62,7 @@ export function AuthProvider({ children }) {
   }
 
   async function sair() {
-    const { error } = await supabase.auth.signOut()
+    const { error } = await supabase.auth.signOut({ scope: 'local' })
     if (error) throw error
   }
 

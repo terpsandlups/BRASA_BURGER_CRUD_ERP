@@ -34,6 +34,8 @@ before(async () => {
     '../../supabase/migrations/20261025004910_empresas_acesso_frete_cliente.sql',
     '../../supabase/migrations/20261106015840_cadastro_cpf_tempo_real.sql',
     '../../supabase/migrations/20261111223639_cadastro_cpf_sem_email.sql',
+    '../../supabase/migrations/20261116000100_cardapio_visual.sql',
+    '../../supabase/migrations/20261122133234_enderecos_favoritos_e_cache_frete.sql',
   ]) await db.exec(await sql(path))
 })
 after(async () => { await db?.close() })
@@ -66,6 +68,49 @@ function dadosMobile() {
 const solicitar = (payload = dadosMobile(), chave = randomUUID()) => valor('SELECT enviar_solicitacao_mobile($1,$2::jsonb)', [chave,JSON.stringify(payload)])
 const decidirMobile = (id, acao, cotacao = null, motivo = null) => valor('SELECT decidir_solicitacao_mobile($1,$2,$3,$4)', [id,acao,motivo,cotacao])
 const administrar=(acao,dados)=>valor('SELECT administrar_plataforma($1,$2::jsonb)',[acao,JSON.stringify(dados)])
+
+test('conta antiga: recupera dados próprios e mantém CPF imutável sem acessar outro titular',async()=>{
+  await contaMobile()
+  assert.equal(await valor('SELECT meu_cadastro_cliente()'),null)
+  await solicitar()
+  await db.exec('SET LOCAL ROLE authenticated')
+  const cadastro=await valor('SELECT meu_cadastro_cliente()')
+  assert.equal(cadastro.nome,'Cliente Mobile');assert.equal(cadastro.telefone,'11999999999')
+  assert.equal((await valor('SELECT meu_cadastro_cliente()')).cpf,'52998224725')
+  await rejeita("SELECT cadastrar_perfil_cliente('11144477735','Outra Pessoa','11999999999')",[],/CPF vinculado/)
+  await db.exec('RESET ROLE')
+  const outro=randomUUID()
+  await db.query('INSERT INTO auth.users(id) VALUES($1)',[outro])
+  await db.query('UPDATE auth.users SET raw_user_meta_data=$1::jsonb WHERE id=$2',[JSON.stringify({...cadastro}),outro])
+  await db.query("SELECT set_config('request.jwt.claim.sub',$1,true)",[outro]);await db.exec('SET LOCAL ROLE authenticated')
+  assert.equal(await valor('SELECT meu_cadastro_cliente()'),null,'CPF ocupado não pode importar dados da outra conta')
+})
+
+test('conta antiga: recupera metadados pessoais completos sem criar acesso ao ERP',async()=>{
+  await contaMobile()
+  await db.query('UPDATE auth.users SET raw_user_meta_data=$1::jsonb WHERE id=$2',[JSON.stringify({cpf:'52998224725',nome:'Nome Salvo',telefone:'11999999999',master:true}),mobileUser])
+  await db.exec('SET LOCAL ROLE authenticated')
+  assert.equal((await valor('SELECT meu_cadastro_cliente()')).nome,'Nome Salvo')
+  assert.equal(Number(await valor('SELECT count(*) FROM usuarios')),0)
+})
+
+test('favoritos: CRUD só do titular, bloqueia troca de dono e esconde agenda de equipe/terceiros',async()=>{
+  await contaMobile();await db.exec('SET LOCAL ROLE authenticated')
+  const id=await valor("INSERT INTO enderecos_consumidor(apelido,cep,endereco,numero,bairro,cidade,estado) VALUES('Casa','13201000','Rua Teste','10','Centro','Jundiaí','SP') RETURNING id")
+  assert.equal(await valor('SELECT apelido FROM enderecos_consumidor WHERE id=$1',[id]),'Casa')
+  await db.query("UPDATE enderecos_consumidor SET apelido='Trabalho' WHERE id=$1",[id])
+  await rejeita('UPDATE enderecos_consumidor SET usuario_id=$1 WHERE id=$2',[admin,id],/row-level security/)
+  await rejeita("INSERT INTO enderecos_consumidor(usuario_id,apelido,cep,endereco,numero,bairro,cidade,estado) VALUES($1,'Falso','13201000','Rua','10','Centro','Jundiaí','SP')",[admin],/row-level security/)
+  await rejeita('SELECT * FROM cache_rotas_entrega',[],/permission denied/)
+  await db.exec('RESET ROLE');await db.query("SELECT set_config('request.jwt.claim.sub',$1,true)",[admin]);await db.exec('SET LOCAL ROLE authenticated')
+  assert.equal(Number(await valor('SELECT count(*) FROM enderecos_consumidor')),0)
+  assert.equal((await db.query('DELETE FROM enderecos_consumidor WHERE id=$1',[id])).affectedRows,0)
+  await db.exec('RESET ROLE');await db.query("SELECT set_config('request.jwt.claim.sub',$1,true)",[mobileUser]);await db.exec('SET LOCAL ROLE authenticated')
+  assert.equal(await valor('SELECT apelido FROM enderecos_consumidor'),'Trabalho')
+  await db.query('DELETE FROM enderecos_consumidor WHERE id=$1',[id]);assert.equal(Number(await valor('SELECT count(*) FROM enderecos_consumidor')),0)
+  await db.exec('RESET ROLE; SET LOCAL ROLE anon')
+  await rejeita('SELECT * FROM enderecos_consumidor',[],/permission denied/)
+})
 
 test('cliente CPF: cadastro é único, privado e nunca cria usuário da equipe',async()=>{
   await db.query("INSERT INTO auth.users(id,email,raw_user_meta_data) VALUES($1,'cliente@example.test',$2)",[mobileUser,JSON.stringify({cpf:'52998224725',nome:'Consumidor Teste',telefone:'11999999999'})])
@@ -151,6 +196,25 @@ test('empresas: master cadastra empresa/unidade, troca contexto e CPF se repete 
   assert.equal(catalogo.lojas.length,1);assert.equal(catalogo.itens.length,0)
   await administrar('selecionar_empresa',{id:'a0000000-0000-0000-0000-000000000001'})
   assert.equal(await valor("SELECT nome FROM clientes WHERE cpf='12345678900'"),'Cliente fictício')
+})
+
+test('cardápio público preserva preço e metadados sem cruzar empresas',async()=>{
+  await db.exec("ALTER TABLE produtos ADD COLUMN descricao text, ADD COLUMN nome_comercial text, ADD COLUMN categoria_id uuid")
+  await db.query("INSERT INTO categorias(id,nome) VALUES('90000000-0000-0000-0000-000000000001','Lanches')")
+  await db.query("UPDATE produtos SET descricao='Receita da casa',nome_comercial='Burger da Casa',categoria_id='90000000-0000-0000-0000-000000000001',imagem_url='https://example.test/burger.webp',destaque=true WHERE sku='LAN001'")
+  const antes=await valor("SELECT cardapio_mobile('brasa-burger')")
+  await administrar('empresa',{nome:'Outra marca',slug:'outra-marca'})
+  await db.exec('SET LOCAL ROLE anon')
+  const depois=await valor("SELECT cardapio_mobile('brasa-burger')")
+  assert.equal(depois.itens.length,antes.itens.length)
+  assert.equal(depois.itens[0].preco,antes.itens[0].preco)
+  assert.equal(depois.itens[0].nome,'Burger da Casa')
+  assert.equal(depois.itens[0].categoria,'Lanches')
+  assert.equal(depois.itens[0].destaque,true)
+  assert.equal(depois.itens[0].imagem_url,'https://example.test/burger.webp')
+  assert.equal(depois.itens[0].descricao,'Receita da casa')
+  assert.equal((await valor("SELECT cardapio_mobile('outra-marca')")).itens.length,0)
+  await rejeita('SELECT * FROM produtos',[],/permission denied/)
 })
 
 test('empresas: administrador da marca vê suas unidades, gerente vê só a sua e não provisiona contas',async()=>{

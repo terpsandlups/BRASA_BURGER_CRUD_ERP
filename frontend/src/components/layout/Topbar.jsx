@@ -1,6 +1,7 @@
 import { useAuth } from '../../lib/AuthContext.jsx'
 import { useEffect, useState } from 'react'
 import Icon from '../ui/Icon.jsx'
+import { enderecoPortal } from '../../lib/linksAplicacoes.js'
 
 export default function Topbar({ onAbrirMenu, menuAberto }) {
   const { usuario, sair } = useAuth()
@@ -30,6 +31,7 @@ export default function Topbar({ onAbrirMenu, menuAberto }) {
       </div>
 
       <div className="flex items-center gap-3 min-w-0">
+        {enderecoPortal(usuario?.empresas?.slug) && <a href={enderecoPortal(usuario.empresas.slug)} target="_blank" rel="noopener" className="text-xs text-ambar underline hidden sm:inline">Portal do consumidor ↗</a>}
         <div className="text-right leading-tight min-w-0">
           <p className="text-sm font-medium text-texto">{usuario?.nome}</p>
           <p className="text-xs text-fumaca truncate max-w-44 sm:max-w-none">

@@ -1,30 +1,45 @@
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import CamposEndereco from './CamposEndereco.jsx'
-import MapaPonto from './MapaPonto.jsx'
 import { supabase } from '../lib/supabaseClient.js'
+import { chaveCotacao, enderecoCompleto, pontoFavorito, pontoDoDispositivo } from '../lib/cotacaoEntrega.js'
+const MapaPonto = lazy(()=>import('./MapaPonto.jsx'))
 
 export default function ConsultaEntrega({ lojaId, pontoSalvo, origemPendente, modoPedido = false,
-  clienteCpf = '', destinoInicial = {}, onCotacao, onInvalidar, portal = false, automatico = false }) {
-  const [destino, setDestino] = useState(destinoInicial)
-  const [ponto, setPonto] = useState(null)
-  const [pontoConfirmado, setPontoConfirmado] = useState(false)
+  clienteCpf = '', destinoInicial = {}, cotacaoInicial = null, onCotacao, onInvalidar, portal = false, automatico = false, clienteApi = supabase }) {
+  const inicialValida = cotacaoInicial && Date.parse(cotacaoInicial.expira_em)>Date.now() ? cotacaoInicial : null
+  const [destino, setDestino] = useState(()=>Object.fromEntries(['cep','endereco','numero','complemento','bairro','cidade','estado'].map(c=>[c,destinoInicial[c] || ''])))
+  const [ponto, setPonto] = useState(()=>pontoFavorito(destinoInicial))
+  const [pontoConfirmado, setPontoConfirmado] = useState(()=>!!pontoFavorito(destinoInicial))
+  const [mostrarMapa,setMostrarMapa] = useState(!portal)
+  const [editando,setEditando] = useState(false)
+  const [localizando,setLocalizando] = useState(false)
+  const [aguardarAte,setAguardarAte] = useState(0)
   const [centroMapa, setCentroMapa] = useState(null)
   const [buscandoMapa, setBuscandoMapa] = useState(false)
   const [erroMapa, setErroMapa] = useState('')
-  const [resultado, setResultado] = useState(null)
+  const [resultado, setResultado] = useState(inicialValida)
   const [erro, setErro] = useState('')
   const [consultando, setConsultando] = useState(false)
   const trava = useRef(false)
   const versao = useRef(0)
+  const ultimaTentativa = useRef(inicialValida ? chaveCotacao(lojaId,destinoInicial,pontoFavorito(destinoInicial)) : '')
+  const callbacks=useRef({onCotacao,onInvalidar})
+  callbacks.current={onCotacao,onInvalidar}
+  const assinatura=chaveCotacao(lojaId,destino,ponto)
   useEffect(() => () => { versao.current += 1 }, [])
   useEffect(() => {
-    if (!automatico || !lojaId || !/^\d{8}$/.test(String(destino.cep || '').replace(/\D/g,'')) || ['cep','endereco','numero','bairro','cidade','estado'].some(c => !String(destino[c] || '').trim()) || (ponto && !pontoConfirmado)) return
-    const timer = setTimeout(() => consultar({ preventDefault() {} }), 1000)
+    if (!automatico || editando || !lojaId || !enderecoCompleto(destino) || (ponto && !pontoConfirmado) || aguardarAte>Date.now() || ultimaTentativa.current===assinatura) return
+    const timer = setTimeout(() => consultar({ preventDefault() {} }), 1200)
     return () => clearTimeout(timer)
-  }, [automatico, lojaId, destino, ponto, pontoConfirmado])
+  }, [automatico, editando, assinatura, pontoConfirmado, aguardarAte])
+  useEffect(()=>{
+    if(!aguardarAte)return
+    const timer=setTimeout(()=>setAguardarAte(0),Math.max(0,aguardarAte-Date.now()))
+    return()=>clearTimeout(timer)
+  },[aguardarAte])
   useEffect(() => {
     if (!automatico || !resultado?.expira_em) return
-    const timer=setTimeout(()=>{ onInvalidar?.();setResultado(null);setDestino(d=>({...d})) },Math.max(0,Date.parse(resultado.expira_em)-Date.now()))
+    const timer=setTimeout(()=>{ callbacks.current.onInvalidar?.();setResultado(null);setErro('A cotação expirou. Clique em calcular para atualizar o frete.') },Math.max(0,Date.parse(resultado.expira_em)-Date.now()))
     return ()=>clearTimeout(timer)
   },[automatico,resultado])
 
@@ -38,19 +53,19 @@ export default function ConsultaEntrega({ lojaId, pontoSalvo, origemPendente, mo
   }
 
   async function buscarNoMapa() {
-    if (consultando || buscandoMapa || origemPendente) return
+    if (consultando || buscandoMapa || origemPendente || aguardarAte>Date.now()) return
     onInvalidar?.()
     const atual = ++versao.current
     setBuscandoMapa(true)
     setErroMapa('')
     setResultado(null)
     try {
-      const { data, error } = await supabase.functions.invoke('calcular-entrega', {
+      const { data, error } = await clienteApi.functions.invoke('calcular-entrega', {
         body: { acao: 'sugerir_mapa', ...(portal ? { portal:true } : {}), loja_id: lojaId, destino },
       })
       if (error) {
         let mensagem = 'Não foi possível localizar a região. Mova o mapa manualmente.'
-        try { mensagem = (await error.context?.json())?.error || mensagem } catch { /* resposta não JSON */ }
+        try { const falha=await error.context?.json();mensagem=falha?.error || mensagem;if(falha?.tentar_em_segundos)setAguardarAte(Date.now()+falha.tentar_em_segundos*1000) } catch { /* resposta não JSON */ }
         throw new Error(mensagem)
       }
       if (!data?.apenas_centro || !Number.isFinite(data.latitude) || !Number.isFinite(data.longitude)) {
@@ -68,7 +83,10 @@ export default function ConsultaEntrega({ lojaId, pontoSalvo, origemPendente, mo
 
   async function consultar(event) {
     event.preventDefault()
-    if (trava.current || origemPendente || (ponto && !pontoConfirmado)) return
+    if (trava.current || origemPendente || (ponto && !pontoConfirmado) || aguardarAte>Date.now()) return
+    if(resultado && ultimaTentativa.current===assinatura && (!resultado.expira_em || Date.parse(resultado.expira_em)>Date.now()))return
+    if(!enderecoCompleto(destino)){setErro('Preencha CEP, rua, número, bairro, cidade e UF antes de calcular.');return}
+    ultimaTentativa.current=assinatura
     onInvalidar?.()
     trava.current = true
     const atual = ++versao.current
@@ -77,22 +95,22 @@ export default function ConsultaEntrega({ lojaId, pontoSalvo, origemPendente, mo
     setErro('')
     try {
       // A tarifa e a origem são carregadas no servidor, nunca aceitas do navegador.
-      const { data, error } = await supabase.functions.invoke('calcular-entrega', {
+      const { data, error } = await clienteApi.functions.invoke('calcular-entrega', {
         body: { ...(modoPedido ? (portal ? { acao:'cotar_mobile',portal:true } : { acao: 'cotar_pedido', cliente_cpf: clienteCpf }) : {}),
           loja_id: lojaId, destino: { ...destino,
           ...(ponto ? { latitude: ponto.latitude, longitude: ponto.longitude } : {}) } },
       })
       if (error) {
         let mensagem = 'Não foi possível consultar a entrega. Tente novamente ou contate o responsável pela unidade.'
-        try { mensagem = (await error.context?.json())?.error || mensagem } catch { /* erro de rede ou resposta não JSON */ }
+        try { const falha=await error.context?.json();mensagem=falha?.error || mensagem;if(falha?.tentar_em_segundos)setAguardarAte(Date.now()+falha.tentar_em_segundos*1000) } catch { /* erro de rede ou resposta não JSON */ }
         throw new Error(mensagem)
       }
       if (data?.error) throw new Error(data.error)
-      if (!Number.isFinite(data?.taxa) || !Number.isInteger(data?.distancia_metros)) throw new Error('Resposta de cálculo inválida.')
-      if (modoPedido && (!data.cotacao_id || !data.expira_em)) throw new Error('O servidor não confirmou a cotação do pedido.')
+      if (!Number.isFinite(data?.taxa) || data.taxa<0 || !Number.isInteger(data?.distancia_metros) || data.distancia_metros<=0) throw new Error('Resposta de cálculo inválida.')
+      if (modoPedido && (!data.cotacao_id || !Number.isFinite(Date.parse(data.expira_em)) || Date.parse(data.expira_em)<=Date.now())) throw new Error('O servidor não confirmou uma cotação válida. Calcule o frete novamente.')
       if (atual === versao.current) {
         setResultado(data)
-        if (modoPedido) onCotacao?.({ ...data, endereco: { ...destino } })
+        if (modoPedido) callbacks.current.onCotacao?.({ ...data, endereco: { ...destino, ...(data.ponto_destino || ponto || {}) } })
       }
     } catch (error) {
       if (atual === versao.current) setErro(error.message)
@@ -102,16 +120,29 @@ export default function ConsultaEntrega({ lojaId, pontoSalvo, origemPendente, mo
     }
   }
 
+  function usarLocalizacao() {
+    if(!navigator.geolocation){setErroMapa('Seu navegador não oferece localização. Preencha o endereço normalmente.');return}
+    const atual=++versao.current
+    setLocalizando(true);setErroMapa('');onInvalidar?.();setResultado(null)
+    navigator.geolocation.getCurrentPosition(posicao=>{
+      if(atual!==versao.current)return
+      try {setPonto(pontoDoDispositivo(posicao.coords));setPontoConfirmado(false);setErro('')}
+      catch(error){setErroMapa(error.message)}
+      finally{setLocalizando(false)}
+    },()=>{if(atual===versao.current){setLocalizando(false);setErroMapa('Não foi possível acessar a localização. Você pode usar o endereço ou ajustar o mapa.')}},{enableHighAccuracy:true,timeout:10000,maximumAge:0})
+  }
+
   return (
     <section className="ui-form delivery-quote">
       <h2 className="font-display text-xl">{modoPedido ? 'Frete do pedido' : 'Consultar entrega'}</h2>
-      <p className="text-sm text-fumaca my-3">{portal ? 'Preencha o endereço. O frete será calculado automaticamente.' : 'Tarifa da unidade e distância pela rota de carro. Confirme o imóvel no mapa quando necessário.'}</p>
+      <p className="text-sm text-fumaca my-3">{portal ? 'Preencha o CEP e o número, confira o endereço e saia dos campos. Calculamos o frete uma vez, quando tudo estiver pronto.' : 'Tarifa da unidade e distância pela rota de carro. Confirme o imóvel no mapa quando necessário.'}</p>
       {pontoSalvo && <p className="text-xs text-ambar mb-3">Origem: ponto salvo da unidade.</p>}
-      <form onSubmit={consultar}>
-        <fieldset disabled={consultando || buscandoMapa}>
+      <form onSubmit={consultar} onFocusCapture={()=>setEditando(true)} onBlurCapture={event=>{if(!event.currentTarget.contains(event.relatedTarget))setEditando(false)}}>
+        <fieldset disabled={consultando || buscandoMapa || localizando}>
           <legend className="text-sm mb-3">Endereço de destino</legend>
           <CamposEndereco valores={destino} onChange={alterar} />
-          {(!portal || erro) && <button type="button" onClick={buscarNoMapa} disabled={origemPendente} className="text-sm underline text-ambar mt-3 disabled:opacity-50">
+          <div className="portal-inline-actions mt-3"><button type="button" onClick={usarLocalizacao} className="text-sm underline text-ambar">{localizando ? 'Localizando…' : 'Estou no endereço: usar minha localização'}</button>{portal && <button type="button" onClick={()=>setMostrarMapa(v=>!v)} className="text-sm underline text-ambar">{mostrarMapa ? 'Fechar mapa' : 'Ajustar localização no mapa'}</button>}</div>
+          {mostrarMapa && <button type="button" onClick={buscarNoMapa} disabled={origemPendente || aguardarAte>Date.now()} className="text-sm underline text-ambar mt-3 disabled:opacity-50">
             {buscandoMapa ? 'Localizando região...' : 'Encontrar endereço no mapa'}
           </button>}
           {erroMapa && <p role="alert" className="text-sm text-brasa mt-2">{erroMapa}</p>}
@@ -120,15 +151,15 @@ export default function ConsultaEntrega({ lojaId, pontoSalvo, origemPendente, mo
               ? 'O serviço encontrou o imóvel. Tente calcular sem marcar um ponto.'
               : `Mapa centralizado na região ${centroMapa.precisao === 'cep' ? 'do CEP' : 'da rua'}. Clique no imóvel exato para confirmar; esta sugestão não será usada automaticamente na taxa.`}
           </p>}
-          {(!portal || erro || centroMapa || ponto) && <MapaPonto titulo="Ponto da entrega (destino)" ponto={ponto} centroSugerido={centroMapa} desabilitado={consultando || buscandoMapa}
-            onChange={valor => { versao.current += 1; onInvalidar?.(); setPonto(valor); setPontoConfirmado(false); setCentroMapa(null); setResultado(null); setErro('') }} />}
+          {mostrarMapa && <Suspense fallback={<p>Carregando mapa…</p>}><MapaPonto titulo="Ponto da entrega (destino)" ponto={ponto} centroSugerido={centroMapa} desabilitado={consultando || buscandoMapa}
+            onChange={valor => { versao.current += 1; onInvalidar?.(); setPonto(valor); setPontoConfirmado(false); setCentroMapa(null); setResultado(null); setErro('') }} /></Suspense>}
           {ponto && <label className="flex items-start gap-2 text-xs text-ambar mt-3">
             <input type="checkbox" checked={pontoConfirmado} onChange={e => {onInvalidar?.();setResultado(null);setPontoConfirmado(e.target.checked)}} />
-            Confirmo que o ponto marcado é o imóvel de entrega informado. Sei que o ponto, não o CEP, será usado na distância.
+            Confirmo que esta localização corresponde ao endereço de entrega. Ela será usada no cálculo do frete.
           </label>}
           <p className="text-xs text-fumaca mt-3">A consulta de rota compartilha endereço e coordenadas com openrouteservice. Nome, CPF, telefone e complemento não são enviados.</p>
           {origemPendente && <p className="text-xs text-ambar mt-3">Salve as alterações da loja acima antes de consultar a rota.</p>}
-          <button type="submit" disabled={origemPendente || (ponto && !pontoConfirmado)} className="bg-ambar text-carvao px-4 py-2 mt-4 disabled:opacity-50">{consultando ? 'Consultando rota...' : modoPedido ? 'Calcular frete do pedido' : 'Calcular distância e taxa'}</button>
+          <button type="submit" disabled={origemPendente || (ponto && !pontoConfirmado) || aguardarAte>Date.now()} className="bg-ambar text-carvao px-4 py-2 mt-4 disabled:opacity-50">{consultando ? 'Consultando rota...' : aguardarAte>Date.now() ? 'Aguarde para consultar novamente' : modoPedido ? 'Calcular frete do pedido' : 'Calcular distância e taxa'}</button>
         </fieldset>
       </form>
       {erro && <div role="alert" className="mt-3 text-sm text-brasa">

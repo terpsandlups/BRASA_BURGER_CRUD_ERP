@@ -1,3 +1,3 @@
 export class Falha extends Error {
-  constructor(status, message) { super(message); this.status = status }
+  constructor(status, message, detalhes = {}) { super(message); this.status = status; this.detalhes = detalhes }
 }
