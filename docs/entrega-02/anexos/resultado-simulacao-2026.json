@@ -1,0 +1,166 @@
+{
+  "tipo": "SIMULACAO — não representa vendas reais",
+  "execucao": "aula-2026-9000",
+  "assinatura": "a9254925d3e1ce508fb5",
+  "periodo": [
+    "2026-01-01",
+    "2026-11-22"
+  ],
+  "clientes_novos": 600,
+  "vendas": 9000,
+  "itens": 32415,
+  "grupos": [
+    {
+      "tipo": "canal",
+      "nome": "ifood / delivery",
+      "vendas": 2068,
+      "faturamento": "198158.62",
+      "ticket_medio": "95.82"
+    },
+    {
+      "tipo": "canal",
+      "nome": "proprio / delivery",
+      "vendas": 3686,
+      "faturamento": "338027.27",
+      "ticket_medio": "91.71"
+    },
+    {
+      "tipo": "canal",
+      "nome": "proprio / presencial",
+      "vendas": 2683,
+      "faturamento": "217457.60",
+      "ticket_medio": "81.05"
+    },
+    {
+      "tipo": "canal",
+      "nome": "rappi / delivery",
+      "vendas": 563,
+      "faturamento": "50071.72",
+      "ticket_medio": "88.94"
+    },
+    {
+      "tipo": "unidade",
+      "nome": "Brasa Burguer - Unidade Eloy",
+      "vendas": 2700,
+      "faturamento": "247491.73",
+      "ticket_medio": "91.66"
+    },
+    {
+      "tipo": "unidade",
+      "nome": "Brasa Burguer - Unidade Japy",
+      "vendas": 3600,
+      "faturamento": "303620.68",
+      "ticket_medio": "84.34"
+    },
+    {
+      "tipo": "unidade",
+      "nome": "Brasa Burguer - Unidade Retiro",
+      "vendas": 2700,
+      "faturamento": "252602.80",
+      "ticket_medio": "93.56"
+    }
+  ],
+  "meses": {
+    "2026-01": 726,
+    "2026-02": 691,
+    "2026-03": 755,
+    "2026-04": 781,
+    "2026-05": 823,
+    "2026-06": 808,
+    "2026-07": 874,
+    "2026-08": 948,
+    "2026-09": 895,
+    "2026-10": 990,
+    "2026-11": 709
+  },
+  "unidades_por_classe_abc": {
+    "A": 28631,
+    "B": 6228,
+    "C": 1744
+  },
+  "faturamento": "803715.21",
+  "ticket_medio": "89.30",
+  "confirmacao": {
+    "clientes": 600,
+    "execucao": "aula-2026-9000",
+    "pedidos": 9000
+  },
+  "verificado_em": "2026-11-24T22:15:09.877895-03:00",
+  "conferencia_banco": {
+    "canais": [
+      {
+        "canal_venda": "ifood",
+        "faturamento": 198158.62,
+        "ticket_medio": 95.82,
+        "tipo_atendimento": "delivery",
+        "vendas": 2068
+      },
+      {
+        "canal_venda": "proprio",
+        "faturamento": 338027.27,
+        "ticket_medio": 91.71,
+        "tipo_atendimento": "delivery",
+        "vendas": 3686
+      },
+      {
+        "canal_venda": "proprio",
+        "faturamento": 217457.6,
+        "ticket_medio": 81.05,
+        "tipo_atendimento": "presencial",
+        "vendas": 2683
+      },
+      {
+        "canal_venda": "rappi",
+        "faturamento": 50071.72,
+        "ticket_medio": 88.94,
+        "tipo_atendimento": "delivery",
+        "vendas": 563
+      }
+    ],
+    "disponiveis_no_fato": 9000,
+    "faturamento": 803715.21,
+    "fim": "2026-11-22",
+    "inicio": "2026-01-01",
+    "presencial_invalido": 0,
+    "ticket_medio": 89.3,
+    "totais_divergentes": 0,
+    "unidades": [
+      {
+        "faturamento": 247491.73,
+        "nome": "Brasa Burguer - Unidade Eloy",
+        "presencial": 0,
+        "ticket_medio": 91.66,
+        "vendas": 2700
+      },
+      {
+        "faturamento": 303620.68,
+        "nome": "Brasa Burguer - Unidade Japy",
+        "presencial": 2683,
+        "ticket_medio": 84.34,
+        "vendas": 3600
+      },
+      {
+        "faturamento": 252602.8,
+        "nome": "Brasa Burguer - Unidade Retiro",
+        "presencial": 0,
+        "ticket_medio": 93.56,
+        "vendas": 2700
+      }
+    ],
+    "vendas": 9000
+  },
+  "preservacao": {
+    "clientes_originais": 7,
+    "pedidos_originais": 16,
+    "itens_originais": 56,
+    "conteudo_originais_identico": true,
+    "estoque_quantidades_e_datas_identicos": true,
+    "contas_auth_inalteradas": 4,
+    "contas_consumidor_inalteradas": 3
+  },
+  "contagens_finais": {
+    "clientes": 607,
+    "pedidos": 9016,
+    "itens": 32471
+  }
+}
