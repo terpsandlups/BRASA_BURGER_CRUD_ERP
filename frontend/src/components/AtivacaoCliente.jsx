@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { solicitarAtivacaoCliente } from '../lib/ativacaoCliente.js'
 import { atualizarSenhaRecuperada } from '../lib/recuperacaoAcesso.js'
 import { formatarCPF } from '../lib/format.js'
+import SidePanel from './layout/SidePanel.jsx'
 
 export default function AtivacaoCliente({api,marca,cpfInicial='',session,perfil,concluir}) {
   const [aberto,setAberto]=useState(false),[cpf,setCpf]=useState(cpfInicial),[email,setEmail]=useState('')
@@ -21,8 +22,11 @@ export default function AtivacaoCliente({api,marca,cpfInicial='',session,perfil,
       }
     }catch(error){setErro(error.message)}finally{setOcupado(false)}
   }
-  if(!aberto&&!session)return <button type="button" className="portal-secondary" onClick={()=>{setCpf(cpfInicial);setAberto(true)}}>Já tenho cadastro na loja · Continuar primeiro acesso</button>
-  return <section className="portal-checkout-card portal-form" aria-label="Primeiro acesso">
+  const fechar=()=>{if(ocupado)return;if(session)concluir();else setAberto(false)}
+  return <>
+    {!session && <button type="button" className="portal-secondary" onClick={()=>{setCpf(cpfInicial);setAberto(true)}}>Já tenho cadastro na loja · Continuar primeiro acesso</button>}
+    <SidePanel aberto={aberto || !!session} onFechar={fechar} titulo="Primeiro acesso">
+    <section className="portal-form" aria-label="Primeiro acesso">
     <h2>{session ? 'Defina sua senha de acesso' : 'Cadastro incompleto — continue seu cadastro'}</h2>
     <p className="portal-form-note">{session ? (perfil?.cpf ? 'Seus dados foram reconhecidos. Defina uma senha para os próximos acessos com CPF ou e-mail.' : 'Defina uma senha e complete seus dados abaixo. Se já tiver cadastro na loja, confirme com a equipe o e-mail registrado.') : 'Se a loja já cadastrou seus dados, ative o acesso ao aplicativo confirmando o mesmo e-mail. Você não precisa repetir nome e telefone quando o cadastro for reconhecido.'}</p>
     <form className="portal-form" onSubmit={enviar}><fieldset className="portal-form" disabled={ocupado}>
@@ -30,6 +34,7 @@ export default function AtivacaoCliente({api,marca,cpfInicial='',session,perfil,
       <button className="portal-primary">{ocupado ? 'Aguarde…' : session ? 'Salvar senha e continuar' : 'Confirmar meu e-mail'}</button>
     </fieldset></form>
     {aviso&&<p role="status" className="portal-notice">{aviso}</p>}{erro&&<p role="alert" className="portal-notice is-error">{erro}</p>}
-    {!session&&<button type="button" className="portal-text-link" onClick={()=>setAberto(false)}>Voltar ao login</button>}
-  </section>
+    {!session&&<button type="button" className="portal-text-link" disabled={ocupado} onClick={fechar}>Voltar ao login</button>}
+    </section></SidePanel>
+  </>
 }

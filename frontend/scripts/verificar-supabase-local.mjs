@@ -67,7 +67,10 @@ try{
  const pre=await admin.from('clientes').insert({cpf:preCpf,nome:'Pré-cadastro ERP',telefone:'11988887777',email:preEmail});if(pre.error)throw pre.error;
  const ativado=client(anon);
  const link=await service.auth.admin.generateLink({type:'magiclink',email:preEmail});if(link.error)throw link.error;
- const confirmar=await ativado.auth.verifyOtp({token_hash:link.data.properties.hashed_token,type:'magiclink'});if(confirmar.error)throw confirmar.error;
+ // Para e-mail novo, Auth pode emitir confirmação signup em vez de magiclink.
+ // Verificar o tipo efetivamente emitido, como no link enviado pelo serviço.
+ assert.ok(['signup','magiclink'].includes(link.data.properties.verification_type));
+ const confirmar=await ativado.auth.verifyOtp({token_hash:link.data.properties.hashed_token,type:link.data.properties.verification_type});if(confirmar.error)throw confirmar.error;
  const ficha=await rpc(ativado,'meu_cadastro_cliente',{p_slug:'brasa-burger'});
  assert.equal(ficha.cpf,preCpf);assert.equal(ficha.nome,'Pré-cadastro ERP');assert.equal(ficha.dados_confirmados,true);
  const novaSenha='Ativacao1!'+randomUUID();
