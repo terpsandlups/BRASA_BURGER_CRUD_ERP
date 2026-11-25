@@ -247,6 +247,67 @@ TIPOS = {
 }
 
 
+def staging_compacto(plano, lote):
+    """Transporte pequeno: índices numéricos em lugar de repetir UUIDs/chaves.
+
+    A reconstrução usa uuid-ossp, que já faz parte da instalação do ERP.
+    Não cria função/tabela permanente nem muda o conteúdo do plano.
+    """
+    ns = literal(str(uuid5(NAMESPACE_URL,'convivium/'+plano['empresa']+'/'+plano['execucao'])))+'::uuid'
+    lojas = [l['id'] for l in plano['lojas']]
+    canais = sorted({p['canal_venda'] for p in plano['pedidos']})
+    pagamentos = sorted({p['forma_pagamento'] for p in plano['pedidos']})
+    variacoes = sorted({(i['variacao_id'],i['produto_sku']) for i in plano['itens']})
+    vi = {v:i for i,(v,_) in enumerate(variacoes)}
+    pi = {p['id']:i for i,p in enumerate(plano['pedidos'])}
+    ci = {c['cpf']:i for i,c in enumerate(plano['clientes'])}
+    pedidos = []
+    inicio = datetime.combine(date.fromisoformat(plano['inicio']),time(),FUSO)
+    for p in plano['pedidos']:
+        criado=datetime.fromisoformat(p['criado_em'])
+        pedidos.append([lojas.index(p['loja_id']),ci[p['cliente_cpf']],int(p['tipo_atendimento']=='delivery'),
+            canais.index(p['canal_venda']),pagamentos.index(p['forma_pagamento']),int(Decimal(p['valor_total'])*100),
+            int(Decimal(p['taxa_entrega'])*100),int((criado-inicio).total_seconds()),
+            int((datetime.fromisoformat(p['atualizado_em'])-criado).total_seconds()/60),
+            int(Decimal(p['troco_para'])*100) if p['troco_para'] else 0])
+    itens = [[pi[i['pedido_id']],vi[i['variacao_id']],i['quantidade']] for i in plano['itens']]
+    precos = sorted({(vi[i['variacao_id']],canais.index(plano['pedidos'][pi[i['pedido_id']]]['canal_venda']),int(Decimal(i['preco_unitario'])*100)) for i in plano['itens']})
+    sql = ['SET LOCAL search_path=public,extensions,pg_temp;',
+        'CREATE TEMP TABLE sim_raw_pedidos(pos integer PRIMARY KEY,v jsonb) ON COMMIT DROP;',
+        'CREATE TEMP TABLE sim_raw_itens(pedido integer,variacao integer,quantidade integer) ON COMMIT DROP;',
+        'CREATE TEMP TABLE sim_raw_clientes(pos integer PRIMARY KEY,cpf char(11)) ON COMMIT DROP;',
+        f'CREATE TEMP TABLE sim_precos ON COMMIT DROP AS SELECT (v->>0)::integer AS variacao,(v->>1)::integer AS canal,(v->>2)::numeric/100 AS preco FROM jsonb_array_elements({json_sql(precos)}) t(v);',
+        f'CREATE TEMP TABLE sim_variacoes ON COMMIT DROP AS SELECT (n-1)::integer AS pos,(v->>0)::uuid AS id,v->>1 AS sku FROM jsonb_array_elements({json_sql(variacoes)}) WITH ORDINALITY t(v,n);']
+    for tabela, linhas in [('clientes',[c['cpf'] for c in plano['clientes']]),('pedidos',pedidos),('itens',itens)]:
+        for pos in range(0,len(linhas),lote):
+            fonte=f'jsonb_array_elements({json_sql(linhas[pos:pos+lote])}) WITH ORDINALITY t(v,n)'
+            valores = f'(n-1+{pos})::integer,v' if tabela=='pedidos' else f'(n-1+{pos})::integer,v#>>\'{{}}\'' if tabela=='clientes' else '(v->>0)::integer,(v->>1)::integer,(v->>2)::integer'
+            sql.append(f'INSERT INTO sim_raw_{tabela} SELECT {valores} FROM {fonte};')
+    # Arrays constantes por índice; nenhum identificador SQL vem do usuário.
+    loja_sql='ARRAY['+','.join(literal(v)+'::uuid' for v in lojas)+']'
+    canal_sql='ARRAY['+','.join(literal(v) for v in canais)+']'
+    pagamento_sql='ARRAY['+','.join(literal(v) for v in pagamentos)+']'
+    observacao=literal(plano['pedidos'][0]['observacoes'])
+    sql.append(f"""
+      INSERT INTO sim_clientes SELECT {literal(plano['empresa'])}::uuid,c.cpf,
+        '[SIM] Cliente '||lpad((c.pos+1)::text,4,'0')||' · '||{literal(plano['execucao'])},
+        '00000000000',uuid_generate_v5({ns},'cliente/'||c.pos)::text||'@simulacao.convivium.invalid',
+        ({loja_sql})[c.pos%3+1],{literal(plano['clientes'][0]['data_cadastro'])}::timestamptz FROM sim_raw_clientes c;
+      INSERT INTO sim_pedidos SELECT uuid_generate_v5({ns},'pedido/'||r.pos),{literal(plano['empresa'])}::uuid,
+        ({loja_sql})[(v->>0)::integer+1],c.cpf,CASE WHEN v->>2='1' THEN 'delivery' ELSE 'presencial' END,
+        ({canal_sql})[(v->>3)::integer+1],({pagamento_sql})[(v->>4)::integer+1],'entregue',
+        (v->>5)::numeric/100,(v->>6)::numeric/100,{observacao},
+        {literal(inicio.isoformat())}::timestamptz+(v->>7)::integer*interval '1 second',
+        {literal(inicio.isoformat())}::timestamptz+(v->>7)::integer*interval '1 second'+(v->>8)::integer*interval '1 minute',
+        nullif((v->>9)::numeric,0)/100,false FROM sim_raw_pedidos r JOIN sim_raw_clientes c ON c.pos=(v->>1)::integer;
+      INSERT INTO sim_itens SELECT uuid_generate_v5({ns},'item/'||i.pedido||'/'||(row_number() OVER(PARTITION BY i.pedido ORDER BY v.id)-1)),
+        uuid_generate_v5({ns},'pedido/'||i.pedido),v.sku,v.id,i.quantidade,pr.preco
+        FROM sim_raw_itens i JOIN sim_variacoes v ON v.pos=i.variacao JOIN sim_raw_pedidos p ON p.pos=i.pedido
+        JOIN sim_precos pr ON pr.variacao=i.variacao AND pr.canal=(p.v->>3)::integer;
+    """)
+    return sql
+
+
 def sql_carga(plano, lote=500):
     if not 1 <= lote <= 2000:
         raise ValueError('Lote deve ter entre 1 e 2.000 registros.')
@@ -254,8 +315,7 @@ def sql_carga(plano, lote=500):
               f'SELECT pg_advisory_xact_lock(hashtextextended({literal("convivium/simulacao/"+plano["empresa"])},0));']
     for tabela, tipos in TIPOS.items():
         linhas.append(f'CREATE TEMP TABLE sim_{tabela}({tipos}) ON COMMIT DROP;')
-        for pos in range(0, len(plano[tabela]), lote):
-            linhas.append(f'INSERT INTO sim_{tabela} SELECT * FROM jsonb_to_recordset({json_sql(plano[tabela][pos:pos+lote])}) AS t({tipos});')
+    linhas.extend(staging_compacto(plano,lote))
     # Mesmo run-id com conteúdo diferente, colisão ou execução parcial = rollback.
     linhas.append(f"""
     DO $$ BEGIN
@@ -344,7 +404,7 @@ def main():
         if args.aplicar:
             print('Preparando lotes; confirmação única, sem alterar o estoque físico ou cadastros existentes.',flush=True)
             carga=sql_carga(plano,args.lote)
-            print(f"{sum((len(plano[t])+args.lote-1)//args.lote for t in TIPOS)} lotes preparados. Enviando ao banco…",flush=True)
+            print(f"{sum((len(plano[t])+args.lote-1)//args.lote for t in TIPOS)} lotes preparados; SQL compacto: {len(carga.encode('utf-8')):,} bytes. Enviando ao banco…",flush=True)
             confirmado=banco.executar(carga)
             if not confirmado or confirmado.get('pedidos') != args.vendas:
                 raise RuntimeError('Resposta inconclusiva. Consulte a execução antes de reenviar; o mesmo plano é idempotente.')

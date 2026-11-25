@@ -76,6 +76,8 @@ Opções: `--vendas`, `--clientes`, `--inicio`, `--fim`, `--seed`, `--execucao`,
 
 As inserções são preparadas em lotes e confirmadas em **uma transação**. UUIDs determinísticos identificam a execução; repetir o mesmo plano não duplica as vendas. Colisão com um cliente existente ou modificação de um registro dessa execução interrompe a carga, sem sobrescrever a operação.
 
+O transporte usa arrays compactos e índices numéricos, reconstruídos em tabelas temporárias. Isso evita o limite de tamanho da API de manutenção, preservando a transação única. A extensão `uuid-ossp`, já exigida na instalação do ERP, reconstrói os mesmos UUIDs determinísticos; nenhum componente permanente é acrescentado ao banco pela carga.
+
 As FKs, constraints e triggers continuam habilitadas. Como os triggers de itens baixam estoque mesmo em pedidos classificados como históricos, a importação bloqueia os saldos necessários em ordem, provisiona o consumo apenas dentro da transação e restaura **quantidades e datas originais antes do commit**. As fotografias de custo permanecem para os relatórios históricos. Os pedidos são marcados como históricos, sem estoque operacional rastreado, evitando tratá-los como vendas reais para estorno.
 
 Os bloqueios podem fazer uma venda concorrente aguardar durante a importação; o limite de espera é curto e uma falha reverte a transação. A carga não deve coincidir com o envio coletivo da turma. Ficha sem estoque vinculado ou saldo negativo faz a carga falhar, em vez de inventar um saldo permanente. Não há desativação de triggers nem exclusão geral de dados.

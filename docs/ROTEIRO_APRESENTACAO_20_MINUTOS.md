@@ -87,7 +87,7 @@ Para validar os gráficos, preparamos uma base **simulada**, com 9 mil vendas e 
 
 O Japy tem maior volume porque oferece atendimento presencial; Retiro e Eloy mantêm volumes semelhantes entre si. A **Curva ABC**, ou **ABC Analysis**, classifica os produtos por importância no resultado. Nosso simulador concentra a recorrência em alguns itens, sem assumir que a proporção 80/20 seja uma lei exata.”
 
-**Ação:** selecionar **01/01/2026–22/11/2026**; mostrar comparação por unidade e canal e um gráfico de produtos. O filtro ‘Hoje’ não exibirá todo esse histórico. Citar os valores do resumo confirmado da carga, não da prévia se houver diferença.
+**Ação:** no Painel, mostrar os últimos 30 ou 90 dias. Em **Análises**, selecionar **01/01/2026–22/11/2026**; mostrar comparação por unidade e canal e um gráfico de produtos. O filtro ‘Hoje’ não exibirá todo esse histórico. Citar os valores do resumo confirmado da carga, não da prévia se houver diferença.
 
 ## 14:00–17:00 · Como está hospedado no GitHub
 
