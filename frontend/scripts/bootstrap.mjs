@@ -28,6 +28,7 @@ export const arquivosBootstrap = [
  'supabase/migrations/20261111223639_cadastro_cpf_sem_email.sql',
  'supabase/migrations/20261116000100_cardapio_visual.sql',
  'supabase/migrations/20261122133234_enderecos_favoritos_e_cache_frete.sql',
+ 'supabase/migrations/20261125002912_unificar_clientes_erp_app.sql',
  'sql/instalacao/finalizar.sql',
 ];
 

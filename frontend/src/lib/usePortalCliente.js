@@ -7,7 +7,7 @@ import { mensagemPortal, montarSolicitacao, totalCarrinho } from './portalClient
 import { acessarContaCliente, armazenamentoDaSessao } from './acessoCliente.js'
 import { acompanharAoVivo } from './atualizacaoAoVivo.js'
 import { categoriasPublicas, filtrarCatalogoPublico, prepararCatalogoPublico } from './catalogoPublico.js'
-import { salvarPerfilConsumidor } from './perfilConsumidor.js'
+import { salvarPerfilConsumidor, perfilAlterado } from './perfilConsumidor.js'
 
 export const ESTADOS = { aguardando: 'Aguardando confirmação da loja', aceita: 'Confirmado pela loja', recusada: 'Recusado pela loja', cancelada: 'Cancelado por você', recebido: 'Recebido', em_preparo: 'Em preparo', pronto: 'Pronto', saiu_entrega: 'Saiu para entrega', entregue: 'Entregue', cancelado: 'Cancelado' }
 
@@ -81,14 +81,21 @@ export default function usePortalCliente() {
     setCpfVinculado('')
     setPerfilSalvo(null); setPerfilConta(null); setErroPerfil('')
     if(!session?.user.id) return
-    supabase.rpc('meu_cadastro_cliente').then(({data,error})=>{
+    supabase.rpc('meu_cadastro_cliente',{p_slug:marca}).then(({data,error})=>{
       if(!ativo) return
       if(error){setErroPerfil('Não foi possível carregar seu cadastro. Tente novamente antes de enviar.');return}
-      setCliente(data || {nome:'',cpf:'',telefone:''});setCpfVinculado(data?.cpf || '')
+      if(!perfilSalvo || !perfilAlterado(cliente,perfilSalvo))setCliente(data || {nome:'',cpf:'',telefone:''})
+      setCpfVinculado(data?.cpf || '')
       setPerfilSalvo(data);setPerfilConta(session.user.id)
     }).catch(()=>{if(ativo)setErroPerfil('Não foi possível carregar seu cadastro. Tente novamente.')})
     return()=>{ativo=false}
-  },[session?.user.id,revisaoPerfil])
+  },[session?.user.id,marca,revisaoPerfil])
+  useEffect(()=>{
+    if(!session?.user.id) return
+    const canal=supabase.channel(`perfil:${session.user.id}`).on('postgres_changes',
+      {event:'*',schema:'public',table:'eventos_pedidos_cliente',filter:`usuario_id=eq.${session.user.id}`},()=>setRevisaoPerfil(n=>n+1)).subscribe()
+    return()=>{supabase.removeChannel(canal)}
+  },[session?.user.id])
   const perfilPronto = !!session?.user.id && perfilConta === session.user.id
   useEffect(() => {
     if (!cotacao) return
@@ -145,7 +152,7 @@ export default function usePortalCliente() {
   async function autenticar(event) {
     event.preventDefault()
     await executar(async () => {
-      const data = await acessarContaCliente(supabase.auth, { cadastro, email, senha, retorno: `${window.location.origin}${import.meta.env.BASE_URL}pedir/${marca}`, ...(cadastro ? cliente : {}) },supabase.functions)
+      const data = await acessarContaCliente(supabase.auth, { cadastro, email, senha, marca, retorno: `${window.location.origin}${import.meta.env.BASE_URL}pedir/${marca}`, ...(cadastro ? cliente : {}) },supabase.functions)
       setSenha('')
       if (cadastro && !data.session) setAviso('Confira seu e-mail para confirmar o cadastro e depois entre na sua conta.')
     })
@@ -160,7 +167,7 @@ export default function usePortalCliente() {
       try {
         const dados = pendente ? null : montarSolicitacao({ lojaId: loja, tipo, pagamento, cliente, itens, endereco:cotacao?.endereco || endereco, observacoes, troco, cotacaoId:cotacao?.cotacao_id, taxaEntrega:cotacao?.taxa || 0 })
         if(!pendente){
-          const data=await salvarPerfilConsumidor(supabase,cliente,perfilSalvo)
+          const data=await salvarPerfilConsumidor(supabase,cliente,perfilSalvo,marca)
           if(ultimaConta.current!==titular)throw new Error('A conta mudou. Confira os dados antes de enviar.')
           setPerfilSalvo(data);setCliente(data);setCpfVinculado(data.cpf)
         }
@@ -179,7 +186,7 @@ export default function usePortalCliente() {
     const titular=session.user.id
     trava.current=true;setOcupado(true)
     try {
-      const data=await salvarPerfilConsumidor(supabase,cliente,perfilSalvo)
+      const data=await salvarPerfilConsumidor(supabase,cliente,perfilSalvo,marca)
       if(ultimaConta.current!==titular)throw new Error('A conta mudou. Entre novamente para conferir seus dados.')
       setPerfilSalvo(data);setCliente(data);setCpfVinculado(data.cpf)
     } finally {trava.current=false;setOcupado(false)}

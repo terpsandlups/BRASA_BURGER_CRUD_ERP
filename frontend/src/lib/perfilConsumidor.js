@@ -17,11 +17,11 @@ export function perfilAlterado(cliente, salvo) {
   return ['cpf','nome','telefone'].some(campo => atual[campo] !== anterior[campo])
 }
 
-export async function salvarPerfilConsumidor(api, cliente, salvo) {
+export async function salvarPerfilConsumidor(api, cliente, salvo, marca) {
   const perfil = validarPerfil(cliente)
   if (salvo?.cpf && perfil.cpf !== normalizarPerfil(salvo).cpf) throw new Error('Use o CPF vinculado à sua conta.')
   if (!perfilAlterado(perfil, salvo)) return normalizarPerfil(salvo)
-  const { data, error } = await api.rpc('cadastrar_perfil_cliente', { p_cpf:perfil.cpf, p_nome:perfil.nome, p_telefone:perfil.telefone })
+  const { data, error } = await api.rpc('cadastrar_perfil_cliente', { p_cpf:perfil.cpf, p_nome:perfil.nome, p_telefone:perfil.telefone, ...(marca ? {p_slug:marca} : {}) })
   if (error) throw error
   if (!data?.cpf) throw new Error('Não foi possível confirmar seu cadastro. Tente novamente.')
   return normalizarPerfil(data)

@@ -7,7 +7,8 @@ import PageHeader from '../components/layout/PageHeader.jsx'
 import Button from '../components/ui/Button.jsx'
 import SidePanel from '../components/layout/SidePanel.jsx'
 import { carregarTodasPaginas } from '../lib/dashboard.js'
-import { filtrarClientes } from '../lib/clientes.js'
+import { filtrarClientes, clientesComMesmoContato } from '../lib/clientes.js'
+import { acompanharAoVivo } from '../lib/atualizacaoAoVivo.js'
 
 const vazio = {
   cpf: '', nome: '', telefone: '', email: '',
@@ -60,9 +61,10 @@ export default function Clientes() {
   }
 
   useEffect(() => {
-    carregar()
-    return () => { consultaListaRef.current += 1; consultaPerfilRef.current += 1 }
-  }, [])
+    if(!usuario?.empresa_id) return
+    const encerrar=acompanharAoVivo(supabase,`clientes:${usuario.empresa_id}`,[{table:'clientes',filter:`empresa_id=eq.${usuario.empresa_id}`}],carregar)
+    return () => { encerrar(); consultaListaRef.current += 1; consultaPerfilRef.current += 1 }
+  }, [usuario?.empresa_id])
 
   async function abrirPerfil(cpf) {
     const consulta = ++consultaPerfilRef.current
@@ -134,17 +136,19 @@ export default function Clientes() {
       alert('Telefone inválido — informe DDD + número.')
       return
     }
+    const semelhantes=clientesComMesmoContato(clientes,form)
+    if(semelhantes.length && !window.confirm(`Já existe cliente com este telefone ou e-mail: ${semelhantes.map(c=>c.nome).join(', ')}. Confira a busca antes de duplicar um cadastro. Criar outro CPF com o mesmo contato?`)) return
     cadastroRef.current = true
     setSalvando(true)
     try {
     const { error } = await supabase.from('clientes').insert({
-      ...form, empresa_id:usuario.empresa_id, cpf: cpfLimpo, telefone: apenasDigitos(form.telefone),
+      ...form, email:form.email.trim().toLowerCase() || null, empresa_id:usuario.empresa_id, cpf: cpfLimpo, telefone: apenasDigitos(form.telefone),
     })
     if (error) throw error
     setForm(vazio)
     await carregar()
     } catch (error) {
-      alert('Erro ao cadastrar: ' + error.message)
+      alert(error.code==='23505' ? 'Este CPF já está cadastrado nesta empresa. Localize o cliente na busca.' : 'Erro ao cadastrar: ' + error.message)
     } finally { cadastroRef.current = false; setSalvando(false) }
   }
 
@@ -217,7 +221,7 @@ export default function Clientes() {
       </form>}
 
       <input
-        aria-label="Buscar cliente por nome ou CPF" placeholder="Buscar por nome ou CPF..."
+        aria-label="Buscar cliente por nome, CPF, telefone ou e-mail" placeholder="Nome, CPF, telefone ou e-mail..."
         value={busca}
         onChange={(e) => setBusca(e.target.value)}
         className="w-full mb-4 px-3 py-2 border border-superficie2/40 focus:outline-none focus:border-ambar"

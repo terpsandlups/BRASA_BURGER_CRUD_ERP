@@ -12,6 +12,7 @@ GRANT USAGE ON SCHEMA public, auth TO authenticated, anon;
 GRANT EXECUTE ON FUNCTION auth.uid() TO authenticated, anon;
 CREATE TABLE lojas (id uuid PRIMARY KEY, nome text, ativo boolean DEFAULT true, tipo_operacao text DEFAULT 'presencial_delivery');
 CREATE TABLE clientes (cpf char(11) PRIMARY KEY, nome text, telefone text);
+ALTER TABLE clientes ADD COLUMN email text;
 CREATE TABLE perfis (id uuid PRIMARY KEY, nome text UNIQUE);
 CREATE TABLE usuarios (id uuid PRIMARY KEY REFERENCES auth.users(id), perfil_id uuid REFERENCES perfis(id), loja_id uuid REFERENCES lojas(id), ativo boolean DEFAULT true);
 CREATE TABLE permissoes (perfil_id uuid REFERENCES perfis(id), modulo text, pode_criar boolean DEFAULT false, pode_editar boolean DEFAULT false, pode_visualizar boolean DEFAULT true);
