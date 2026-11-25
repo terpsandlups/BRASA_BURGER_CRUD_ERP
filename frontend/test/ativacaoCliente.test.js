@@ -1,6 +1,12 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { solicitarAtivacaoCliente } from '../src/lib/ativacaoCliente.js'
+import { solicitarAtivacaoCliente,dadosPrimeiroAcesso } from '../src/lib/ativacaoCliente.js'
+
+test('primeiro acesso separa e-mail de CPF ao reaproveitar a identificação digitada ou preenchida pelo navegador',()=>{
+ assert.deepEqual(dadosPrimeiroAcesso(' conta@example.test '),{cpf:'',email:'conta@example.test'})
+ assert.deepEqual(dadosPrimeiroAcesso('52998224725'),{cpf:'529.982.247-25',email:''})
+ assert.deepEqual(dadosPrimeiroAcesso(''),{cpf:'',email:''})
+})
 
 test('primeiro acesso confirma e-mail sem reivindicar CPF nos metadados nem consultar a ficha pública',async()=>{
  let chamada

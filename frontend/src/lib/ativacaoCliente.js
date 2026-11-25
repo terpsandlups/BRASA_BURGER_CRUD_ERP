@@ -1,5 +1,10 @@
 import { emailEquipe } from './recuperacaoAcesso.js'
-import { validarCPF } from './format.js'
+import { validarCPF,formatarCPF } from './format.js'
+
+export function dadosPrimeiroAcesso(entrada) {
+  const valor=String(entrada || '').trim()
+  return valor.includes('@') ? {cpf:'',email:valor} : {cpf:formatarCPF(valor.replace(/\D/g,'').slice(0,11)),email:''}
+}
 
 // Nenhum dado pessoal é consultado a partir de um CPF público.
 export async function solicitarAtivacaoCliente(auth,{cpf,email,retorno}) {
