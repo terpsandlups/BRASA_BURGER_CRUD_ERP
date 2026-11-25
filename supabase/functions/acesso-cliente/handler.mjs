@@ -18,6 +18,7 @@ export function criarAcessoCliente({ allowedOrigins, resolverConta, autenticar, 
       if(!/^\d{11}$/.test(cpf) || typeof dados.senha!=='string' || !dados.senha || dados.senha.length>256) return responder(400,{error:'Confira CPF e senha.'})
       if(dados.acao && !['cadastro','entrar'].includes(dados.acao)) return responder(400,{error:'Ação inválida.'})
       if(dados.acao==='cadastro'){
+        if(dados.empresa_slug!==undefined && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(String(dados.empresa_slug))) return responder(400,{error:'Estabelecimento inválido.'})
         const nome=String(dados.nome || '').trim(),telefone=String(dados.telefone || '').replace(/\D/g,'')
         if(dados.senha.length<8 || nome.length<2 || nome.length>120 || !/^\d{10,11}$/.test(telefone)) return responder(400,{error:'Confira nome, telefone e senha com pelo menos oito caracteres.'})
         if(!cadastrar || !limitarCadastro) return responder(503,{error:'Cadastro indisponível.'})
@@ -27,7 +28,7 @@ export function criarAcessoCliente({ allowedOrigins, resolverConta, autenticar, 
         // Não modifica a confirmação exigida para contas de e-mail já existentes.
         const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(cpf))),n=>n.toString(16).padStart(2,'0')).join('')
         const emailInterno=`cpf-${hash}@clientes.convivium.invalid`
-        const {error:erroCadastro}=await cadastrar({email:emailInterno,password:dados.senha,email_confirm:true,user_metadata:{cpf,nome,telefone}})
+        const {error:erroCadastro}=await cadastrar({email:emailInterno,password:dados.senha,email_confirm:true,user_metadata:{cpf,nome,telefone,...(dados.empresa_slug ? {empresa_slug:dados.empresa_slug} : {})}})
         if(erroCadastro) return responder(400,{error:'Não foi possível criar a conta. Confira o CPF ou entre na conta que já possui.'})
         const {data,error}=await autenticar(emailInterno,dados.senha)
         if(error || !data?.session) return responder(503,{error:'Cadastro recebido. Tente entrar com CPF e senha.'})

@@ -36,6 +36,7 @@ before(async () => {
     '../../supabase/migrations/20261111223639_cadastro_cpf_sem_email.sql',
     '../../supabase/migrations/20261116000100_cardapio_visual.sql',
     '../../supabase/migrations/20261122133234_enderecos_favoritos_e_cache_frete.sql',
+    '../../supabase/migrations/20261125002912_unificar_clientes_erp_app.sql',
   ]) await db.exec(await sql(path))
 })
 after(async () => { await db?.close() })
@@ -68,6 +69,69 @@ function dadosMobile() {
 const solicitar = (payload = dadosMobile(), chave = randomUUID()) => valor('SELECT enviar_solicitacao_mobile($1,$2::jsonb)', [chave,JSON.stringify(payload)])
 const decidirMobile = (id, acao, cotacao = null, motivo = null) => valor('SELECT decidir_solicitacao_mobile($1,$2,$3,$4)', [id,acao,motivo,cotacao])
 const administrar=(acao,dados)=>valor('SELECT administrar_plataforma($1,$2::jsonb)',[acao,JSON.stringify(dados)])
+
+test('unificação: cadastro do App entra no ERP antes do primeiro pedido e reutiliza a mesma ficha',async()=>{
+ const id=randomUUID()
+ await db.query('INSERT INTO auth.users(id,raw_user_meta_data) VALUES($1,$2::jsonb)',[id,JSON.stringify({cpf:'52998224725',nome:'Nova Conta',telefone:'11988887777',empresa_slug:'brasa-burger'})])
+ assert.equal(await valor("SELECT count(*)::int FROM clientes WHERE cpf='52998224725'"),1)
+ assert.equal(await valor('SELECT count(*)::int FROM pedidos'),0)
+ assert.equal(await valor('SELECT count(*)::int FROM usuarios WHERE id=$1',[id]),0)
+ await db.query("SELECT set_config('request.jwt.claim.sub',$1,true)",[id]);await db.exec('SET LOCAL ROLE authenticated')
+ assert.equal((await valor("SELECT meu_cadastro_cliente('brasa-burger')")).nome,'Nova Conta')
+ await valor("SELECT cadastrar_perfil_cliente('52998224725','Nome Corrigido','11977776666','brasa-burger')")
+ assert.equal((await db.query('SELECT * FROM clientes')).rows.length,0)
+ await db.exec('RESET ROLE')
+ assert.equal(await valor("SELECT nome FROM clientes WHERE cpf='52998224725'"),'Nome Corrigido')
+ assert.equal(await valor("SELECT count(*)::int FROM clientes WHERE cpf='52998224725'"),1)
+})
+
+test('unificação: CPF digitado não revela nem sobrescreve pré-cadastro comercial',async()=>{
+ await db.query("INSERT INTO clientes(cpf,nome,telefone,email) VALUES('52998224725','Nome Protegido','11988887777','protegido@example.test')")
+ const id=randomUUID()
+ await db.query('INSERT INTO auth.users(id,raw_user_meta_data) VALUES($1,$2::jsonb)',[id,JSON.stringify({cpf:'52998224725',nome:'Dados Digitados',telefone:'11977776666'})])
+ await db.query("SELECT set_config('request.jwt.claim.sub',$1,true)",[id]);await db.exec('SET LOCAL ROLE authenticated')
+ const cadastro=await valor("SELECT meu_cadastro_cliente('brasa-burger')")
+ assert.equal(cadastro.nome,'Dados Digitados');assert.equal(cadastro.dados_confirmados,false)
+ await valor("SELECT cadastrar_perfil_cliente('52998224725','Tentativa Alterar','11977776666','brasa-burger')")
+ await db.exec('RESET ROLE')
+ assert.equal(await valor("SELECT nome FROM clientes WHERE cpf='52998224725'"),'Nome Protegido')
+})
+
+test('unificação: e-mail confirmado recupera pré-cadastro, e-mail não confirmado ou compartilhado não',async()=>{
+ await db.exec('ALTER TABLE auth.users ADD COLUMN email_confirmed_at timestamptz')
+ await db.query("INSERT INTO clientes(cpf,nome,telefone,email) VALUES('52998224725','Titular ERP','11988887777','titular@example.test')")
+ const id=randomUUID()
+ await db.query("INSERT INTO auth.users(id,email) VALUES($1,'titular@example.test')",[id])
+ await db.query("SELECT set_config('request.jwt.claim.sub',$1,true)",[id])
+ assert.equal(await valor("SELECT meu_cadastro_cliente('brasa-burger')"),null)
+ await db.query('UPDATE auth.users SET email_confirmed_at=now() WHERE id=$1',[id])
+ await db.exec('SET LOCAL ROLE authenticated')
+ const ficha=await valor("SELECT meu_cadastro_cliente('brasa-burger')")
+ assert.equal(ficha.cpf,'52998224725');assert.equal(ficha.nome,'Titular ERP');assert.equal(ficha.dados_confirmados,true)
+ await db.exec('RESET ROLE')
+ await db.query("UPDATE clientes SET nome='Atualizado no ERP' WHERE cpf='52998224725'")
+ assert.equal((await valor("SELECT meu_cadastro_cliente('brasa-burger')")).nome,'Atualizado no ERP')
+ assert.equal(await valor('SELECT count(*)::int FROM eventos_pedidos_cliente WHERE usuario_id=$1',[id]),1)
+ await db.query("INSERT INTO clientes(empresa_id,cpf,nome,telefone,email) SELECT 'a0000000-0000-0000-0000-000000000001',cpf,nome,'11988887777','familia@example.test' FROM (VALUES('11144477735','Um'),('12345678909','Dois')) t(cpf,nome)")
+ const outro=randomUUID()
+ await db.query("INSERT INTO auth.users(id,email,email_confirmed_at) VALUES($1,'familia@example.test',now())",[outro])
+ await db.query("SELECT set_config('request.jwt.claim.sub',$1,true)",[outro])
+ assert.equal(await valor("SELECT meu_cadastro_cliente('brasa-burger')"),null)
+})
+
+test('unificação: atualizar perfil em outra empresa não modifica a ficha do primeiro contratante',async()=>{
+ const empresa=await administrar('empresa',{nome:'Marca Isolada',slug:'marca-isolada'})
+ const id=randomUUID()
+ await db.query('INSERT INTO auth.users(id,raw_user_meta_data) VALUES($1,$2::jsonb)',[id,JSON.stringify({cpf:'52998224725',nome:'Conta Original',telefone:'11988887777',empresa_slug:'brasa-burger'})])
+ await db.query("SELECT set_config('request.jwt.claim.sub',$1,true)",[id]);await db.exec('SET LOCAL ROLE authenticated')
+ await valor("SELECT meu_cadastro_cliente('marca-isolada')")
+ await valor("SELECT cadastrar_perfil_cliente('52998224725','Outra Marca','11977776666','marca-isolada')")
+ await db.exec('RESET ROLE')
+ assert.equal(await valor("SELECT nome FROM clientes WHERE cpf='52998224725' AND empresa_id=$1",[empresa]),'Outra Marca')
+ assert.equal(await valor("SELECT nome FROM clientes WHERE cpf='52998224725' AND empresa_id<>$1",[empresa]),'Conta Original')
+ await db.exec('SET LOCAL ROLE anon')
+ await rejeita("SELECT meu_cadastro_cliente('brasa-burger')",[],/permission denied/)
+})
 
 test('conta antiga: recupera dados próprios e mantém CPF imutável sem acessar outro titular',async()=>{
   await contaMobile()

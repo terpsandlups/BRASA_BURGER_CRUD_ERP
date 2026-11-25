@@ -11,6 +11,7 @@ import ProdutoPortal, { DetalheProduto } from '../components/ProdutoPortal.jsx'
 import ResumoPedidoPortal from '../components/ResumoPedidoPortal.jsx'
 import EntregaConsumidor from '../components/EntregaConsumidor.jsx'
 import PerfilConsumidor from '../components/PerfilConsumidor.jsx'
+import AtivacaoCliente from '../components/AtivacaoCliente.jsx'
 import SidePanel from '../components/layout/SidePanel.jsx'
 import './portalCliente.css'
 
@@ -107,6 +108,7 @@ export default function PortalCliente() {
           <button type="button" className="portal-secondary" onClick={()=>{p.setCadastro(v=>!v);p.setErro('');p.setSenha('')}}>{p.cadastro ? 'Já tenho uma conta' : 'Sou novo, quero me cadastrar'}</button>
           {!p.cadastro && p.email.includes('@') && <button type="button" className="portal-text-link" onClick={()=>p.executar(async()=>{await reenviarConfirmacaoCliente(supabase.auth,p.email,window.location.origin+import.meta.env.BASE_URL+'pedir/'+p.marca);p.setAviso('Se houver um cadastro aguardando confirmação, você receberá um novo link por e-mail.')})}>Reenviar confirmação de e-mail</button>}
         </fieldset><p className="portal-form-note">Use seus próprios dados. A conta permite acompanhar os pedidos feitos às lojas.</p></form>
+        {!p.cadastro && <AtivacaoCliente api={supabase} marca={p.marca} cpfInicial={p.email} />}
         <button type="button" className="portal-text-link" onClick={()=>irPara(retorno==='finalizar' ? 'carrinho' : 'cardapio')}>← {retorno==='finalizar' ? 'Voltar ao carrinho' : 'Explorar o cardápio'}</button>
       </section><aside className="portal-auth-aside"><span className="portal-big-sticker"><Icon nome="produto" size={104} /></span><h2>Do cardápio<br />até a sua mesa.</h2><p>Escolha. Personalize. Acompanhe.</p><div><Icon nome="check" size={18} /> Pedido direto com a loja</div><div><Icon nome="check" size={18} /> Seus favoritos, do seu jeito</div></aside></div>}
 
@@ -133,6 +135,7 @@ export default function PortalCliente() {
       </>}
 
       {etapa==='pedidos' && p.session && <>
+        {parametros.get('ativacao')==='1' && <AtivacaoCliente api={supabase} marca={p.marca} session={p.session} perfil={p.perfilSalvo} concluir={()=>setParametros(atuais=>{const novos=new URLSearchParams(atuais);novos.delete('ativacao');return novos})} />}
         {titulo('SUA CONTA','Meus pedidos','Acompanhe a confirmação e o preparo pela loja.')}
         <div className="portal-account-strip"><span><Icon nome="conta" size={18} />{p.perfilSalvo?.nome || (!p.perfilPronto ? 'Carregando seu nome…' : 'Complete seus dados da conta')}</span><button type="button" disabled={p.ocupado} onClick={sair}>Sair da conta</button></div>
         <div className="portal-checkout-card portal-form"><PerfilConsumidor key={p.session.user.id} portal={p} /></div>
